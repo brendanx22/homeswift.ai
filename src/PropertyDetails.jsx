@@ -23,7 +23,7 @@ const PropertyDetails = () => {
   return (
     <div className="min-h-screen bg-[#181A1B] text-white">
       {/* Header */}
-      <header className="bg-transparent p-4 sticky top-0 z-10">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#181A1B]/95 backdrop-blur-md shadow-lg p-4">
         <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-white hover:text-gray-300">
           <ArrowLeft size={24} />
           <span>Back</span>
@@ -31,7 +31,7 @@ const PropertyDetails = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 pb-12">
+      <main className="container mx-auto px-4 pb-12 pt-24">
         {/* Image Gallery */}
         <div className="relative h-64 md:h-96 rounded-2xl overflow-hidden mb-6">
           <img src={property.images[0]} alt={property.title} className="w-full h-full object-cover" />

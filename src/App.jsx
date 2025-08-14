@@ -89,7 +89,7 @@ export default function App() {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-gray-700/20 via-transparent to-transparent"></div>
       
       {/* Navigation */}
-      <nav className="relative z-10 flex items-center justify-between p-4 sm:p-6">
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between p-4 sm:p-6 bg-black/20 backdrop-blur-md">
         <div className="flex items-center space-x-3">
           <img src="/Group 129.png" alt="HomeSwift Logo" className="w-10 h-10 rounded-lg object-cover" />
           <span className="text-white text-3xl sm:text-4xl font-bold tracking-tight">HomeSwift</span>
@@ -116,7 +116,7 @@ export default function App() {
       </nav>
 
       {/* Main Content */}
-      <div className="relative z-10 flex flex-col items-center justify-center min-h-[80vh] px-6">
+      <div className="relative z-10 flex flex-col items-center justify-center min-h-[80vh] px-6 pt-24 sm:pt-32">
         {/* Hero Section */}
         <div className="text-center mb-8 sm:mb-12 max-w-4xl px-2 sm:px-0">
           <h1 className="flex items-center justify-center flex-wrap text-3xl sm:text-5xl font-bold text-white mb-4 sm:mb-6 leading-tight mt-16 sm:mt-40 gap-2 sm:gap-3">

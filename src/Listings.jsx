@@ -245,7 +245,7 @@ const Listings = () => {
   return (
     <div className="min-h-screen bg-[#181A1B]">
       {/* Header */}
-  <header className="bg-transparent shadow-none p-4">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[#181A1B]/95 backdrop-blur-md shadow-lg p-4">
         <div className="container mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src="/Group 129.png" alt="HomeSwift Logo" className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg object-cover" />
@@ -263,7 +263,7 @@ const Listings = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto p-4">
+      <main className="container mx-auto p-4 pt-24">
   {/* Results Header */}
   <div className="mb-8 mt-6">
           <h2 className="text-4xl font-bold text-white mb-2">House Listings</h2>
