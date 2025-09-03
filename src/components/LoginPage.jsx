@@ -20,7 +20,7 @@ export default function LoginPage() {
 
   return (
     <div 
-      className="min-h-screen flex items-center justify-center px-6 bg-cover bg-center bg-no-repeat"
+      className="min-h-screen flex items-center justify-center px-6 bg-cover bg-center bg-no-repeat relative"
       style={{ 
         backgroundImage: 'url("/Hero Section Image.png")',
         backgroundSize: 'cover',
@@ -31,15 +31,18 @@ export default function LoginPage() {
       <div className="absolute inset-0 bg-black/40"></div>
       <div className="absolute inset-0 bg-gradient-to-br from-gray-900/20 via-transparent to-gray-800/30"></div>
       
+      {/* Back Button - Top Left Corner */}
+      <button
+        onClick={handleBackToHome}
+        className="absolute top-6 left-6 z-20 flex items-center space-x-3 bg-black/20 backdrop-blur-sm border border-gray-400/30 rounded-full px-4 py-2 text-gray-300 hover:text-white hover:bg-black/40 hover:border-gray-300/50 transition-all duration-300 group"
+      >
+        <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform duration-300" />
+        <span className="font-medium text-sm">Back to Home</span>
+      </button>
+
+
+      
       <div className="w-full max-w-md relative z-10">
-        {/* Back Button */}
-        <button
-          onClick={handleBackToHome}
-          className="flex items-center space-x-2 text-gray-400 hover:text-white mb-8 transition-colors"
-        >
-          <ArrowLeft size={20} />
-          <span>Back to Home</span>
-        </button>
 
         {/* Login Form */}
         <div className="bg-transparent border border-gray-400/50 rounded-[2rem] p-8">
@@ -138,9 +141,12 @@ export default function LoginPage() {
           <div className="mt-6 text-center">
             <p className="text-gray-400">
               Don't have an account?{' '}
-              <a href="/signup" className="text-blue-400 hover:text-blue-300 transition-colors">
+              <button 
+                onClick={() => navigate('/signup')} 
+                className="text-blue-400 hover:text-blue-300 transition-colors underline"
+              >
                 Sign up
-              </a>
+              </button>
             </p>
           </div>
         </div>

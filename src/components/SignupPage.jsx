@@ -33,7 +33,7 @@ export default function SignupPage() {
 
   return (
     <div 
-      className="min-h-screen flex items-center justify-center px-6 bg-cover bg-center bg-no-repeat"
+      className="min-h-screen flex items-center justify-center px-6 bg-cover bg-center bg-no-repeat relative"
       style={{ 
         backgroundImage: 'url("/Hero Section Image.png")',
         backgroundSize: 'cover',
@@ -44,24 +44,27 @@ export default function SignupPage() {
       <div className="absolute inset-0 bg-black/40"></div>
       <div className="absolute inset-0 bg-gradient-to-br from-gray-900/20 via-transparent to-gray-800/30"></div>
       
+      {/* Back Button - Top Left Corner */}
+      <button
+        onClick={handleBackToHome}
+        className="absolute top-6 left-6 z-20 flex items-center space-x-3 bg-black/20 backdrop-blur-sm border border-gray-400/30 rounded-full px-4 py-2 text-gray-300 hover:text-white hover:bg-black/40 hover:border-gray-300/50 transition-all duration-300 group"
+      >
+        <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform duration-300" />
+        <span className="font-medium text-sm">Back to Home</span>
+      </button>
+
+
+      
       <div className="w-full max-w-md relative z-10">
-        {/* Back Button */}
-        <button
-          onClick={handleBackToHome}
-          className="flex items-center space-x-2 text-gray-400 hover:text-white mb-8 transition-colors"
-        >
-          <ArrowLeft size={20} />
-          <span>Back to Home</span>
-        </button>
 
         {/* Signup Form */}
-        <div className="bg-transparent border border-gray-400/50 rounded-[2rem] p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Create Account</h1>
-            <p className="text-gray-300">Join HomeSwift and find your dream home</p>
+        <div className="bg-transparent border border-gray-400/50 rounded-[2rem] p-6">
+          <div className="text-center mb-6">
+            <h1 className="text-2xl font-bold text-white mb-1">Create Account</h1>
+            <p className="text-gray-300 text-sm">Join HomeSwift and find your dream home</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {/* Name Fields */}
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -199,7 +202,7 @@ export default function SignupPage() {
           </form>
 
           {/* Divider */}
-          <div className="relative my-6">
+          <div className="relative my-4">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-400/30"></div>
             </div>
@@ -222,12 +225,15 @@ export default function SignupPage() {
             <span>Continue with Google</span>
           </button>
 
-          <div className="mt-6 text-center">
+          <div className="mt-4 text-center">
             <p className="text-gray-400">
               Already have an account?{' '}
-              <a href="/login" className="text-blue-400 hover:text-blue-300 transition-colors">
+              <button 
+                onClick={() => navigate('/login')} 
+                className="text-blue-400 hover:text-blue-300 transition-colors underline"
+              >
                 Sign in
-              </a>
+              </button>
             </p>
           </div>
         </div>
