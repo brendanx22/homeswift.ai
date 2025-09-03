@@ -10,10 +10,8 @@ export default function HeroSection() {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (searchText.trim()) {
-      // Here you can add actual search functionality
-      console.log('Searching for:', searchText);
-      // For now, you can navigate to a search results page or handle the search
-      // navigate('/search', { state: { query: searchText } });
+      // Navigate to login page when search is submitted
+      navigate('/login');
     }
   };
 
