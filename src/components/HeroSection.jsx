@@ -17,7 +17,7 @@ export default function HeroSection() {
   };
 
   const handleGetStartedClick = () => {
-    navigate('/login');
+    navigate('/signup');
   };
 
   const handleLoginClick = () => {
