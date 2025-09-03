@@ -273,7 +273,7 @@ const Listings = () => {
         </div>
 
         {/* Listings Sections with Carousel on Mobile */}
-        {sections.map((section, idx) => (
+        {sections.map((section) => (
           <div key={section.name} className="mb-12">
             <h3 className="text-2xl font-bold text-white mb-4">{section.name}</h3>
             {/* Carousel for mobile, grid for desktop */}
@@ -308,7 +308,7 @@ const Listings = () => {
               </div>
             </div>
             <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              {section.listings.slice(0, 4).map((listing, idx) => (
+              {section.listings.slice(0, 4).map((listing) => (
                 <div
                   key={listing.id}
                   className="relative bg-[#23262b] rounded-3xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow border border-gray-400/30 flex flex-col justify-end min-h-[320px]"
