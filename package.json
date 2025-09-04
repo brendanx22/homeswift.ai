@@ -3,14 +3,15 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview",
-    "build:hero": "vite build --outDir components/hero --config vite.hero.config.js",
-    "build:main": "rimraf main && vite build --outDir main --config vite.main.config.js"
-  },
+"scripts": {
+  "dev": "vite",
+  "build": "vite build",
+  "lint": "eslint .",
+  "preview": "vite preview",
+  "build:hero": "vite build --outDir components/hero --config vite.hero.config.js",
+  "build:main": "rimraf dist && vite build --outDir dist --config vite.main.config.js"
+},
+
   "dependencies": {
     "@vercel/speed-insights": "^1.2.0",
     "lucide-react": "^0.542.0",
