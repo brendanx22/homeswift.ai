@@ -9,7 +9,7 @@
   "lint": "eslint .",
   "preview": "vite preview",
   "build:hero": "vite build --outDir components/hero --config vite.hero.config.js",
-  "build:main": "rimraf dist && vite build --outDir dist --config vite.main.config.js"
+  "build:main": "rimraf dist && vite build --outDir dist --config vite.main.config.js && node scripts/after-main-build.mjs"
 },
 
   "dependencies": {
