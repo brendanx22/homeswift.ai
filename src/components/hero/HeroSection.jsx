@@ -1,12 +1,18 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowUp, ArrowRight, Sparkles, Menu, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useTransform } from 'framer-motion';
 
 export default function HeroSection() {
   const [searchText, setSearchText] = useState('');
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const navigate = useNavigate();
+  
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+  
+  const rotateX = useTransform(mouseY, [-300, 300], [5, -5]);
+  const rotateY = useTransform(mouseX, [-300, 300], [-5, 5]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -30,6 +36,11 @@ export default function HeroSection() {
         backgroundImage: 'url("/Hero Section Image.png")',
         backgroundSize: 'cover',
         backgroundColor: '#1a1a1a'
+      }}
+      onMouseMove={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        mouseX.set(e.clientX - rect.left - rect.width / 2);
+        mouseY.set(e.clientY - rect.top - rect.height / 2);
       }}
     >
       {/* Background overlay for better text readability */}
@@ -57,30 +68,65 @@ export default function HeroSection() {
 
         {/* Action Buttons */}
         <div className="hidden md:flex items-center space-x-4">
-          <button
+          <motion.button
             onClick={handleGetStartedClick}
             className="flex items-center space-x-2 bg-white text-black px-6 py-2 rounded-full font-medium hover:bg-gray-100 transition-colors"
+            whileHover={{ scale: 1.05, y: -2 }}
+            whileTap={{ scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 400, damping: 17 }}
           >
             <span>Get Started</span>
-            <div className="w-6 h-6 bg-black rounded-full flex items-center justify-center">
+            <motion.div 
+              className="w-6 h-6 bg-black rounded-full flex items-center justify-center"
+              whileHover={{ rotate: 360 }}
+              transition={{ duration: 0.6 }}
+            >
               <ArrowRight size={14} className="text-white" />
-            </div>
-          </button>
-          <button
+            </motion.div>
+          </motion.button>
+          <motion.button
             onClick={handleLoginClick}
             className="bg-transparent border border-gray-400 text-white px-6 py-2 rounded-full font-medium hover:bg-white/10 transition-colors"
+            whileHover={{ scale: 1.05, y: -2 }}
+            whileTap={{ scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 400, damping: 17 }}
           >
             Login
-          </button>
+          </motion.button>
         </div>
 
         {/* Mobile Menu Button */}
-        <button 
+        <motion.button 
           onClick={() => setShowMobileMenu(!showMobileMenu)}
           className="md:hidden text-white p-2"
+          whileHover={{ scale: 1.1, rotate: 90 }}
+          whileTap={{ scale: 0.9 }}
+          transition={{ type: "spring", stiffness: 400, damping: 17 }}
         >
-          {showMobileMenu ? <X size={24} /> : <Menu size={24} />}
-        </button>
+          <AnimatePresence mode="wait">
+            {showMobileMenu ? (
+              <motion.div
+                key="close"
+                initial={{ rotate: -90, opacity: 0 }}
+                animate={{ rotate: 0, opacity: 1 }}
+                exit={{ rotate: 90, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <X size={24} />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="menu"
+                initial={{ rotate: 90, opacity: 0 }}
+                animate={{ rotate: 0, opacity: 1 }}
+                exit={{ rotate: -90, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Menu size={24} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.button>
       </motion.header>
 
       {/* Mobile Menu */}
@@ -129,8 +175,14 @@ export default function HeroSection() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: 'easeOut', delay: 0.2 }}
+          whileHover={{ scale: 1.05, y: -2 }}
         >
-                     <Sparkles className="w-4 h-4 text-white" />
+          <motion.div
+            animate={{ rotate: [0, 360] }}
+            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+          >
+            <Sparkles className="w-4 h-4 text-white" />
+          </motion.div>
           <span className="text-gray-300 text-sm font-medium">Smarter, faster, simpler home search</span>
         </motion.div>
 
@@ -171,13 +223,25 @@ export default function HeroSection() {
                  placeholder="Describe your ideal home"
                  className="w-full bg-transparent border border-[#262626] rounded-full px-6 py-6 text-white text-md placeholder-[#404040] focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                />
-                             <button
+                             <motion.button
                  type="submit"
                  onClick={() => navigate('/login')}
                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-black bg-white  px-3 py-3 rounded-full"
+                 whileHover={{ 
+                   scale: 1.1, 
+                   rotate: 45,
+                   boxShadow: "0 8px 25px rgba(255, 255, 255, 0.3)"
+                 }}
+                 whileTap={{ scale: 0.9 }}
+                 transition={{ type: "spring", stiffness: 400, damping: 17 }}
                >
-                 <ArrowUp size={20}/>
-               </button>
+                 <motion.div
+                   animate={{ y: [-2, 2, -2] }}
+                   transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                 >
+                   <ArrowUp size={20}/>
+                 </motion.div>
+               </motion.button>
             </div>
           </form>
         </motion.div>
