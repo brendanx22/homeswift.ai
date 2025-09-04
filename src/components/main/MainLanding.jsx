@@ -241,9 +241,28 @@ export default function App() {
         <MessageSquare size={20} />
       </motion.button>
 
+      {/* Sidebar (ChatGPT-style) */}
+      <AnimatePresence>
+        {showSidePanel && (
+          <>
+            {/* mobile overlay to close */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="fixed inset-0 bg-black/50 z-40 sm:hidden"
+              onClick={() => setShowSidePanel(false)}
+            />
 
-
-            
+            <motion.aside
+              initial={{ x: -320 }}
+              animate={{ x: 0 }}
+              exit={{ x: -320 }}
+              transition={{ duration: 0.28, ease: "easeOut" }}
+              className={`fixed left-0 top-0 z-50 h-full backdrop-blur-xl flex flex-col ${compactMode ? 'w-20' : 'w-80'}`}
+              style={{ background: 'rgba(60, 60, 60, 0.85)' }}
+            >
               {/* Header with New Chat Button */}
               <div className="p-3 flex-shrink-0">
                 <div className="flex items-center justify-between mb-3">
