@@ -139,6 +139,7 @@ export default function HeroSection() {
                />
                              <button
                  type="submit"
+                 onClick={() => navigate('/login')}
                  className="absolute right-4 top-1/2 transform -translate-y-1/2 text-black bg-white  px-3 py-3 rounded-full"
                >
                  <ArrowUp size={20}/>
