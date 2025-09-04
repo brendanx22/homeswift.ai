@@ -6,7 +6,7 @@ export default defineConfig({
   plugins: [react()],
   build: {
     emptyOutDir: true,
-    outDir: '../components/main',
+    outDir: '../main',
   },
 })
 

@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "build:hero": "vite build --outDir components/hero --config vite.hero.config.js",
-    "build:main": "rimraf components/main && vite build --outDir components/main --config vite.main.config.js"
+    "build:main": "rimraf main && vite build --outDir main --config vite.main.config.js"
   },
   "dependencies": {
     "@vercel/speed-insights": "^1.2.0",
