@@ -7,9 +7,12 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:hero": "vite build --outDir components/hero --config vite.hero.config.js",
+    "build:main": "vite build --outDir components/main --config vite.main.config.js"
   },
   "dependencies": {
+    "@vercel/speed-insights": "^1.2.0",
     "lucide-react": "^0.542.0",
     "nodemon": "^3.1.10",
     "react": "^19.1.1",
