@@ -58,7 +58,7 @@ export default function MainLanding() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: 'easeOut', delay: 0.35 }}
         >
-          <div className="relative rounded-2xl border border-white/12 bg-white/[0.04] backdrop-blur-xl shadow-[0_30px_120px_rgba(0,0,0,0.6)] p-1">
+          <div className="relative rounded-full border ">
             {/* input */}
             <input
               type="text"
@@ -72,7 +72,7 @@ export default function MainLanding() {
                 <Plus size={16} />
               </button>
               <button className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 md:px-4 py-1.5 text-[13px] md:text-[14px] text-zinc-200 hover:bg-white/10 transition-colors">
-                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-gradient-to-b from-blue-500 to-purple-600">
+                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full ">
                   <Zap size={10} className="text-white" />
                 </span>
                 <span>Suggestions</span>
@@ -81,7 +81,7 @@ export default function MainLanding() {
 
             {/* right action */}
             <button
-              className="absolute right-4 md:right-5 bottom-3.5 md:bottom-4 w-10 h-10 md:w-11 md:h-11 rounded-full shadow-[0_10px_28px_rgba(0,0,0,0.45)] bg-gradient-to-b from-blue-500 to-purple-600 hover:from-blue-400 hover:to-purple-500 transition-colors flex items-center justify-center"
+              className="absolute right-4 md:right-5 bottom-3.5 md:bottom-4 w-10 h-10 md:w-11 md:h-11 rounded-full transition-colors flex items-center justify-center"
               aria-label="submit"
             >
               <ArrowUpRight size={18} className="text-white" />
