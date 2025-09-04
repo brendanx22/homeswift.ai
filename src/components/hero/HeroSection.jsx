@@ -18,7 +18,7 @@ export default function HeroSection() {
 
 
   const handleGetStartedClick = () => {
-    navigate('/login');
+    navigate('/signup');
   };
 
   const handleLoginClick = () => {
@@ -47,9 +47,9 @@ export default function HeroSection() {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-8">
-          <a href="#" className="text-white text-md font-medium border-b-2 border-white pb-1">Home</a>
-          <a href="#" className="text-gray-300 text-md hover:text-white transition-colors">FAQs</a>
-          <a href="#" className="text-gray-300 text-md hover:text-white transition-colors">About Us</a>
+          <button onClick={() => navigate('/')} className="text-white text-lg font-medium border-b-2 border-white pb-1">Home</button>
+          <button onClick={() => navigate('/faq')} className="text-gray-300 text-lg hover:text-white transition-colors">FAQs</button>
+          <button onClick={() => navigate('/about')} className="text-gray-300 text-lg hover:text-white transition-colors">About Us</button>
         </nav>
 
         {/* Action Buttons */}
@@ -85,9 +85,9 @@ export default function HeroSection() {
         <div className="md:hidden absolute top-20 left-0 right-0 bg-black/90 backdrop-blur-md border-t border-gray-400/50 z-20">
           <div className="px-6 py-6 space-y-6">
             <div className="space-y-4">
-              <a href="#" className="block text-white text-lg font-medium border-b-2 border-white pb-1 w-fit">Home</a>
-              <a href="#" className="block text-gray-300 text-lg hover:text-white transition-colors">FAQs</a>
-              <a href="#" className="block text-gray-300 text-lg hover:text-white transition-colors">About Us</a>
+              <button onClick={() => navigate('/')} className="block text-white text-lg font-medium border-b-2 border-white pb-1 w-fit">Home</button>
+              <button onClick={() => navigate('/faq')} className="block text-gray-300 text-lg hover:text-white transition-colors">FAQs</button>
+              <button onClick={() => navigate('/about')} className="block text-gray-300 text-lg hover:text-white transition-colors">About Us</button>
             </div>
             <div className="pt-4 space-y-3">
               <button
@@ -134,18 +134,18 @@ export default function HeroSection() {
           <form onSubmit={handleSearchSubmit} className="relative">
             <div className="relative">
                              <input
-                 type="text"
-                 value={searchText}
-                 onChange={(e) => setSearchText(e.target.value)}
-                 placeholder="Describe your ideal home"
-                 className="w-full bg-transparent border border-[#262626] rounded-full px-6 py-6 text-white text-md placeholder-[#404040] focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
-               />
+                type="text"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                placeholder="Describe your ideal home"
+                className="w-full bg-transparent border border-[#262626] rounded-full px-6 py-6 text-white text-md placeholder-[#404040] focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
+              />
                              <button
-                 type="submit"
-                 className="absolute right-4 top-1/2 transform -translate-y-1/2 text-black bg-white  px-3 py-3 rounded-full"
-               >
-                 <ArrowUp size={20}/>
-               </button>
+                type="submit"
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-black bg-white  px-3 py-3 rounded-full"
+              >
+                <ArrowUp size={20}/>
+              </button>
             </div>
           </form>
         </div>
