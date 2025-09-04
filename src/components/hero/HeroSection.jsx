@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowUp, ArrowRight, Sparkles, Menu, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function HeroSection() {
   const [searchText, setSearchText] = useState('');
@@ -35,7 +36,12 @@ export default function HeroSection() {
       <div className="absolute inset-0 bg-black/40"></div>
       <div className="absolute inset-0 bg-gradient-to-br from-gray-900/20 via-transparent to-gray-800/30"></div>
       {/* Header */}
-      <header className="relative z-10 flex items-center justify-between px-6 py-6 lg:px-12">
+      <motion.header
+        className="relative z-10 flex items-center justify-between px-6 py-6 lg:px-12"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, ease: 'easeOut' }}
+      >
         {/* Logo */}
         <div className="flex items-center space-x-3">
           <img src="/Group 129.png" alt="HomeSwift Logo" className="w-6 h-6 rounded-lg object-cover" />
@@ -75,11 +81,18 @@ export default function HeroSection() {
         >
           {showMobileMenu ? <X size={24} /> : <Menu size={24} />}
         </button>
-      </header>
+      </motion.header>
 
       {/* Mobile Menu */}
-      {showMobileMenu && (
-        <div className="md:hidden absolute top-20 left-0 right-0 bg-black/90 backdrop-blur-md border-t border-gray-400/50 z-20">
+      <AnimatePresence>
+        {showMobileMenu && (
+          <motion.div
+            className="md:hidden absolute top-20 left-0 right-0 bg-black/90 backdrop-blur-md border-t border-gray-400/50 z-20"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+          >
           <div className="px-6 py-6 space-y-6">
             <div className="space-y-4">
               <a href="#" className="block text-white text-lg font-medium border-b-2 border-white pb-1 w-fit">Home</a>
@@ -104,30 +117,51 @@ export default function HeroSection() {
               </button>
             </div>
           </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main Content */}
       <main className="relative z-10 flex flex-col items-center justify-center min-h-[calc(100vh-180px)] px-6 text-center">
         {/* Feature Tag */}
-        <div className="flex items-center space-x-2 bg-[#262626] rounded-[2rem] px-6 py-3 mb-6">
+        <motion.div
+          className="flex items-center space-x-2 bg-[#262626] rounded-[2rem] px-6 py-3 mb-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: 'easeOut', delay: 0.2 }}
+        >
                      <Sparkles className="w-4 h-4 text-white" />
           <span className="text-gray-300 text-sm font-medium">Smarter, faster, simpler home search</span>
-        </div>
+        </motion.div>
 
         {/* Main Headline */}
-        <h1 className="text-3xl md:text-4xl lg:text-5xl text-white mb-4 leading-tight max-w-4xl">
+        <motion.h1
+          className="text-3xl md:text-4xl lg:text-5xl text-white mb-4 leading-tight max-w-4xl"
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: 'easeOut', delay: 0.3 }}
+        >
           Tell Us What Kind Of<br />
           Home You Want
-        </h1>
+        </motion.h1>
 
         {/* Sub-headline */}
-        <p className="text-sm md:text-sm text-gray-300 mb-16 max-w-2xl leading-relaxed">
+        <motion.p
+          className="text-sm md:text-sm text-gray-300 mb-16 max-w-2xl leading-relaxed"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: 'easeOut', delay: 0.5 }}
+        >
         Describe your dream home—cozy apartment, family house, or modern duplex. HomeSwift AI understands and instantly connects you with the best options.
-        </p>
+        </motion.p>
 
         {/* Search Input */}
-        <div className="w-full max-w-xl">
+        <motion.div
+          className="w-full max-w-xl"
+          initial={{ opacity: 0, y: 25 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: 'easeOut', delay: 0.7 }}
+        >
           <form onSubmit={handleSearchSubmit} className="relative">
             <div className="relative">
                              <input
@@ -146,7 +180,7 @@ export default function HeroSection() {
                </button>
             </div>
           </form>
-        </div>
+        </motion.div>
       </main>
     </div>
   );
