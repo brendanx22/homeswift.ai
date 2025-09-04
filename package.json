@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "build:hero": "vite build --outDir components/hero --config vite.hero.config.js",
-    "build:main": "vite build --outDir components/main --config vite.main.config.js"
+    "build:main": "rimraf components/main && vite build --outDir components/main --config vite.main.config.js"
   },
   "dependencies": {
     "@vercel/speed-insights": "^1.2.0",
@@ -31,6 +31,7 @@
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^16.3.0",
     "postcss": "^8.5.6",
-    "tailwindcss": "^3.4.4"
+    "tailwindcss": "^3.4.4",
+    "rimraf": "^6.0.1"
   }
 }
