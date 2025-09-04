@@ -17,7 +17,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Edit3,
-  MoreHorizontal,
+  User,
+  Home
 } from "lucide-react";
 
 export default function App() {
@@ -260,26 +261,39 @@ export default function App() {
               animate={{ x: 0 }}
               exit={{ x: -320 }}
               transition={{ duration: 0.28, ease: "easeOut" }}
-              className={`fixed left-0 top-0 z-50 h-full backdrop-blur-xl flex flex-col ${compactMode ? 'w-20' : 'w-80'}`}
-              style={{ background: 'rgba(60, 60, 60, 0.85)' }}
+              className={`fixed left-0 top-0 z-50 h-full flex flex-col ${compactMode ? 'w-20' : 'w-80'} bg-gray-900 border-r border-gray-700`}
             >
               {/* Header with New Chat Button */}
-              <div className="p-3 flex-shrink-0">
-                <div className="flex items-center justify-between mb-3">
-                  {!compactMode && (
+              <div className="p-3 flex-shrink-0 border-b border-gray-700">
+                {!compactMode ? (
+                  <button
+                    onClick={() => { setActiveChat(null); setShowSidePanel(false); setSearchText(''); }}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 rounded-md border border-gray-600 hover:bg-gray-800 text-white text-sm font-medium transition-all duration-200"
+                  >
+                    <Plus size={16} />
+                    New chat
+                  </button>
+                ) : (
+                  <div className="flex justify-center">
                     <button
                       onClick={() => { setActiveChat(null); setShowSidePanel(false); setSearchText(''); }}
-                      className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-lg border border-white/20 hover:bg-white/10 text-white text-sm font-medium transition-all duration-200 mr-2"
+                      className="p-2 rounded-md hover:bg-gray-800 text-white transition-all duration-200"
+                      title="New chat"
                     >
-                      <Plus size={16} />
-                      New chat
+                      <Plus size={18} />
                     </button>
-                  )}
+                  </div>
+                )}
 
+                <div className="flex items-center justify-between mt-3">
+                  {!compactMode && (
+                    <span className="text-xs text-gray-400 uppercase tracking-wider">Recent</span>
+                  )}
+                  
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => setCompactMode((s) => !s)}
-                      className="hidden sm:inline-flex items-center justify-center p-2 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-all duration-200"
+                      className="hidden sm:inline-flex items-center justify-center p-2 rounded-md hover:bg-gray-800 text-gray-400 hover:text-white transition-all duration-200"
                       title={compactMode ? 'Expand sidebar' : 'Collapse sidebar'}
                     >
                       {compactMode ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
@@ -287,29 +301,17 @@ export default function App() {
 
                     <button 
                       onClick={() => setShowSidePanel(false)} 
-                      className="sm:hidden p-2 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-all duration-200"
+                      className="sm:hidden p-2 rounded-md hover:bg-gray-800 text-gray-400 hover:text-white transition-all duration-200"
                     >
                       <X size={18} />
                     </button>
                   </div>
                 </div>
-
-                {compactMode && (
-                  <div className="flex justify-center">
-                    <button
-                      onClick={() => { setActiveChat(null); setShowSidePanel(false); setSearchText(''); }}
-                      className="p-2 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-all duration-200"
-                      title="New chat"
-                    >
-                      <Plus size={18} />
-                    </button>
-                  </div>
-                )}
               </div>
 
               {/* Chat History */}
               <div className="flex-1 overflow-y-auto px-2 pb-2">
-                <div className="space-y-1">
+                <div className="space-y-1 mt-2">
                   {chatHistory.map((chat) => (
                     <motion.div
                       key={chat.id}
@@ -322,18 +324,18 @@ export default function App() {
                         setActiveChat(chat.id); 
                         if (!isSmUp) setShowSidePanel(false); 
                       }}
-                      className={`group relative flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 ${
+                      className={`group relative flex items-center gap-2 px-3 py-2.5 rounded-md cursor-pointer transition-all duration-200 ${
                         activeChat === chat.id 
-                          ? 'bg-white/10 text-white' 
-                          : 'text-white/70 hover:bg-white/5 hover:text-white'
+                          ? 'bg-gray-800 text-white' 
+                          : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                       }`}
                     >
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <MessageSquare size={16} className="flex-shrink-0" />
                         {!compactMode && (
                           <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium">{chat.title}</p>
-                            <p className="text-xs text-white/50 mt-0.5">{chat.date}</p>
+                            <p className="truncate text-sm">{chat.title}</p>
+                            <p className="text-xs text-gray-500 mt-0.5">{chat.date}</p>
                           </div>
                         )}
                       </div>
@@ -341,18 +343,18 @@ export default function App() {
                       {!compactMode && (hoveredChat === chat.id || activeChat === chat.id) && (
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
                           <button 
-                            className="p-1 rounded hover:bg-white/10 transition-colors duration-200"
+                            className="p-1 rounded hover:bg-gray-700 transition-colors duration-200"
                             title="Edit"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <Edit3 size={14} className="text-white/50 hover:text-white" />
+                            <Edit3 size={14} className="text-gray-400 hover:text-white" />
                           </button>
                           <button 
                             onClick={(e) => deleteChat(chat.id, e)}
-                            className="p-1 rounded hover:bg-white/10 transition-colors duration-200"
+                            className="p-1 rounded hover:bg-gray-700 transition-colors duration-200"
                             title="Delete"
                           >
-                            <Trash2 size={14} className="text-white/50 hover:text-red-400" />
+                            <Trash2 size={14} className="text-gray-400 hover:text-red-400" />
                           </button>
                         </div>
                       )}
@@ -362,20 +364,22 @@ export default function App() {
               </div>
 
               {/* Footer */}
-              <div className="p-3 border-t border-white/10 flex-shrink-0">
+              <div className="p-3 border-t border-gray-700 flex-shrink-0">
                 <div className="space-y-1">
-                  <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-white/70 hover:bg-white/5 hover:text-white transition-all duration-200">
+                  <button className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-gray-300 hover:bg-gray-800 hover:text-white transition-all duration-200">
                     <HelpCircle size={18} />
                     {!compactMode && <span className="text-sm">Help & FAQ</span>}
                   </button>
-                  <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-white/70 hover:bg-white/5 hover:text-white transition-all duration-200">
+                  <button className="w-full flex items-center gap-3 px-3 py-2 rounded-md text-gray-300 hover:bg-gray-800 hover:text-white transition-all duration-200">
                     <Settings size={18} />
                     {!compactMode && <span className="text-sm">Settings</span>}
                   </button>
-                  <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-red-400/70 hover:bg-red-500/10 hover:text-red-400 transition-all duration-200">
-                    <LogOut size={18} />
-                    {!compactMode && <span className="text-sm">Log out</span>}
-                  </button>
+                  <div className="flex items-center gap-3 px-3 py-2 rounded-md text-gray-300">
+                    <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center">
+                      <User size={14} className="text-white" />
+                    </div>
+                    {!compactMode && <span className="text-sm">John Doe</span>}
+                  </div>
                 </div>
               </div>
             </motion.aside>
@@ -383,70 +387,141 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Top Nav */}
-      <motion.nav className="relative z-10 flex items-center justify-between p-4 sm:p-6">
-        <div className="flex items-center space-x-3">
-          <img src="/Group 129.png" alt="HomeSwift Logo" className="w-10 h-10 rounded-lg object-cover" />
-          <span className="text-white text-3xl sm:text-4xl font-bold tracking-tight">HomeSwift</span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button className="text-white hover:bg-white/10 p-2 rounded-lg" onClick={() => setShowMenu((s) => !s)} aria-label="open menu">
-            <Menu size={28} />
-          </button>
-        </div>
-
-        <AnimatePresence>
-          {showMenu && (
-            <motion.div 
-              initial={{ opacity: 0, y: -8 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              exit={{ opacity: 0, y: -8 }} 
-              transition={{ duration: 0.18 }} 
-              className="absolute top-16 right-4 sm:right-6 border border-gray-400/50 rounded-2xl shadow-2xl z-50 px-2 py-2 min-w-[260px] backdrop-blur-xl" 
-              style={{ background: 'rgba(60, 60, 60, 0.85)' }}
-            >
-              <motion.div variants={containerVariants} initial="hidden" animate="visible" className="p-2">
-                {['Home', 'About', 'Contact', 'Login', 'Profile'].map((i) => (
-                  <motion.div 
-                    key={i} 
-                    variants={itemVariants} 
-                    whileHover={{ x: 6 }} 
-                    className="w-full text-left text-gray-300 hover:text-white hover:bg-gray-700/50 p-3 rounded-lg text-sm cursor-pointer transition-all duration-200"
-                  >
-                    {i}
-                  </motion.div>
-                ))}
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.nav>
-
-      {/* MAIN area (hero + search) */}
-      <div style={{ paddingLeft: isSmUp && showSidePanel ? (compactMode ? '80px' : '320px') : 0 }} className="relative z-10 transition-all duration-300">
-        <div className="flex flex-col items-center justify-center min-h-[80vh] px-6">
-          {/* hero text */}
-          <div className="text-center mb-8 sm:mb-12 max-w-4xl px-2 sm:px-0">
-            <h1 className="flex items-center justify-center flex-wrap text-3xl sm:text-5xl font-bold text-white mb-4 sm:mb-6 leading-tight mt-16 sm:mt-40 gap-2 sm:gap-3">
-              <span>Rent & Buy a Home</span>
-              <span className="inline-flex items-center"><img src="/Group 129.png" alt="logo" className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg object-cover" /></span>
-              <span>Swiftly</span>
-            </h1>
-            <p className="text-gray-300 text-xl md:text-3xl font-light max-w-2xl mx-auto">Rent or buy a home under 120 seconds with our AI model</p>
+      {/* Main Content Area */}
+      <div 
+        style={{ paddingLeft: isSmUp && showSidePanel ? (compactMode ? '80px' : '320px') : 0 }} 
+        className="relative z-10 transition-all duration-300 min-h-screen flex flex-col"
+      >
+        {/* Top Navigation */}
+        <motion.nav 
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="flex items-center justify-between p-4 sm:p-6"
+        >
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+              <Home size={20} className="text-white" />
+            </div>
+            <span className="text-white text-2xl sm:text-3xl font-bold tracking-tight">HomeSwift</span>
           </div>
 
-          {/* Search + upload area */}
-          <div className="w-full max-w-4xl relative px-0 sm:px-2">
+          <div className="flex items-center gap-2">
+            <button 
+              className="text-white hover:bg-white/10 p-2 rounded-lg" 
+              onClick={() => setShowMenu((s) => !s)} 
+              aria-label="open menu"
+            >
+              <Menu size={28} />
+            </button>
+          </div>
+
+          <AnimatePresence>
+            {showMenu && (
+              <motion.div 
+                initial={{ opacity: 0, y: -8 }} 
+                animate={{ opacity: 1, y: 0 }} 
+                exit={{ opacity: 0, y: -8 }} 
+                transition={{ duration: 0.18 }} 
+                className="absolute top-16 right-4 sm:right-6 border border-gray-700 rounded-lg shadow-2xl z-50 px-2 py-2 min-w-[260px] bg-gray-900" 
+              >
+                <motion.div variants={containerVariants} initial="hidden" animate="visible" className="p-2">
+                  {['Home', 'About', 'Contact', 'Login', 'Profile'].map((i) => (
+                    <motion.div 
+                      key={i} 
+                      variants={itemVariants} 
+                      whileHover={{ x: 6 }} 
+                      className="w-full text-left text-gray-300 hover:text-white hover:bg-gray-800 p-3 rounded-lg text-sm cursor-pointer transition-all duration-200"
+                    >
+                      {i}
+                    </motion.div>
+                  ))}
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.nav>
+
+        {/* Hero Section */}
+        <div className="flex-1 flex flex-col items-center justify-center px-6 pb-20">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="text-center mb-8 sm:mb-12 max-w-4xl px-2 sm:px-0"
+          >
+            <motion.h1 
+              className="flex items-center justify-center flex-wrap text-3xl sm:text-5xl font-bold text-white mb-4 sm:mb-6 leading-tight gap-2 sm:gap-3"
+            >
+              <motion.span
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.3 }}
+              >
+                Rent & Buy a Home
+              </motion.span>
+              <motion.span 
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ duration: 0.4, delay: 0.5, type: "spring", stiffness: 200 }}
+                className="inline-flex items-center"
+              >
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-md bg-gradient-to-b from-blue-500 to-purple-600 flex items-center justify-center">
+                  <Home size={16} className="text-white" />
+                </div>
+              </motion.span>
+              <motion.span
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.7 }}
+              >
+                Swiftly
+              </motion.span>
+            </motion.h1>
+            
+            <motion.p 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.9 }}
+              className="text-gray-300 text-lg sm:text-xl font-light max-w-2xl mx-auto"
+            >
+              Rent or buy a home under 120 seconds with our AI model
+            </motion.p>
+          </motion.div>
+
+          {/* Search Input */}
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 1.1 }}
+            className="w-full max-w-3xl relative px-0 sm:px-2"
+          >
             <AnimatePresence>
               {(uploadedFiles.length > 0 || uploadedImages.length > 0) && (
-                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.28 }} className="mb-2">
+                <motion.div 
+                  initial={{ height: 0, opacity: 0 }} 
+                  animate={{ height: 'auto', opacity: 1 }} 
+                  exit={{ height: 0, opacity: 0 }} 
+                  transition={{ duration: 0.28 }} 
+                  className="mb-2"
+                >
                   {uploadedFiles.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-2">
                       {uploadedFiles.map((file, idx) => (
-                        <motion.div key={idx} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.25, delay: idx * 0.05 }} className="flex items-center bg-gray-700/30 text-gray-200 px-2 py-1 rounded-lg text-xs">
+                        <motion.div 
+                          key={idx} 
+                          initial={{ scale: 0.9, opacity: 0 }} 
+                          animate={{ scale: 1, opacity: 1 }} 
+                          transition={{ duration: 0.25, delay: idx * 0.05 }} 
+                          className="flex items-center bg-gray-800 text-gray-200 px-2 py-1 rounded-lg text-xs"
+                        >
                           <span className="mr-2 cursor-pointer underline" onClick={() => handlePreviewItem({ type: 'file', file })}>{file.name}</span>
-                          <motion.button whileHover={{ scale: 1.1 }} type="button" className="ml-1 text-red-400 hover:text-red-600 text-xs px-1" onClick={() => handleRemoveFile(idx)}>
+                          <motion.button 
+                            whileHover={{ scale: 1.1 }} 
+                            type="button" 
+                            className="ml-1 text-red-400 hover:text-red-600 text-xs px-1" 
+                            onClick={() => handleRemoveFile(idx)}
+                          >
                             <span className="text-lg font-bold">×</span>
                           </motion.button>
                         </motion.div>
@@ -457,10 +532,21 @@ export default function App() {
                   {uploadedImages.length > 0 && (
                     <div className="flex flex-wrap gap-2 mb-2">
                       {uploadedImages.map((img, idx) => (
-                        <motion.div key={idx} initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ duration: 0.25, delay: idx * 0.05 }} className="flex items-center bg-gray-700/30 text-gray-200 px-2 py-1 rounded-lg text-xs">
+                        <motion.div 
+                          key={idx} 
+                          initial={{ scale: 0.9, opacity: 0 }} 
+                          animate={{ scale: 1, opacity: 1 }} 
+                          transition={{ duration: 0.25, delay: idx * 0.05 }} 
+                          className="flex items-center bg-gray-800 text-gray-200 px-2 py-1 rounded-lg text-xs"
+                        >
                           <img src={URL.createObjectURL(img)} alt={img.name} className="w-8 h-8 object-cover rounded mr-2 cursor-pointer" onClick={() => handlePreviewItem({ type: 'image', file: img })} />
                           <span className="mr-2 cursor-pointer underline" onClick={() => handlePreviewItem({ type: 'image', file: img })}>{img.name}</span>
-                          <motion.button whileHover={{ scale: 1.1 }} type="button" className="ml-1 text-red-400 hover:text-red-600 text-xs px-1" onClick={() => handleRemoveImage(idx)}>
+                          <motion.button 
+                            whileHover={{ scale: 1.1 }} 
+                            type="button" 
+                            className="ml-1 text-red-400 hover:text-red-600 text-xs px-1" 
+                            onClick={() => handleRemoveImage(idx)}
+                          >
                             <span className="text-lg font-bold">×</span>
                           </motion.button>
                         </motion.div>
@@ -471,28 +557,58 @@ export default function App() {
               )}
             </AnimatePresence>
 
-            <motion.form onSubmit={handleSearchSubmit} whileHover={{ scale: 1.005 }} className="relative flex flex-col bg-transparent border border-gray-400/50 rounded-2xl shadow-2xl px-0 py-6 sm:px-2 sm:py-10 min-h-[130px] backdrop-blur-xl" style={{ background: 'rgba(60, 60, 60, 0.15)' }}>
-              <input type="text" value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Describe the kind of house you are looking for..." className="w-full bg-transparent text-gray-300 placeholder-gray-400 text-sm sm:text-lg outline-none border-none h-10 sm:h-12 mb-6 sm:mb-10 rounded-xl sm:rounded-2xl px-2 sm:px-4" style={{ minWidth: 0, fontSize: '0.875rem' }} />
+            <motion.form 
+              onSubmit={handleSearchSubmit} 
+              whileHover={{ scale: 1.005 }} 
+              className="relative flex flex-col bg-gray-800 border border-gray-700 rounded-xl shadow-2xl px-0 py-6 sm:px-2 sm:py-8 min-h-[110px]"
+            >
+              <input 
+                type="text" 
+                value={searchText} 
+                onChange={(e) => setSearchText(e.target.value)} 
+                placeholder="Describe the kind of house you are looking for..." 
+                className="w-full bg-transparent text-white placeholder-gray-400 text-sm sm:text-base outline-none border-none h-10 sm:h-12 mb-6 sm:mb-8 rounded-xl px-2 sm:px-4" 
+                style={{ minWidth: 0 }} 
+              />
 
               <div className="flex items-center justify-between absolute bottom-4 left-4 right-4 sm:left-6 sm:right-6 w-auto">
                 <div className="flex items-center gap-2 sm:gap-3 relative">
-                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} type="button" className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-gray-700/40 hover:bg-gray-600/50 text-gray-300 border border-gray-500" tabIndex={-1} onClick={() => setShowPlusDropdown((s) => !s)}>
+                  <motion.button 
+                    whileHover={{ scale: 1.05 }} 
+                    whileTap={{ scale: 0.95 }} 
+                    type="button" 
+                    className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-gray-700 hover:bg-gray-600 text-gray-300" 
+                    tabIndex={-1} 
+                    onClick={() => setShowPlusDropdown((s) => !s)}
+                  >
                     <Plus size={18} />
                   </motion.button>
 
                   <AnimatePresence>
                     {showPlusDropdown && (
-                      <motion.div initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} transition={{ duration: 0.18 }} className="absolute bottom-14 left-0 border border-gray-400/50 rounded-2xl shadow-2xl z-50 px-2 py-1 sm:px-4 sm:py-2 min-w-[220px] w-[220px] h-[90px] sm:h-[120px] backdrop-blur-xl" style={{ background: 'rgba(60, 60, 60, 0.85)' }}>
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }} 
+                        animate={{ opacity: 1, y: 0, scale: 1 }} 
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }} 
+                        transition={{ duration: 0.18 }} 
+                        className="absolute bottom-14 left-0 border border-gray-700 rounded-lg shadow-2xl z-50 px-2 py-1 sm:px-4 sm:py-2 min-w-[220px] w-[220px] bg-gray-900"
+                      >
                         <div className="space-y-2">
-                          <button onClick={() => { handleFileUploadClick(); setShowPlusDropdown(false); }} className="w-full flex items-center gap-2 text-left text-gray-300 hover:text-white hover:bg-gray-700/50 p-2 sm:p-3 rounded-lg text-sm sm:text-base">
+                          <button 
+                            onClick={() => { handleFileUploadClick(); setShowPlusDropdown(false); }} 
+                            className="w-full flex items-center gap-2 text-left text-gray-300 hover:text-white hover:bg-gray-800 p-2 sm:p-3 rounded-lg text-sm sm:text-base"
+                          >
                             <FileUp size={18} />
                             <span>Upload File</span>
                           </button>
                           <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
 
-                          <button onClick={() => { handleImageUploadClick(); setShowPlusDropdown(false); }} className="w-full flex items-center gap-2 text-left text-gray-300 hover:text-white hover:bg-gray-700/50 p-2 sm:p-3 rounded-lg text-sm sm:text-base">
+                          <button 
+                            onClick={() => { handleImageUploadClick(); setShowPlusDropdown(false); }} 
+                            className="w-full flex items-center gap-2 text-left text-gray-300 hover:text-white hover:bg-gray-800 p-2 sm:p-3 rounded-lg text-sm sm:text-base"
+                          >
                             <ImageUp size={18} />
-                            <span className="whitespace-nowrap -mt-1">Upload Image</span>
+                            <span className="whitespace-nowrap">Upload Image</span>
                           </button>
                           <input type="file" accept="image/*" ref={imageInputRef} style={{ display: 'none' }} onChange={handleImageChange} />
                         </div>
@@ -500,13 +616,25 @@ export default function App() {
                     )}
                   </AnimatePresence>
 
-                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} type="button" onClick={handleSuggestionClick} className="flex items-center gap-1 sm:gap-2 px-2 py-1 sm:px-4 sm:py-2 rounded-full bg-transparent border border-gray-400/50 text-gray-300 font-medium hover:bg-gray-700/30 text-sm sm:text-base">
+                  <motion.button 
+                    whileHover={{ scale: 1.05 }} 
+                    whileTap={{ scale: 0.95 }} 
+                    type="button" 
+                    onClick={handleSuggestionClick} 
+                    className="flex items-center gap-1 sm:gap-2 px-2 py-1 sm:px-4 sm:py-2 rounded-full bg-gray-700 border border-gray-600 text-gray-300 font-medium hover:bg-gray-600 text-sm sm:text-base"
+                  >
                     <Sparkles size={18} />
                     <span>Suggestions</span>
                   </motion.button>
                 </div>
 
-                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} type="submit" className={`w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full text-white shadow-lg border border-gray-400/50 ${!searchText ? 'opacity-50 cursor-not-allowed' : ''}`} style={{ background: 'linear-gradient(180deg, #3a3d42 0%, #23262b 100%)', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }} disabled={!searchText}>
+                <motion.button 
+                  whileHover={{ scale: 1.05 }} 
+                  whileTap={{ scale: 0.95 }} 
+                  type="submit" 
+                  className={`w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full text-white shadow-lg ${!searchText ? 'opacity-50 cursor-not-allowed bg-gray-600' : 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700'}`} 
+                  disabled={!searchText}
+                >
                   <ArrowUp size={18} />
                 </motion.button>
               </div>
@@ -515,63 +643,88 @@ export default function App() {
             {/* Suggestions */}
             <AnimatePresence>
               {showSuggestions && (
-                <motion.div initial={{ opacity: 0, y: -10, height: 0 }} animate={{ opacity: 1, y: 0, height: 'auto' }} exit={{ opacity: 0, y: -10, height: 0 }} transition={{ duration: 0.2 }} className="absolute top-full left-0 right-0 mt-2 sm:mt-4 border border-gray-400/50 rounded-2xl shadow-2xl z-20 px-2 py-2 sm:px-4 sm:py-4 backdrop-blur-xl" style={{ background: 'rgba(60, 60, 60, 0.15)' }}>
+                <motion.div 
+                  initial={{ opacity: 0, y: -10, height: 0 }} 
+                  animate={{ opacity: 1, y: 0, height: 'auto' }} 
+                  exit={{ opacity: 0, y: -10, height: 0 }} 
+                  transition={{ duration: 0.2 }} 
+                  className="absolute top-full left-0 right-0 mt-2 sm:mt-4 border border-gray-700 rounded-lg shadow-2xl z-20 px-2 py-2 sm:px-4 sm:py-4 bg-gray-900"
+                >
                   <div className="p-4">
                     <h3 className="text-white font-semibold mb-2 sm:mb-3 text-base sm:text-lg">Popular Searches</h3>
                     <div className="space-y-2">
                       {suggestions.map((sug, idx) => (
-                        <button key={idx} onClick={() => { setSearchText(sug); setShowSuggestions(false); }} className="w-full text-left text-gray-300 hover:text-white hover:bg-gray-700/50 p-2 sm:p-3 rounded-lg text-sm sm:text-base">{sug}</button>
+                        <button 
+                          key={idx} 
+                          onClick={() => { setSearchText(sug); setShowSuggestions(false); }} 
+                          className="w-full text-left text-gray-300 hover:text-white hover:bg-gray-800 p-2 sm:p-3 rounded-lg text-sm sm:text-base"
+                        >
+                          {sug}
+                        </button>
                       ))}
                     </div>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
-          </div>
+          </motion.div>
         </div>
 
-        {/* preview modal */}
-        <AnimatePresence>
-          {previewItem && (
-            <motion.div ref={previewDropdownRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.18 }} className="fixed left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 border border-gray-400/50 rounded-2xl shadow-2xl z-50 flex flex-col items-center justify-center backdrop-blur-xl" style={{ background: 'rgba(60, 60, 60, 0.95)', width: '70vw', height: '70vh', maxWidth: '900px', maxHeight: '900px', overflow: 'hidden', boxSizing: 'border-box' }}>
-              <div className="flex items-center justify-between w-full px-6 pt-4">
-                <div className="text-gray-200 font-bold text-lg truncate">{previewItem.file?.name}</div>
-                <div className="flex items-center gap-2">
-                  <button onClick={closePreview} className="p-1 rounded hover:bg-gray-700/50"><X size={18} className="text-gray-300" /></button>
-                </div>
-              </div>
-
-              <div className="flex-1 w-full px-6 py-4 overflow-auto flex items-start justify-center">
-                {previewItem.type === 'image' ? (
-                  <img src={previewURL} alt={previewItem.file.name} className="max-w-full max-h-[60vh] rounded-lg shadow-lg object-contain" />
-                ) : previewItem.file?.type === 'application/pdf' ? (
-                  <object data={previewURL} type="application/pdf" className="w-full h-[60vh] rounded-lg shadow-lg bg-white">
-                    <div className="text-gray-400 text-lg mb-4">PDF preview not available in this browser.</div>
-                    <a href={previewURL} download={previewItem.file?.name} className="px-4 py-2 bg-gray-700 text-white rounded-lg shadow hover:bg-gray-800">Download PDF</a>
-                  </object>
-                ) : previewItem.isDocxType ? (
-                  <div className="text-center">
-                    <div className="text-gray-400 text-lg mb-4">DOCX preview not supported. You can download the file below.</div>
-                    <a href={previewURL} download={previewItem.file?.name} className="px-4 py-2 bg-gray-700 text-white rounded-lg shadow hover:bg-gray-800">Download DOCX</a>
-                  </div>
-                ) : previewItem.fileText ? (
-                  <div className="w-full h-[60vh] overflow-auto bg-gray-900 text-gray-100 p-4 rounded-lg shadow-lg" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{previewItem.fileText}</div>
-                ) : (
-                  <div className="text-gray-400 text-lg">File preview not available for this type.</div>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* bottom-left CTA */}
+        {/* Toggle Sidebar Button */}
         <div className="absolute left-6 bottom-6 z-20">
-          <button onClick={() => { setShowSidePanel((s) => !s); }} className="flex items-center gap-3 backdrop-blur-xl text-white px-4 py-2 rounded-2xl border border-gray-700/40" style={{ background: 'rgba(60, 60, 60, 0.7)' }}>
+          <motion.button 
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowSidePanel((s) => !s)} 
+            className="flex items-center gap-3 bg-gray-800 text-white px-4 py-2 rounded-lg border border-gray-700"
+          >
             <MessageSquare size={16} />
             <span className="hidden sm:inline">Toggle Chat</span>
-          </button>
+          </motion.button>
         </div>
       </div>
+
+      {/* Preview Modal */}
+      <AnimatePresence>
+        {previewItem && (
+          <motion.div 
+            ref={previewDropdownRef} 
+            initial={{ opacity: 0, scale: 0.95 }} 
+            animate={{ opacity: 1, scale: 1 }} 
+            exit={{ opacity: 0, scale: 0.95 }} 
+            transition={{ duration: 0.18 }} 
+            className="fixed left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 border border-gray-700 rounded-lg shadow-2xl z-50 flex flex-col items-center justify-center bg-gray-900" 
+            style={{ width: '70vw', height: '70vh', maxWidth: '900px', maxHeight: '900px', overflow: 'hidden', boxSizing: 'border-box' }}
+          >
+            <div className="flex items-center justify-between w-full px-6 pt-4">
+              <div className="text-white font-bold text-lg truncate">{previewItem.file?.name}</div>
+              <div className="flex items-center gap-2">
+                <button onClick={closePreview} className="p-1 rounded hover:bg-gray-800"><X size={18} className="text-gray-300" /></button>
+              </div>
+            </div>
+
+            <div className="flex-1 w-full px-6 py-4 overflow-auto flex items-start justify-center">
+              {previewItem.type === 'image' ? (
+                <img src={previewURL} alt={previewItem.file.name} className="max-w-full max-h-[60vh] rounded-lg shadow-lg object-contain" />
+              ) : previewItem.file?.type === 'application/pdf' ? (
+                <object data={previewURL} type="application/pdf" className="w-full h-[60vh] rounded-lg shadow-lg bg-white">
+                  <div className="text-gray-400 text-lg mb-4">PDF preview not available in this browser.</div>
+                  <a href={previewURL} download={previewItem.file?.name} className="px-4 py-2 bg-gray-700 text-white rounded-lg shadow hover:bg-gray-800">Download PDF</a>
+                </object>
+              ) : previewItem.isDocxType ? (
+                <div className="text-center">
+                  <div className="text-gray-400 text-lg mb-4">DOCX preview not supported. You can download the file below.</div>
+                  <a href={previewURL} download={previewItem.file?.name} className="px-4 py-2 bg-gray-700 text-white rounded-lg shadow hover:bg-gray-800">Download DOCX</a>
+                </div>
+              ) : previewItem.fileText ? (
+                <div className="w-full h-[60vh] overflow-auto bg-gray-800 text-gray-100 p-4 rounded-lg shadow-lg" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{previewItem.fileText}</div>
+              ) : (
+                <div className="text-gray-400 text-lg">File preview not available for this type.</div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
