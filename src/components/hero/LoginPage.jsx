@@ -35,19 +35,10 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     try {
       setLoading(true);
-      const isProduction = window.location.hostname !== 'localhost';
-      const redirectUrl = isProduction 
-        ? `${window.location.origin}/main`
-        : 'http://localhost:5173/main';
-        
       await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: redirectUrl,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          }
+          redirectTo: `${window.location.origin}/main`
         }
       });
       // Redirect will be handled by Supabase
