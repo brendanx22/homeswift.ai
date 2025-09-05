@@ -55,10 +55,15 @@ export const authHelpers = {
 
 // Sign in with Google OAuth
 export const signInWithGoogle = async () => {
+  const isProduction = window.location.hostname !== 'localhost';
+  const redirectUrl = isProduction 
+    ? `${window.location.origin}/main`
+    : 'http://localhost:5173/main';
+    
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${window.location.origin}/main`,
+      redirectTo: redirectUrl,
       queryParams: {
         access_type: 'offline',
         prompt: 'consent',

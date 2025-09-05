@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import {
   Menu,
   Plus,
@@ -34,6 +35,7 @@ export default function App() {
   // --- authentication state ---
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   // --- sidebar and layout state ---
   const [showSidePanel, setShowSidePanel] = useState(true);
@@ -522,16 +524,46 @@ export default function App() {
               style={{ background: 'rgba(60, 60, 60, 0.85)' }}
             >
               <motion.div variants={containerVariants} initial="hidden" animate="visible" className="p-2">
-                {['Home', 'About', 'Contact', 'Login', 'Profile'].map((i) => (
-                  <motion.div 
-                    key={i} 
-                    variants={itemVariants} 
-                    whileHover={{ x: 6 }} 
-                    className="w-full text-left text-gray-300 hover:text-white hover:bg-gray-700/50 p-3 rounded-lg text-sm cursor-pointer transition-all duration-200"
-                  >
-                    {i}
-                  </motion.div>
-                ))}
+                {user ? (
+                  // Logged in menu items
+                  [
+                    { label: 'Dashboard', action: () => navigate('/main') },
+                    { label: 'Browse Properties', action: () => navigate('/listings') },
+                    { label: 'Saved Properties', action: () => navigate('/saved') },
+                    { label: 'Profile', action: () => navigate('/profile') },
+                    { label: 'Logout', action: handleLogout, className: 'text-red-400 hover:text-red-300' }
+                  ].map((item, idx) => (
+                    <motion.button 
+                      key={idx} 
+                      variants={itemVariants} 
+                      whileHover={{ x: 6 }} 
+                      onClick={item.action}
+                      className={`w-full text-left text-gray-300 hover:text-white hover:bg-gray-700/50 p-3 rounded-lg text-sm cursor-pointer transition-all duration-200 ${item.className || ''}`}
+                    >
+                      {item.label}
+                    </motion.button>
+                  ))
+                ) : (
+                  // Not logged in menu items
+                  [
+                    { label: 'Home', action: () => navigate('/') },
+                    { label: 'Browse Properties', action: () => navigate('/listings') },
+                    { label: 'About', action: () => navigate('/about') },
+                    { label: 'Contact', action: () => navigate('/contact') },
+                    { label: 'Login', action: () => navigate('/login') },
+                    { label: 'Sign Up', action: () => navigate('/signup') }
+                  ].map((item, idx) => (
+                    <motion.button 
+                      key={idx} 
+                      variants={itemVariants} 
+                      whileHover={{ x: 6 }} 
+                      onClick={item.action}
+                      className="w-full text-left text-gray-300 hover:text-white hover:bg-gray-700/50 p-3 rounded-lg text-sm cursor-pointer transition-all duration-200"
+                    >
+                      {item.label}
+                    </motion.button>
+                  ))
+                )}
               </motion.div>
             </motion.div>
           )}
