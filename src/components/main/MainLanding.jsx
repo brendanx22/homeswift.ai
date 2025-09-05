@@ -18,6 +18,14 @@ import {
   ChevronRight,
   Edit3,
   MoreHorizontal,
+  Home,
+  Search,
+  Heart,
+  MapPin,
+  Calculator,
+  Camera,
+  Filter,
+  Star,
 } from "lucide-react";
 
 export default function App() {
@@ -218,13 +226,30 @@ export default function App() {
   // --- dynamic layout calc ---
   const sidebarWidthPx = compactMode ? 80 : (isSmUp ? 320 : 0);
 
+  // Set body background
+  useEffect(() => {
+    document.body.style.backgroundImage = 'url("/Rectangle 135.png")';
+    document.body.style.backgroundSize = 'cover';
+    document.body.style.backgroundAttachment = 'fixed';
+    document.body.style.backgroundPosition = 'center';
+    document.body.style.backgroundRepeat = 'no-repeat';
+    
+    return () => {
+      // Cleanup on unmount
+      document.body.style.backgroundImage = '';
+      document.body.style.backgroundSize = '';
+      document.body.style.backgroundAttachment = '';
+      document.body.style.backgroundPosition = '';
+      document.body.style.backgroundRepeat = '';
+    };
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4 }}
-      className="min-h-screen relative bg-cover bg-center bg-no-repeat"
-      style={{ backgroundImage: 'url("/Rectangle 135.png")', backgroundSize: 'cover' }}
+      className={`${showSuggestions ? 'min-h-[140vh]' : 'min-h-screen'} relative`}
     >
       {/* overlays to darken the hero */}
       <div className="absolute inset-0 bg-black/40" />
@@ -260,121 +285,149 @@ export default function App() {
               animate={{ x: 0 }}
               exit={{ x: -320 }}
               transition={{ duration: 0.28, ease: "easeOut" }}
-              className={`fixed left-0 top-0 z-50 h-full backdrop-blur-xl flex flex-col ${compactMode ? 'w-20' : 'w-80'}`}
-              style={{ background: 'rgba(60, 60, 60, 0.85)' }}
+              className={`fixed left-0 top-0 z-50 h-full backdrop-blur-xl flex flex-col border-r border-gray-800/50 ${compactMode ? 'w-16' : 'w-64'}`}
+              style={{ background: 'rgba(15, 15, 15, 0.95)' }}
             >
-              {/* Header with New Chat Button */}
+              {/* HomeSwift sidebar header */}
               <div className="p-3 flex-shrink-0">
-                <div className="flex items-center justify-between mb-3">
-                  {!compactMode && (
-                    <button
-                      onClick={() => { setActiveChat(null); setShowSidePanel(false); setSearchText(''); }}
-                      className="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-lg border border-white/20 hover:bg-white/10 text-white text-sm font-medium transition-all duration-200 mr-2"
-                    >
-                      <Plus size={16} />
-                      New chat
-                    </button>
-                  )}
-
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => setCompactMode((s) => !s)}
-                      className="hidden sm:inline-flex items-center justify-center p-2 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-all duration-200"
-                      title={compactMode ? 'Expand sidebar' : 'Collapse sidebar'}
-                    >
-                      {compactMode ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-                    </button>
-
-                    <button 
-                      onClick={() => setShowSidePanel(false)} 
-                      className="sm:hidden p-2 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-all duration-200"
-                    >
-                      <X size={18} />
-                    </button>
+                <div className="flex items-center justify-between mb-12 mt-8">
+                  <div className="flex items-center gap-2">
+                    {compactMode ? (
+                      <div className="flex justify-center w-full">
+                        <img src="/Group 129.png" alt="HomeSwift Logo" className="w-10 h-10 rounded-lg object-cover" />
+                      </div>
+                    ) : (
+                      <>
+                        <img src="/Group 129.png" alt="HomeSwift Logo" className="w-8 h-8 rounded-lg object-cover" />
+                        <span className="text-white font-semibold text-lg">HomeSwift</span>
+                      </>
+                    )}
                   </div>
+
+                  {!compactMode && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setCompactMode((s) => !s)}
+                        className="hidden sm:inline-flex items-center justify-center p-2 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-all duration-200"
+                        title={compactMode ? 'Expand sidebar' : 'Collapse sidebar'}
+                      >
+                        {compactMode ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+                      </button>
+
+                      <button 
+                        onClick={() => setShowSidePanel(false)} 
+                        className="sm:hidden p-2 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-all duration-200"
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {compactMode && (
-                  <div className="flex justify-center">
+                  <div className="flex justify-center mt-4">
                     <button
-                      onClick={() => { setActiveChat(null); setShowSidePanel(false); setSearchText(''); }}
+                      onClick={() => setCompactMode((s) => !s)}
                       className="p-2 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-all duration-200"
-                      title="New chat"
+                      title="Expand sidebar"
                     >
-                      <Plus size={18} />
+                      <ChevronRight size={18} />
                     </button>
                   </div>
                 )}
               </div>
 
-              {/* Chat History */}
-              <div className="flex-1 overflow-y-auto px-2 pb-2">
+              {/* HomeSwift sidebar navigation */}
+              <div className="flex-1 overflow-y-auto px-2 pb-2 mt-8 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 <div className="space-y-1">
-                  {chatHistory.map((chat) => (
+                  {[
+                    { icon: Home, label: 'Browse Homes', active: true },
+                    { icon: Search, label: 'Property Search' },
+                    { icon: Heart, label: 'Saved Properties' },
+                    { icon: MapPin, label: 'Neighborhood Guide' },
+                    { icon: Calculator, label: 'Mortgage Calculator' },
+                    { icon: Camera, label: 'Virtual Tours' },
+                    { icon: Filter, label: 'Advanced Filters' },
+                    { icon: Clock, label: 'Recent Searches' }
+                  ].map((item, idx) => (
                     <motion.div
-                      key={chat.id}
+                      key={idx}
                       initial={{ opacity: 0, x: -12 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ duration: 0.18 }}
-                      onMouseEnter={() => setHoveredChat(chat.id)}
-                      onMouseLeave={() => setHoveredChat(null)}
-                      onClick={() => { 
-                        setActiveChat(chat.id); 
-                        if (!isSmUp) setShowSidePanel(false); 
-                      }}
-                      className={`group relative flex items-center gap-2 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 ${
-                        activeChat === chat.id 
-                          ? 'bg-white/10 text-white' 
-                          : 'text-white/70 hover:bg-white/5 hover:text-white'
+                      transition={{ duration: 0.18, delay: idx * 0.05 }}
+                      className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 ${
+                        item.active 
+                          ? 'bg-gray-800/80 text-white' 
+                          : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'
                       }`}
                     >
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <MessageSquare size={16} className="flex-shrink-0" />
-                        {!compactMode && (
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium">{chat.title}</p>
-                            <p className="text-xs text-white/50 mt-0.5">{chat.date}</p>
-                          </div>
-                        )}
-                      </div>
-
-                      {!compactMode && (hoveredChat === chat.id || activeChat === chat.id) && (
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                          <button 
-                            className="p-1 rounded hover:bg-white/10 transition-colors duration-200"
-                            title="Edit"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Edit3 size={14} className="text-white/50 hover:text-white" />
-                          </button>
-                          <button 
-                            onClick={(e) => deleteChat(chat.id, e)}
-                            className="p-1 rounded hover:bg-white/10 transition-colors duration-200"
-                            title="Delete"
-                          >
-                            <Trash2 size={14} className="text-white/50 hover:text-red-400" />
-                          </button>
-                        </div>
+                      <item.icon size={18} className="flex-shrink-0" />
+                      {!compactMode && (
+                        <span className="text-sm font-medium">{item.label}</span>
                       )}
                     </motion.div>
                   ))}
                 </div>
+                
+                {/* Chat History */}
+                {!compactMode && (
+                  <div className="mt-6 px-1">
+                    <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Recent</h3>
+                    <div className="space-y-1">
+                      {chatHistory.slice(0, 5).map((chat) => (
+                        <motion.div
+                          key={chat.id}
+                          initial={{ opacity: 0, x: -12 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.18 }}
+                          onMouseEnter={() => setHoveredChat(chat.id)}
+                          onMouseLeave={() => setHoveredChat(null)}
+                          onClick={() => { 
+                            setActiveChat(chat.id); 
+                            if (!isSmUp) setShowSidePanel(false); 
+                          }}
+                          className={`group relative flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer transition-all duration-200 ${
+                            activeChat === chat.id 
+                              ? 'bg-gray-800/80 text-white' 
+                              : 'text-gray-400 hover:bg-gray-800/50 hover:text-gray-300'
+                          }`}
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-medium">{chat.title}</p>
+                            <p className="text-xs text-gray-500 mt-0.5">{chat.date}</p>
+                          </div>
+
+                          {(hoveredChat === chat.id || activeChat === chat.id) && (
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                              <button 
+                                onClick={(e) => deleteChat(chat.id, e)}
+                                className="p-1 rounded hover:bg-gray-700/50 transition-colors duration-200"
+                                title="Delete"
+                              >
+                                <Trash2 size={12} className="text-gray-500 hover:text-red-400" />
+                              </button>
+                            </div>
+                          )}
+                        </motion.div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Footer */}
-              <div className="p-3 border-t border-white/10 flex-shrink-0">
-                <div className="space-y-1">
-                  <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-white/70 hover:bg-white/5 hover:text-white transition-all duration-200">
-                    <HelpCircle size={18} />
-                    {!compactMode && <span className="text-sm">Help & FAQ</span>}
-                  </button>
-                  <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-white/70 hover:bg-white/5 hover:text-white transition-all duration-200">
-                    <Settings size={18} />
-                    {!compactMode && <span className="text-sm">Settings</span>}
-                  </button>
-                  <button className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-red-400/70 hover:bg-red-500/10 hover:text-red-400 transition-all duration-200">
-                    <LogOut size={18} />
-                    {!compactMode && <span className="text-sm">Log out</span>}
+              {/* Grok sidebar footer */}
+              <div className="p-3 border-t border-gray-800/50 flex-shrink-0">
+                <div className="flex items-center justify-between">
+                  {!compactMode && (
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">B</span>
+                      </div>
+                      <span className="text-gray-300 text-sm">User</span>
+                    </div>
+                  )}
+                  <button className="p-2 rounded-lg text-gray-400 hover:bg-gray-800/50 hover:text-white transition-all duration-200">
+                    <MoreHorizontal size={16} />
                   </button>
                 </div>
               </div>
@@ -384,12 +437,7 @@ export default function App() {
       </AnimatePresence>
 
       {/* Top Nav */}
-      <motion.nav className="relative z-10 flex items-center justify-between p-4 sm:p-6">
-        <div className="flex items-center space-x-3">
-          <img src="/Group 129.png" alt="HomeSwift Logo" className="w-10 h-10 rounded-lg object-cover" />
-          <span className="text-white text-3xl sm:text-4xl font-bold tracking-tight">HomeSwift</span>
-        </div>
-
+      <motion.nav className="relative z-10 flex items-center justify-end p-4 sm:p-6">
         <div className="flex items-center gap-2">
           <button className="text-white hover:bg-white/10 p-2 rounded-lg" onClick={() => setShowMenu((s) => !s)} aria-label="open menu">
             <Menu size={28} />
@@ -512,11 +560,50 @@ export default function App() {
               </div>
             </motion.form>
 
+            {/* Grok-style action buttons under search */}
+            <div className="mt-4 flex items-center justify-center gap-4 flex-wrap">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 hover:text-white border border-gray-600/30 transition-all duration-200"
+              >
+                <Search size={16} />
+                <span className="text-sm font-medium">Find Properties</span>
+              </motion.button>
+              
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 hover:text-white border border-gray-600/30 transition-all duration-200"
+              >
+                <Calculator size={16} />
+                <span className="text-sm font-medium">Mortgage Calculator</span>
+              </motion.button>
+              
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 hover:text-white border border-gray-600/30 transition-all duration-200"
+              >
+                <MapPin size={16} />
+                <span className="text-sm font-medium">Neighborhood Guide</span>
+              </motion.button>
+              
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 hover:text-white border border-gray-600/30 transition-all duration-200"
+              >
+                <Star size={16} />
+                <span className="text-sm font-medium">Featured Listings</span>
+              </motion.button>
+            </div>
+            
             {/* Suggestions */}
             <AnimatePresence>
               {showSuggestions && (
-                <motion.div initial={{ opacity: 0, y: -10, height: 0 }} animate={{ opacity: 1, y: 0, height: 'auto' }} exit={{ opacity: 0, y: -10, height: 0 }} transition={{ duration: 0.2 }} className="absolute top-full left-0 right-0 mt-2 sm:mt-4 border border-gray-400/50 rounded-2xl shadow-2xl z-20 px-2 py-2 sm:px-4 sm:py-4 backdrop-blur-xl" style={{ background: 'rgba(60, 60, 60, 0.15)' }}>
-                  <div className="p-4">
+                <motion.div initial={{ opacity: 0, y: -10, height: 0 }} animate={{ opacity: 1, y: 0, height: 'auto' }} exit={{ opacity: 0, y: -10, height: 0 }} transition={{ duration: 0.2 }} className="absolute top-full left-0 right-0 mt-2 sm:mt-4 border border-gray-400/50 rounded-2xl shadow-2xl z-20" style={{ backgroundImage: 'url("/Rectangle 135.png")', backgroundSize: 'cover', backgroundPosition: 'center', backdropFilter: 'blur(12px)' }}>
+                  <div className="p-4" style={{ background: 'transparent' }}>
                     <h3 className="text-white font-semibold mb-2 sm:mb-3 text-base sm:text-lg">Popular Searches</h3>
                     <div className="space-y-2">
                       {suggestions.map((sug, idx) => (
@@ -564,13 +651,6 @@ export default function App() {
           )}
         </AnimatePresence>
 
-        {/* bottom-left CTA */}
-        <div className="absolute left-6 bottom-6 z-20">
-          <button onClick={() => { setShowSidePanel((s) => !s); }} className="flex items-center gap-3 backdrop-blur-xl text-white px-4 py-2 rounded-2xl border border-gray-700/40" style={{ background: 'rgba(60, 60, 60, 0.7)' }}>
-            <MessageSquare size={16} />
-            <span className="hidden sm:inline">Toggle Chat</span>
-          </button>
-        </div>
       </div>
     </motion.div>
   );
