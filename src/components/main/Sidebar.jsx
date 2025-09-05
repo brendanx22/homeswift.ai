@@ -9,10 +9,7 @@ import {
   Clock, 
   Calendar,
   MessageCircle,
-  Coins, 
-  RotateCcw,
-  ChevronLeft,
-  ChevronRight
+  CheckCircle
 } from 'lucide-react';
 
 export default function Sidebar({ isCollapsed, onToggleCollapse }) {
@@ -20,10 +17,9 @@ export default function Sidebar({ isCollapsed, onToggleCollapse }) {
   const [searchText, setSearchText] = useState('');
 
   const navigationItems = [
-    { id: 'Message', icon: MessageCircle, label: 'Message' },
+    { id: 'Inquiry', icon: MessageCircle, label: 'Inquiry' },
     { id: 'Calender', icon: Calendar, label: 'Calender' },
-    { id: 'Files', icon: FileText, label: 'Files' },
-    { id: 'Coins', icon: Coins, label: 'Transactions' }
+    { id: 'Evaluators', icon: CheckCircle, label: 'Evaluators' }
   ];
 
   const handleItemClick = (itemId) => {
@@ -54,7 +50,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse }) {
                 alt="HomeSwift Logo" 
                 className="w-6 h-6 object-cover" 
               />
-              <span className="text-white text-xl font-bold">HomeSwift</span>
+              <span className="text-white text-xl font-bold">Home<span className='italic'>Swift</span></span>
             </motion.div>
           )}
           {isCollapsed && (
@@ -90,7 +86,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse }) {
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
                 placeholder="Search"
-                className="w-full bg-transparent border border-gray-600/50 rounded-xl px-10 py-2 text-white placeholder-white text-sm focus:outline-none focus:border-gray-500 focus:bg-gray-800/70 transition-all"
+                className="w-full bg-transparent border border-[#595958] rounded-xl px-10 py-2 text-white placeholder-white text-sm focus:outline-none focus:border-gray-500 focus:bg-transparent transition-all"
               />
               <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white text-xs">
                 Ctrl+K
@@ -98,7 +94,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse }) {
             </div>
           ) : (
             <motion.button
-              className="w-8 h-8 flex items-center justify-center rounded-lg bg-gray-800/50 border border-gray-600/50 text-white hover:text-white hover:bg-gray-800/70 transition-all"
+              className="w-8 h-8 flex items-center justify-center rounded-lg bg-transparent border border-gray-600/50 text-white hover:text-white hover:bg-gray-800/70 transition-all"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -120,8 +116,8 @@ export default function Sidebar({ isCollapsed, onToggleCollapse }) {
               onClick={() => handleItemClick(item.id)}
               className={`w-full flex items-center space-x-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                 isActive
-                  ? 'bg-gray-700/50 text-white border border-gray-600/50'
-                  : 'text-gray-300 hover:text-white hover:bg-gray-800/30'
+                  ? 'bg-[#595958] text-white border border-gray-600/50'
+                  : 'text-gray-300 hover:text-white hover:bg-transparent'
               } ${isCollapsed ? 'justify-center px-2' : ''}`}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
