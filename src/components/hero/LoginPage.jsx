@@ -1,17 +1,52 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { authHelpers, supabase } from '../../lib/supabase';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle login logic here
-    console.log('Login attempt:', { email, password });
+    setLoading(true);
+    setError('');
+
+    try {
+      const { data, error } = await authHelpers.signIn(email, password);
+      
+      if (error) {
+        setError(error.message);
+      } else {
+        // Login successful - redirect to main app
+        navigate('/main');
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/main`
+        }
+      });
+      
+      if (error) {
+        setError(error.message);
+      }
+    } catch (err) {
+      setError('Google login failed. Please try again.');
+    }
   };
 
   const handleBackToHome = () => {
@@ -50,6 +85,12 @@ export default function LoginPage() {
             <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
             <p className="text-gray-300">Sign in to your HomeSwift account</p>
           </div>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              {error}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
@@ -108,9 +149,17 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              className="w-full bg-white text-black py-4 rounded-[2rem] font-medium hover:bg-gray-100 transition-colors"
+              disabled={loading}
+              className="w-full bg-white text-black py-4 rounded-[2rem] font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Sign In
+              {loading ? (
+                <div className="flex items-center justify-center">
+                  <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin mr-2"></div>
+                  Signing In...
+                </div>
+              ) : (
+                'Sign In'
+              )}
             </button>
           </form>
 
@@ -126,7 +175,7 @@ export default function LoginPage() {
 
           {/* Google Login */}
           <button
-            onClick={() => console.log('Google login clicked')}
+            onClick={handleGoogleLogin}
             className="w-full flex items-center justify-center space-x-3 bg-transparent border border-gray-400/50 text-white py-4 rounded-[2rem] font-medium hover:bg-white/5 transition-colors"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">

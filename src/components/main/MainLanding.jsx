@@ -18,6 +18,7 @@ import {
   ChevronRight,
   Edit3,
   MoreHorizontal,
+  User,
   Home,
   Search,
   Heart,
@@ -27,8 +28,13 @@ import {
   Filter,
   Star,
 } from "lucide-react";
+import { authHelpers, supabase } from "../../lib/supabase";
 
 export default function App() {
+  // --- authentication state ---
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
   // --- sidebar and layout state ---
   const [showSidePanel, setShowSidePanel] = useState(true);
   const [compactMode, setCompactMode] = useState(false);
@@ -226,6 +232,28 @@ export default function App() {
   // --- dynamic layout calc ---
   const sidebarWidthPx = compactMode ? 80 : (isSmUp ? 320 : 0);
 
+  // Authentication effect
+  useEffect(() => {
+    // Get initial session
+    const getInitialSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setUser(session?.user ?? null);
+      setLoading(false);
+    };
+
+    getInitialSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   // Set body background
   useEffect(() => {
     document.body.style.backgroundImage = 'url("/Rectangle 135.png")';
@@ -243,6 +271,16 @@ export default function App() {
       document.body.style.backgroundRepeat = '';
     };
   }, []);
+
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      await authHelpers.signOut();
+      // User state will be updated automatically by the auth listener
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
 
   return (
     <motion.div
@@ -415,20 +453,44 @@ export default function App() {
                 )}
               </div>
 
-              {/* Grok sidebar footer */}
+              {/* HomeSwift sidebar footer */}
               <div className="p-3 border-t border-gray-800/50 flex-shrink-0">
                 <div className="flex items-center justify-between">
                   {!compactMode && (
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center">
-                        <span className="text-white text-xs font-bold">B</span>
-                      </div>
-                      <span className="text-gray-300 text-sm">User</span>
+                      {user ? (
+                        <>
+                          <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">
+                              {user.user_metadata?.first_name?.charAt(0) || user.email?.charAt(0) || 'U'}
+                            </span>
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-gray-300 text-sm">
+                              {user.user_metadata?.first_name || 'User'}
+                            </span>
+                            <span className="text-gray-500 text-xs">{user.email}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-6 h-6 rounded-full bg-gray-600 flex items-center justify-center">
+                            <User size={12} className="text-gray-300" />
+                          </div>
+                          <span className="text-gray-400 text-sm">Not logged in</span>
+                        </>
+                      )}
                     </div>
                   )}
-                  <button className="p-2 rounded-lg text-gray-400 hover:bg-gray-800/50 hover:text-white transition-all duration-200">
-                    <MoreHorizontal size={16} />
-                  </button>
+                  {user && (
+                    <button 
+                      onClick={handleLogout}
+                      className="p-2 rounded-lg text-gray-400 hover:bg-gray-800/50 hover:text-red-400 transition-all duration-200"
+                      title="Logout"
+                    >
+                      <LogOut size={16} />
+                    </button>
+                  )}
                 </div>
               </div>
             </motion.aside>
