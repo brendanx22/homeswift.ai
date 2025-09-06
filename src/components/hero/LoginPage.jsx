@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { signInWithGoogle } from '../../lib/googleAuth';
 import { ArrowLeft, Mail, Lock, Eye, EyeOff } from 'lucide-react';
-import { authHelpers, supabase } from '../../lib/supabase';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -32,34 +32,17 @@ export default function LoginPage() {
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleLogin = () => {
     try {
       console.log('Starting Google OAuth flow...');
       setLoading(true);
       setError(''); // Clear any previous errors
       
-      console.log('Supabase client:', supabase);
-      console.log('Current URL:', window.location.href);
-      
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google"
-      });
-      
-      console.log('OAuth response data:', data);
-      console.log('OAuth response error:', error);
-      
-      if (error) {
-        console.error('OAuth error details:', error);
-        throw error;
-      }
-      
-      console.log('OAuth initiated successfully, waiting for redirect...');
-      // Redirect will be handled by Supabase
+      // Redirect to Google OAuth
+      signInWithGoogle();
     } catch (error) {
       console.error('Google login error:', error);
-      console.error('Error stack:', error.stack);
       setError(error.message || 'Failed to sign in with Google');
-    } finally {
       setLoading(false);
     }
   };

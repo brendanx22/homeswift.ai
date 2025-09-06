@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
-import { authHelpers, supabase } from '../../lib/supabase';
+import { signInWithGoogle } from '../../lib/googleAuth';
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -59,19 +59,17 @@ export default function SignupPage() {
     }
   };
 
-  const handleGoogleSignup = async () => {
+  const handleGoogleSignup = () => {
     try {
+      console.log('Starting Google OAuth signup flow...');
       setLoading(true);
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google"
-      });
+      setError(''); // Clear any previous errors
       
-      if (error) throw error;
-      // Redirect will be handled by Supabase
+      // Redirect to Google OAuth
+      signInWithGoogle();
     } catch (error) {
       console.error('Google signup error:', error);
       setError(error.message || 'Failed to sign up with Google');
-    } finally {
       setLoading(false);
     }
   };
