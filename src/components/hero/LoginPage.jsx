@@ -40,12 +40,8 @@ export default function LoginPage() {
         
         localStorage.setItem('google_user_session', JSON.stringify(userSession));
         
-        // Login successful - redirect to main page (local or production)
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-          window.location.href = '/main';
-        } else {
-          window.location.href = 'https://chat-homeswift-ai.vercel.app/main';
-        }
+        // Login successful - redirect to main page (cross-domain)
+        window.location.href = 'https://chat-homeswift-ai.vercel.app/main';
       }
     } catch (err) {
       setError('An unexpected error occurred. Please try again.');

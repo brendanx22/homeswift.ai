@@ -29,12 +29,47 @@ import {
   Trash2
 } from "lucide-react";
 import { searchProperties, getFeaturedProperties } from "../../data/dummyProperties";
-import { useAuth } from "../auth/AuthProvider";
+// import { useAuth } from "../auth/AuthProvider"; // Removed for cross-domain deployment
 
 export default function MainLanding() {
   // --- authentication state ---
-  const { user, logout, loading } = useAuth();
   const navigate = useNavigate();
+  
+  // Handle auth without context for cross-domain deployment
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    // Check for existing session on component load
+    const checkAuth = () => {
+      try {
+        const session = localStorage.getItem('google_user_session');
+        if (session) {
+          try {
+            const sessionData = JSON.parse(session);
+            if (sessionData.user) {
+              setUser(sessionData.user);
+            }
+          } catch (parseError) {
+            console.error('Error parsing session data:', parseError);
+            localStorage.removeItem('google_user_session');
+          }
+        }
+      } catch (error) {
+        console.error('Error checking authentication:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  const logout = () => {
+    localStorage.removeItem('google_user_session');
+    setUser(null);
+    navigate('/login');
+  };
   
   // --- property search state ---
   const [searchResults, setSearchResults] = useState([]);

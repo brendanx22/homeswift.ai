@@ -38,12 +38,8 @@ const GoogleAuthCallback = () => {
         // Store session
         storeUserSession(userInfo, tokens);
 
-        // Redirect immediately to main app (local or production)
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-          window.location.href = '/main';
-        } else {
-          window.location.href = 'https://chat-homeswift-ai.vercel.app/main';
-        }
+        // Redirect immediately to main app (cross-domain)
+        window.location.href = 'https://chat-homeswift-ai.vercel.app/main';
 
       } catch (error) {
         console.error('OAuth callback error:', error);
