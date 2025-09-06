@@ -11,10 +11,6 @@ import './index.css';
 
 
 export default function App() {
-<<<<<<< HEAD
-  return <HeroSection />;
-} 
-=======
   return (
     <Router>
       <Routes>
@@ -29,4 +25,3 @@ export default function App() {
     </Router>
   );
 }
->>>>>>> 819524fe23de35decbbc1e6e12b91cd81c38299a
