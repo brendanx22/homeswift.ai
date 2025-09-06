@@ -18,13 +18,15 @@ import {
   Heart,
   Home,
   Calculator,
-  Map,
+  MapPin,
+  Camera,
   Filter,
   Clock,
   Star,
   ChevronLeft,
   ChevronRight,
-  X
+  X,
+  Trash2
 } from "lucide-react";
 import { searchProperties, getFeaturedProperties } from "../../data/dummyProperties";
 import { useAuth } from "../auth/AuthProvider";
@@ -77,19 +79,6 @@ export default function MainLanding() {
   const [activeChat, setActiveChat] = useState(null);
   const [hoveredChat, setHoveredChat] = useState(null);
 
-  // --- handle auth states ---
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-white">Loading...</div>
-      </div>
-    );
-  }
-
-  if (!user && !loading) {
-    navigate('/login');
-    return null;
-  }
 
   // Initialize featured properties on component mount
   useEffect(() => {
@@ -294,13 +283,9 @@ export default function MainLanding() {
   }, []);
 
   // Handle logout
-  const handleLogout = async () => {
-    try {
-      await authHelpers.signOut();
-      // User state will be updated automatically by the auth listener
-    } catch (error) {
-      console.error('Error logging out:', error);
-    }
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
 
   return (
@@ -488,7 +473,7 @@ export default function MainLanding() {
                           </div>
                           <div className="flex flex-col">
                             <span className="text-gray-300 text-sm">
-                              {user.user_metadata?.first_name || 'User'}
+                              {user.user_metadata?.first_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'}
                             </span>
                             <span className="text-gray-500 text-xs">{user.email}</span>
                           </div>
