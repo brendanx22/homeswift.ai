@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
 import { signInWithGoogle } from '../../lib/googleAuth';
+import { supabase } from '../../lib/supabase';
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -29,25 +30,42 @@ export default function SignupPage() {
         return;
       }
 
-      if (formData.email && formData.password && formData.firstName && formData.lastName) {
-        // Store a dummy user session for email signup
-        const dummyUser = {
-          id: 'email_user',
-          email: formData.email,
-          name: `${formData.firstName} ${formData.lastName}`,
-          picture: null
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: `${formData.firstName} ${formData.lastName}`,
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+          }
+        }
+      });
+
+      if (error) {
+        setError(error.message);
+      } else {
+        // Store user session for consistency with Google OAuth
+        const userSession = {
+          user: {
+            id: data.user.id,
+            email: data.user.email,
+            name: `${formData.firstName} ${formData.lastName}`,
+            picture: null
+          },
+          tokens: { access_token: data.session?.access_token || 'pending_confirmation' },
+          timestamp: Date.now()
         };
         
-        localStorage.setItem('google_user_session', JSON.stringify({
-          user: dummyUser,
-          tokens: { access_token: 'dummy_token' },
-          timestamp: Date.now()
-        }));
+        localStorage.setItem('google_user_session', JSON.stringify(userSession));
         
-        // Signup successful - redirect to main app
-        navigate('/main');
-      } else {
-        setError('Please fill in all required fields');
+        // Check if email confirmation is required
+        if (data.user && !data.session) {
+          setSuccess('Please check your email to confirm your account before signing in.');
+        } else {
+          // Signup successful - redirect to main app
+          navigate('/main');
+        }
       }
     } catch (err) {
       setError('An unexpected error occurred. Please try again.');

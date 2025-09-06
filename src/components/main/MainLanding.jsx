@@ -31,16 +31,20 @@ export default function MainLanding() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  // Check authentication on component mount
-  useEffect(() => {
-    if (!user) {
-      // Check localStorage for session
-      const session = localStorage.getItem('google_user_session');
-      if (!session) {
-        navigate('/login');
-      }
+  // Show loading while checking authentication
+  if (!user) {
+    const session = localStorage.getItem('google_user_session');
+    if (!session) {
+      navigate('/login');
+      return null;
     }
-  }, [user, navigate]);
+    // Show loading spinner while auth context loads
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    );
+  }
   
   // --- property search state ---
   const [searchResults, setSearchResults] = useState([]);

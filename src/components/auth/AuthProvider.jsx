@@ -19,9 +19,13 @@ export const AuthProvider = ({ children }) => {
     // Check for existing session on app load
     const checkAuth = () => {
       try {
+        console.log('AuthProvider checking authentication...');
         if (isAuthenticated()) {
           const currentUser = getCurrentUser();
+          console.log('User found:', currentUser);
           setUser(currentUser);
+        } else {
+          console.log('No authenticated user found');
         }
       } catch (error) {
         console.error('Error checking authentication:', error);

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signInWithGoogle } from '../../lib/googleAuth';
+import { supabase } from '../../lib/supabase';
 import { ArrowLeft, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
@@ -17,26 +18,30 @@ export default function LoginPage() {
     setError('');
 
     try {
-      // For demo purposes, accept any email/password combination
-      if (email && password) {
-        // Store a dummy user session for email login
-        const dummyUser = {
-          id: 'email_user',
-          email: email,
-          name: email.split('@')[0],
-          picture: null
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
+
+      if (error) {
+        setError(error.message);
+      } else {
+        // Store user session for consistency with Google OAuth
+        const userSession = {
+          user: {
+            id: data.user.id,
+            email: data.user.email,
+            name: data.user.user_metadata?.full_name || data.user.email.split('@')[0],
+            picture: data.user.user_metadata?.avatar_url || null
+          },
+          tokens: { access_token: data.session.access_token },
+          timestamp: Date.now()
         };
         
-        localStorage.setItem('google_user_session', JSON.stringify({
-          user: dummyUser,
-          tokens: { access_token: 'dummy_token' },
-          timestamp: Date.now()
-        }));
+        localStorage.setItem('google_user_session', JSON.stringify(userSession));
         
         // Login successful - redirect to main app
         navigate('/main');
-      } else {
-        setError('Please enter both email and password');
       }
     } catch (err) {
       setError('An unexpected error occurred. Please try again.');
