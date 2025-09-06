@@ -48,22 +48,35 @@ export const signInWithGoogle = () => {
 
 // Exchange authorization code for tokens
 export const exchangeCodeForTokens = async (code, state) => {
+  console.log('Starting token exchange...');
+  console.log('Code:', code);
+  console.log('State:', state);
+  console.log('Redirect URI:', REDIRECT_URI);
+  
   // Verify state parameter
   const storedState = getAuthState();
+  console.log('Stored state:', storedState);
+  
   if (state !== storedState) {
-    throw new Error('Invalid state parameter');
+    console.error('State mismatch:', { received: state, stored: storedState });
+    throw new Error('Invalid state parameter - possible CSRF attack');
   }
   clearAuthState();
+  
+  // For public OAuth clients, we need to use PKCE instead of client_secret
+  // But Google's OAuth for web apps typically requires a client_secret
+  // Let's try without client_secret first (public client flow)
   
   const tokenEndpoint = 'https://oauth2.googleapis.com/token';
   
   const params = new URLSearchParams({
     client_id: GOOGLE_CLIENT_ID,
-    client_secret: '', // For public clients, this can be empty
     code: code,
     grant_type: 'authorization_code',
     redirect_uri: REDIRECT_URI
   });
+  
+  console.log('Token request params:', params.toString());
   
   try {
     const response = await fetch(tokenEndpoint, {
@@ -74,11 +87,18 @@ export const exchangeCodeForTokens = async (code, state) => {
       body: params.toString()
     });
     
+    console.log('Token response status:', response.status);
+    console.log('Token response headers:', response.headers);
+    
+    const responseText = await response.text();
+    console.log('Token response body:', responseText);
+    
     if (!response.ok) {
-      throw new Error(`Token exchange failed: ${response.statusText}`);
+      throw new Error(`Token exchange failed (${response.status}): ${responseText}`);
     }
     
-    const tokens = await response.json();
+    const tokens = JSON.parse(responseText);
+    console.log('Tokens received:', tokens);
     return tokens;
   } catch (error) {
     console.error('Token exchange error:', error);

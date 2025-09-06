@@ -24,11 +24,13 @@ const GoogleAuthCallback = () => {
         }
 
         console.log('Processing OAuth callback...');
+        console.log('Authorization code:', code);
+        console.log('State parameter:', state);
         setStatus('exchanging_tokens');
 
         // Exchange code for tokens
         const tokens = await exchangeCodeForTokens(code, state);
-        console.log('Tokens received:', tokens);
+        console.log('Tokens received successfully:', tokens);
 
         setStatus('getting_user_info');
 
