@@ -13,44 +13,27 @@ import {
   Settings,
   LogOut,
   Search,
-  MapPin,
-  Filter,
+  User,
+  Bell,
   Heart,
-  Star,
-  Bed,
-  Bath,
-  Square,
-  ChevronDown,
-  X,
   Home,
   Calculator,
   Map,
-  Bookmark,
-  Eye,
+  Filter,
   Clock,
-  User,
-  Bell
-} from 'lucide-react';
-import { mockProperties, filterProperties, searchProperties } from '../../data/mockProperties';
-import { useAuth } from '../auth/AuthProvider';
+  Star
+} from "lucide-react";
+import { searchProperties, getFeaturedProperties } from "../../data/dummyProperties";
+import { useAuth } from "../auth/AuthProvider";
 
 export default function MainLanding() {
   // --- authentication state ---
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   
-  // --- property data state ---
-  const [properties, setProperties] = useState(mockProperties);
-  const [filteredProperties, setFilteredProperties] = useState(mockProperties);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState({
-    type: '',
-    status: '',
-    location: '',
-    minPrice: '',
-    maxPrice: '',
-    bedrooms: ''
-  });
+  // --- property search state ---
+  const [searchResults, setSearchResults] = useState([]);
+  const [featuredProperties, setFeaturedProperties] = useState([]);
 
   // --- sidebar and layout state ---
   const [showSidePanel, setShowSidePanel] = useState(true);
@@ -74,31 +57,24 @@ export default function MainLanding() {
   const [searchText, setSearchText] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  // --- property search and filtering ---
+  // Initialize featured properties on component mount
   useEffect(() => {
-    let result = properties;
-    
-    // Apply search query
-    if (searchQuery) {
-      result = searchProperties(result, searchQuery);
-    }
-    
-    // Apply filters
-    result = filterProperties(result, filters);
-    
-    setFilteredProperties(result);
-  }, [searchQuery, filters, properties]);
+    setFeaturedProperties(getFeaturedProperties());
+  }, []);
 
-  const handleSearch = (query) => {
-    setSearchQuery(query);
-    setSearchText(query);
+  // Handle search functionality
+  const handleSearch = (query = searchText) => {
+    if (query.trim()) {
+      const results = searchProperties(query);
+      setSearchResults(results);
+      // Navigate to listings page with search results
+      navigate('/listings', { state: { searchResults: results, query } });
+    }
   };
 
-  const handleFilterChange = (filterType, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [filterType]: value
-    }));
+
+  const handlePropertyClick = (propertyId) => {
+    navigate(`/property/${propertyId}`);
   };
 
   // --- chat data ---
@@ -246,22 +222,21 @@ export default function MainLanding() {
   const handleSuggestionClick = () => setShowSuggestions((s) => !s);
 
   const handleSearchSubmit = (e) => {
-    e.preventDefault();
+    e?.preventDefault();
     if (!searchText.trim()) return;
-
-    // Update search query to filter properties
-    handleSearch(searchText);
-
+    
+    // Use the property search functionality
+    handleSearch();
+    
     const newChat = {
       id: Date.now(),
-      title: searchText.slice(0, 50) + (searchText.length > 50 ? "..." : ""),
+      title: searchText.length > 40 ? searchText.substring(0, 40) + "..." : searchText,
       date: "Just now",
     };
-
-    const updatedHistory = [newChat, ...chatHistory.slice(0, 9)];
-    setChatHistory(updatedHistory);
-    localStorage.setItem("hs_chat_history_v1", JSON.stringify(updatedHistory));
-
+    setChatHistory((p) => [newChat, ...p]);
+    setActiveChat(newChat.id);
+    setSearchText("");
+    setShowPlusDropdown(false);
     setShowSuggestions(false);
   };
 
@@ -706,155 +681,43 @@ export default function MainLanding() {
               </div>
             </motion.form>
 
-            {/* Property Results */}
-            <div className="mt-8">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-white">
-                  {searchQuery ? `Search Results (${filteredProperties.length})` : `Available Properties (${filteredProperties.length})`}
-                </h2>
-                <div className="flex items-center gap-4">
-                  <select 
-                    value={filters.type} 
-                    onChange={(e) => handleFilterChange('type', e.target.value)}
-                    className="bg-gray-800/50 text-white border border-gray-600 rounded-lg px-3 py-2 text-sm"
-                  >
-                    <option value="">All Types</option>
-                    <option value="Apartment">Apartment</option>
-                    <option value="House">House</option>
-                    <option value="Studio">Studio</option>
-                    <option value="Duplex">Duplex</option>
-                    <option value="Mansion">Mansion</option>
-                  </select>
-                  <select 
-                    value={filters.status} 
-                    onChange={(e) => handleFilterChange('status', e.target.value)}
-                    className="bg-gray-800/50 text-white border border-gray-600 rounded-lg px-3 py-2 text-sm"
-                  >
-                    <option value="">All Status</option>
-                    <option value="For Rent">For Rent</option>
-                    <option value="For Sale">For Sale</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredProperties.map((property) => (
-                  <motion.div
-                    key={property.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    whileHover={{ scale: 1.02 }}
-                    className="bg-gray-800/30 backdrop-blur-xl rounded-2xl overflow-hidden border border-gray-600/30 hover:border-gray-500/50 transition-all duration-300"
-                  >
-                    <div className="relative">
-                      <img 
-                        src={property.image} 
-                        alt={property.title}
-                        className="w-full h-48 object-cover"
-                      />
-                      <div className="absolute top-3 right-3">
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          className="p-2 bg-black/50 rounded-full text-white hover:bg-black/70"
-                        >
-                          <Heart size={16} />
-                        </motion.button>
-                      </div>
-                      <div className="absolute top-3 left-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          property.status === 'For Rent' 
-                            ? 'bg-green-500/80 text-white' 
-                            : 'bg-blue-500/80 text-white'
-                        }`}>
-                          {property.status}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <div className="p-4">
-                      <h3 className="text-white font-semibold text-lg mb-2 line-clamp-2">
-                        {property.title}
-                      </h3>
-                      <p className="text-gray-300 text-sm mb-3 flex items-center">
-                        <MapPin size={14} className="mr-1" />
-                        {property.location}
-                      </p>
-                      
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="text-2xl font-bold text-green-400">
-                          {property.price}
-                        </div>
-                        <div className="text-gray-400 text-sm">
-                          {property.area}
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-4 mb-4 text-gray-300 text-sm">
-                        <div className="flex items-center">
-                          <Bed size={14} className="mr-1" />
-                          {property.bedrooms}
-                        </div>
-                        <div className="flex items-center">
-                          <Bath size={14} className="mr-1" />
-                          {property.bathrooms}
-                        </div>
-                        <div className="flex items-center">
-                          <Square size={14} className="mr-1" />
-                          {property.type}
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 mb-4">
-                        {property.features.slice(0, 3).map((feature, idx) => (
-                          <span key={idx} className="px-2 py-1 bg-gray-700/50 text-gray-300 text-xs rounded-full">
-                            {feature}
-                          </span>
-                        ))}
-                        {property.features.length > 3 && (
-                          <span className="text-gray-400 text-xs">
-                            +{property.features.length - 3} more
-                          </span>
-                        )}
-                      </div>
-                      
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200"
-                        onClick={() => navigate(`/property/${property.id}`)}
-                      >
-                        View Details
-                      </motion.button>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-
-              {filteredProperties.length === 0 && (
-                <div className="text-center py-12">
-                  <div className="text-gray-400 text-lg mb-4">No properties found matching your criteria</div>
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => {
-                      setSearchQuery('');
-                      setSearchText('');
-                      setFilters({
-                        type: '',
-                        status: '',
-                        location: '',
-                        minPrice: '',
-                        maxPrice: '',
-                        bedrooms: ''
-                      });
-                    }}
-                    className="px-6 py-2 bg-gray-700/50 text-white rounded-lg hover:bg-gray-600/50 transition-all duration-200"
-                  >
-                    Clear Filters
-                  </motion.button>
-                </div>
-              )}
+            {/* Grok-style action buttons under search */}
+            <div className="mt-4 flex items-center justify-center gap-4 flex-wrap">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 hover:text-white border border-gray-600/30 transition-all duration-200"
+              >
+                <Search size={16} />
+                <span className="text-sm font-medium">Find Properties</span>
+              </motion.button>
+              
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 hover:text-white border border-gray-600/30 transition-all duration-200"
+              >
+                <Calculator size={16} />
+                <span className="text-sm font-medium">Mortgage Calculator</span>
+              </motion.button>
+              
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 hover:text-white border border-gray-600/30 transition-all duration-200"
+              >
+                <MapPin size={16} />
+                <span className="text-sm font-medium">Neighborhood Guide</span>
+              </motion.button>
+              
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 hover:text-white border border-gray-600/30 transition-all duration-200"
+              >
+                <Star size={16} />
+                <span className="text-sm font-medium">Featured Listings</span>
+              </motion.button>
             </div>
             
             {/* Suggestions */}

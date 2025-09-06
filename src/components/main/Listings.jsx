@@ -1,11 +1,39 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Home, Star, BookmarkPlus, Share2 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { properties, searchProperties } from '../../data/dummyProperties';
 
 const Listings = () => {
   const navigate = useNavigate();
-  
-  // Sample listing data
+  const location = useLocation();
+  const [displayProperties, setDisplayProperties] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    // Check if we have search results from navigation state
+    if (location.state?.searchResults) {
+      setDisplayProperties(location.state.searchResults);
+      setSearchQuery(location.state.query || '');
+    } else {
+      // Show all properties if no search results
+      setDisplayProperties(properties);
+    }
+  }, [location.state]);
+
+  const handlePropertyClick = (propertyId) => {
+    navigate(`/property/${propertyId}`);
+  };
+
+  // Group properties by category for display
+  const groupedProperties = displayProperties.reduce((acc, property) => {
+    if (!acc[property.category]) {
+      acc[property.category] = [];
+    }
+    acc[property.category].push(property);
+    return acc;
+  }, {});
+
+  // Sample listing data (keeping as fallback)
   const sections = [
     {
       name: "Luxury Homes",
