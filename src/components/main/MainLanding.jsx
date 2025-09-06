@@ -33,6 +33,10 @@ export default function MainLanding() {
   const { user, logout, loading } = useAuth();
   const navigate = useNavigate();
   
+  // --- property search state ---
+  const [searchResults, setSearchResults] = useState([]);
+  const [featuredProperties, setFeaturedProperties] = useState([]);
+  
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -45,10 +49,6 @@ export default function MainLanding() {
     navigate('/login');
     return null;
   }
-  
-  // --- property search state ---
-  const [searchResults, setSearchResults] = useState([]);
-  const [featuredProperties, setFeaturedProperties] = useState([]);
 
   // --- sidebar and layout state ---
   const [showSidePanel, setShowSidePanel] = useState(true);
