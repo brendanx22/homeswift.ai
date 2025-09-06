@@ -22,13 +22,17 @@ import {
   Edit3,
   MoreHorizontal,
 } from "lucide-react";
-import Sidebar from "./Sidebar";
+import { searchProperties, getFeaturedProperties } from "../../data/dummyProperties";
+import { useAuth } from "../auth/AuthProvider";
 
-export default function App() {
+export default function MainLanding() {
   // --- authentication state ---
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { user, logout, loading } = useAuth();
   const navigate = useNavigate();
+  
+  // --- property search state ---
+  const [searchResults, setSearchResults] = useState([]);
+  const [featuredProperties, setFeaturedProperties] = useState([]);
 
   // --- sidebar and layout state ---
   const [showSidePanel, setShowSidePanel] = useState(true);
@@ -39,38 +43,45 @@ export default function App() {
   );
 
   // --- preview, uploads, UI state ---
-  const [previewItem, setPreviewItem] = useState(null);
-  const [previewURL, setPreviewURL] = useState(null);
-  const previewDropdownRef = useRef(null);
-
-  const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [uploadedImages, setUploadedImages] = useState([]);
-  const fileInputRef = useRef(null);
-  const imageInputRef = useRef(null);
-
-  const [showPlusDropdown, setShowPlusDropdown] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
-  const [searchText, setSearchText] = useState("");
-  const [showSuggestions, setShowSuggestions] = useState(false);
 
   // --- chat data ---
-  const [chatHistory, setChatHistory] = useState(() => {
-    try {
-      const raw = localStorage.getItem("hs_chat_history_v1");
-      return raw ? JSON.parse(raw) : [
-        { id: 1, title: "Modern Downtown Apartment", date: "2 hours ago" },
-        { id: 2, title: "Family Home with Garden", date: "1 day ago" },
-        { id: 3, title: "Luxury Ocean View Condo", date: "3 days ago" },
-        { id: 4, title: "Cozy Studio Near Campus", date: "1 week ago" },
-        { id: 5, title: "Waterfront Property Search", date: "2 weeks ago" },
-        { id: 6, title: "Pet-friendly Apartments", date: "3 weeks ago" },
-      ];
-    } catch (e) {
-      return [];
+
+  // --- handle auth states
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user && !loading) {
+    navigate('/login');
+    return null;
+  }
+
+
+  // Initialize featured properties on component mount
+  useEffect(() => {
+    setFeaturedProperties(getFeaturedProperties());
+  }, []);
+
+  // Handle search functionality
+  const handleSearch = (query = searchText) => {
+    if (query.trim()) {
+      const results = searchProperties(query);
+      setSearchResults(results);
+      // Navigate to listings page with search results
+      navigate('/listings', { state: { searchResults: results, query } });
     }
-  });
-  const [activeChat, setActiveChat] = useState(null);
-  const [hoveredChat, setHoveredChat] = useState(null);
+  };
+
+
+  const handlePropertyClick = (propertyId) => {
+    navigate(`/property/${propertyId}`);
+  };
+
+  // --- chat data ---
 
   const suggestions = [
     "Modern 2-bedroom apartment downtown",
@@ -200,6 +211,10 @@ export default function App() {
   const handleSearchSubmit = (e) => {
     e?.preventDefault();
     if (!searchText.trim()) return;
+    
+    // Use the property search functionality
+    handleSearch();
+    
     const newChat = {
       id: Date.now(),
       title: searchText.length > 40 ? searchText.substring(0, 40) + "..." : searchText,
@@ -227,6 +242,36 @@ export default function App() {
 
   // --- dynamic layout calc ---
   const sidebarWidthPx = compactMode ? 80 : (isSmUp ? 320 : 0);
+
+  // Remove conflicting auth logic - AuthProvider handles this
+
+  // Set body background
+  useEffect(() => {
+    document.body.style.backgroundImage = 'url("/Rectangle 135.png")';
+    document.body.style.backgroundSize = 'cover';
+    document.body.style.backgroundAttachment = 'fixed';
+    document.body.style.backgroundPosition = 'center';
+    document.body.style.backgroundRepeat = 'no-repeat';
+    
+    return () => {
+      // Cleanup on unmount
+      document.body.style.backgroundImage = '';
+      document.body.style.backgroundSize = '';
+      document.body.style.backgroundAttachment = '';
+      document.body.style.backgroundPosition = '';
+      document.body.style.backgroundRepeat = '';
+    };
+  }, []);
+
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      await authHelpers.signOut();
+      // User state will be updated automatically by the auth listener
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
 
   return (
     <div className="min-h-screen flex bg-cover bg-center bg-no-repeat" style={{ backgroundImage: 'url("/Rectangle 135.png")', backgroundSize: 'cover' }}>

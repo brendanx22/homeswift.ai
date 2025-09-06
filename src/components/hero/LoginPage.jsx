@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { signInWithGoogle } from '../../lib/googleAuth';
+import { supabase } from '../../lib/supabase';
 import { ArrowLeft, Mail, Lock, Eye, EyeOff } from 'lucide-react';
-import { authHelpers, supabase } from '../../lib/supabase';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -17,13 +18,30 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const { data, error } = await authHelpers.signIn(email, password);
-      
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
+
       if (error) {
         setError(error.message);
       } else {
-        // Login successful - redirect to main app
-        navigate('/main');
+        // Store user session for consistency with Google OAuth
+        const userSession = {
+          user: {
+            id: data.user.id,
+            email: data.user.email,
+            name: data.user.user_metadata?.full_name || data.user.email.split('@')[0],
+            picture: data.user.user_metadata?.avatar_url || null
+          },
+          tokens: { access_token: data.session.access_token },
+          timestamp: Date.now()
+        };
+        
+        localStorage.setItem('google_user_session', JSON.stringify(userSession));
+        
+        // Login successful - redirect to different Vercel deployment
+        window.location.href = 'https://chat-homeswift-ai.vercel.app/main';
       }
     } catch (err) {
       setError('An unexpected error occurred. Please try again.');
@@ -32,20 +50,17 @@ export default function LoginPage() {
     }
   };
 
-  const handleGoogleLogin = async () => {
+  const handleGoogleLogin = () => {
     try {
+      console.log('Starting Google OAuth flow...');
       setLoading(true);
-      await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/main`
-        }
-      });
-      // Redirect will be handled by Supabase
+      setError(''); // Clear any previous errors
+      
+      // Redirect to Google OAuth
+      signInWithGoogle();
     } catch (error) {
       console.error('Google login error:', error);
       setError(error.message || 'Failed to sign in with Google');
-    } finally {
       setLoading(false);
     }
   };

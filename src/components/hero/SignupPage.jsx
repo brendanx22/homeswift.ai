@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
-import { authHelpers, supabase } from '../../lib/supabase';
+import { signInWithGoogle } from '../../lib/googleAuth';
+import { supabase } from '../../lib/supabase';
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -22,35 +23,49 @@ export default function SignupPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
-    setSuccess('');
-
-    // Validate passwords match
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      setLoading(false);
-      return;
-    }
 
     try {
-      const userData = {
-        first_name: formData.firstName,
-        last_name: formData.lastName
-      };
+      if (formData.password !== formData.confirmPassword) {
+        setError('Passwords do not match');
+        return;
+      }
 
-      const { data, error } = await authHelpers.signUp(formData.email, formData.password, userData);
-      
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            full_name: `${formData.firstName} ${formData.lastName}`,
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+          }
+        }
+      });
+
       if (error) {
         setError(error.message);
       } else {
-        setSuccess('Account created! Please check your email to verify your account.');
-        // Clear form
-        setFormData({
-          firstName: '',
-          lastName: '',
-          email: '',
-          password: '',
-          confirmPassword: ''
-        });
+        // Store user session for consistency with Google OAuth
+        const userSession = {
+          user: {
+            id: data.user.id,
+            email: data.user.email,
+            name: `${formData.firstName} ${formData.lastName}`,
+            picture: null
+          },
+          tokens: { access_token: data.session?.access_token || 'pending_confirmation' },
+          timestamp: Date.now()
+        };
+        
+        localStorage.setItem('google_user_session', JSON.stringify(userSession));
+        
+        // Check if email confirmation is required
+        if (data.user && !data.session) {
+          setSuccess('Please check your email to confirm your account before signing in.');
+        } else {
+          // Signup successful - redirect to main app
+          navigate('/main');
+        }
       }
     } catch (err) {
       setError('An unexpected error occurred. Please try again.');
@@ -59,20 +74,17 @@ export default function SignupPage() {
     }
   };
 
-  const handleGoogleSignup = async () => {
+  const handleGoogleSignup = () => {
     try {
+      console.log('Starting Google OAuth signup flow...');
       setLoading(true);
-      await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/main`
-        }
-      });
-      // Redirect will be handled by Supabase
+      setError(''); // Clear any previous errors
+      
+      // Redirect to Google OAuth
+      signInWithGoogle();
     } catch (error) {
       console.error('Google signup error:', error);
       setError(error.message || 'Failed to sign up with Google');
-    } finally {
       setLoading(false);
     }
   };
