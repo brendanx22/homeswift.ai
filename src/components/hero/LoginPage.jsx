@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signInWithGoogle } from '../../lib/googleAuth';
-import { supabase } from '../../lib/supabase';
+// import { supabase } from '../../lib/supabase'; // Removed - using custom auth
 import { ArrowLeft, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
@@ -18,27 +18,24 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email,
-        password: password,
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email,
+          password: password,
+        }),
       });
 
-      if (error) {
-        setError(error.message);
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Login failed');
       } else {
-        // Store user session for consistency with Google OAuth
-        const userSession = {
-          user: {
-            id: data.user.id,
-            email: data.user.email,
-            name: data.user.user_metadata?.full_name || data.user.email.split('@')[0],
-            picture: data.user.user_metadata?.avatar_url || null
-          },
-          tokens: { access_token: data.session.access_token },
-          timestamp: Date.now()
-        };
-        
-        localStorage.setItem('google_user_session', JSON.stringify(userSession));
+        // Store user session
+        localStorage.setItem('google_user_session', JSON.stringify(data));
         
         // Login successful - redirect to main page (cross-domain)
         window.location.href = 'https://chat-homeswift-ai.vercel.app/main';

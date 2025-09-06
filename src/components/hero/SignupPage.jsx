@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
 import { signInWithGoogle } from '../../lib/googleAuth';
-import { supabase } from '../../lib/supabase';
+// import { supabase } from '../../lib/supabase'; // Removed - using custom auth
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -30,42 +30,32 @@ export default function SignupPage() {
         return;
       }
 
-      const { data, error } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            full_name: `${formData.firstName} ${formData.lastName}`,
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-          }
-        }
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          name: `${formData.firstName} ${formData.lastName}`,
+        }),
       });
 
-      if (error) {
-        setError(error.message);
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || 'Registration failed');
       } else {
-        // Store user session for consistency with Google OAuth
-        const userSession = {
-          user: {
-            id: data.user.id,
-            email: data.user.email,
-            name: `${formData.firstName} ${formData.lastName}`,
-            picture: null
-          },
-          tokens: { access_token: data.session?.access_token || 'pending_confirmation' },
-          timestamp: Date.now()
-        };
+        // Store user session
+        localStorage.setItem('google_user_session', JSON.stringify(data.session));
         
-        localStorage.setItem('google_user_session', JSON.stringify(userSession));
+        setSuccess('Account created successfully! Redirecting...');
         
-        // Check if email confirmation is required
-        if (data.user && !data.session) {
-          setSuccess('Please check your email to confirm your account before signing in.');
-        } else {
-          // Signup successful - redirect to main app
-          navigate('/main');
-        }
+        // Registration successful - redirect to main page (cross-domain)
+        setTimeout(() => {
+          window.location.href = 'https://chat-homeswift-ai.vercel.app/main';
+        }, 1500);
       }
     } catch (err) {
       setError('An unexpected error occurred. Please try again.');
