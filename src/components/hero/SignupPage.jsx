@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
+import { authHelpers, supabase } from '../../lib/supabase';
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -12,12 +13,68 @@ export default function SignupPage() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle signup logic here
-    console.log('Signup attempt:', formData);
+    setLoading(true);
+    setError('');
+    setSuccess('');
+
+    // Validate passwords match
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const userData = {
+        first_name: formData.firstName,
+        last_name: formData.lastName
+      };
+
+      const { data, error } = await authHelpers.signUp(formData.email, formData.password, userData);
+      
+      if (error) {
+        setError(error.message);
+      } else {
+        setSuccess('Account created! Please check your email to verify your account.');
+        // Clear form
+        setFormData({
+          firstName: '',
+          lastName: '',
+          email: '',
+          password: '',
+          confirmPassword: ''
+        });
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleSignup = async () => {
+    try {
+      setLoading(true);
+      await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/main`
+        }
+      });
+      // Redirect will be handled by Supabase
+    } catch (error) {
+      console.error('Google signup error:', error);
+      setError(error.message || 'Failed to sign up with Google');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleInputChange = (e) => {
@@ -63,6 +120,18 @@ export default function SignupPage() {
             <h1 className="text-2xl font-bold text-white mb-1">Create Account</h1>
             <p className="text-gray-300 text-sm">Join HomeSwift and find your dream home</p>
           </div>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              {error}
+            </div>
+          )}
+
+          {success && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+              {success}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Name Fields */}
@@ -195,9 +264,17 @@ export default function SignupPage() {
 
             <button
               type="submit"
-              className="w-full bg-white text-black py-4 rounded-[2rem] font-medium hover:bg-gray-100 transition-colors"
+              disabled={loading}
+              className="w-full bg-white text-black py-4 rounded-[2rem] font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Create Account
+              {loading ? (
+                <div className="flex items-center justify-center">
+                  <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin mr-2"></div>
+                  Creating Account...
+                </div>
+              ) : (
+                'Create Account'
+              )}
             </button>
           </form>
 
@@ -213,7 +290,7 @@ export default function SignupPage() {
 
           {/* Google Signup */}
           <button
-            onClick={() => console.log('Google signup clicked')}
+            onClick={handleGoogleSignup}
             className="w-full flex items-center justify-center space-x-3 bg-transparent border border-gray-400/50 text-white py-4 rounded-[2rem] font-medium hover:bg-white/5 transition-colors"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">

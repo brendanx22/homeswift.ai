@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import {
   Menu,
   Plus,
@@ -22,6 +23,11 @@ import {
 import Sidebar from "./Sidebar";
 
 export default function App() {
+  // --- authentication state ---
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
   // --- sidebar and layout state ---
   const [showSidePanel, setShowSidePanel] = useState(true);
   const [compactMode, setCompactMode] = useState(false);
