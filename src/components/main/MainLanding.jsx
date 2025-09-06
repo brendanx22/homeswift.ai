@@ -79,20 +79,6 @@ export default function MainLanding() {
   const [activeChat, setActiveChat] = useState(null);
   const [hoveredChat, setHoveredChat] = useState(null);
 
-  // --- handle auth states ---
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-white">Loading...</div>
-      </div>
-    );
-  }
-
-  if (!user && !loading) {
-    navigate('/login');
-    return null;
-  }
-
 
   // Initialize featured properties on component mount
   useEffect(() => {
