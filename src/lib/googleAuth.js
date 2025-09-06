@@ -79,9 +79,11 @@ export const exchangeCodeForTokens = async (code, state) => {
     
     const responseData = await response.json();
     console.log('Server response data:', responseData);
+    console.log('Full server response:', JSON.stringify(responseData, null, 2));
     
     if (!response.ok) {
-      throw new Error(`Server token exchange failed (${response.status}): ${responseData.error || 'Unknown error'}`);
+      console.error('Server error details:', responseData);
+      throw new Error(`Server token exchange failed (${response.status}): ${responseData.details || responseData.error || 'Unknown error'}`);
     }
     
     return responseData;
