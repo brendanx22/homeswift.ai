@@ -35,12 +35,18 @@ export default function LoginPage() {
   const handleGoogleLogin = async () => {
     try {
       setLoading(true);
-      await supabase.auth.signInWithOAuth({
-        provider: 'google',
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/main`
-        }
+          redirectTo: `${window.location.origin}/main`,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
+        },
       });
+      
+      if (error) throw error;
       // Redirect will be handled by Supabase
     } catch (error) {
       console.error('Google login error:', error);
