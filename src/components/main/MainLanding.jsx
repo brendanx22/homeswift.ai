@@ -79,6 +79,20 @@ export default function MainLanding() {
   const [activeChat, setActiveChat] = useState(null);
   const [hoveredChat, setHoveredChat] = useState(null);
 
+  // --- handle auth states ---
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user && !loading) {
+    navigate('/login');
+    return null;
+  }
+
 
   // Initialize featured properties on component mount
   useEffect(() => {
@@ -574,12 +588,12 @@ export default function MainLanding() {
         <div className="flex flex-col items-center justify-center min-h-[80vh] px-6">
           {/* hero text */}
           <div className="text-center mb-8 sm:mb-12 max-w-4xl px-2 sm:px-0">
-            <h1 className="flex items-center justify-center flex-wrap text-3xl sm:text-5xl font-bold text-white mb-4 sm:mb-6 leading-tight mt-16 sm:mt-40 gap-2 sm:gap-3">
+            <h1 className="flex items-center justify-center flex-wrap text-2xl sm:text-3xl font-bold text-white mb-4 sm:mb-6 leading-tight mt-16 sm:mt-40 gap-2 sm:gap-3">
               <span>Rent & Buy a Home</span>
-              <span className="inline-flex items-center"><img src="/Group 129.png" alt="logo" className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg object-cover" /></span>
+              <span className="inline-flex items-center"><img src="/Group 129.png" alt="logo" className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg object-cover" /></span>
               <span>Swiftly</span>
             </h1>
-            <p className="text-gray-300 text-xl md:text-3xl font-light max-w-2xl mx-auto">Rent or buy a home under 120 seconds with our AI model</p>
+            <p className="text-gray-300 text-base md:text-lg font-light max-w-2xl mx-auto">Rent or buy a home under 120 seconds with our AI model</p>
           </div>
 
           {/* Search + upload area */}
@@ -617,8 +631,8 @@ export default function MainLanding() {
               )}
             </AnimatePresence>
 
-            <motion.form onSubmit={handleSearchSubmit} whileHover={{ scale: 1.005 }} className="relative flex flex-col bg-transparent border border-gray-400/50 rounded-2xl shadow-2xl px-0 py-6 sm:px-2 sm:py-10 min-h-[130px] backdrop-blur-xl" style={{ background: 'rgba(60, 60, 60, 0.15)' }}>
-              <input type="text" value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Describe the kind of house you are looking for..." className="w-full bg-transparent text-gray-300 placeholder-gray-400 text-sm sm:text-lg outline-none border-none h-10 sm:h-12 mb-6 sm:mb-10 rounded-xl sm:rounded-2xl px-2 sm:px-4" style={{ minWidth: 0, fontSize: '0.875rem' }} />
+            <motion.form onSubmit={handleSearchSubmit} whileHover={{ scale: 1.005 }} className="relative flex flex-col bg-transparent border border-gray-400/50 rounded-2xl shadow-2xl px-0 py-4 sm:px-2 sm:py-6 min-h-[100px] backdrop-blur-xl" style={{ background: 'rgba(60, 60, 60, 0.15)' }}>
+              <input type="text" value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Describe the kind of house you are looking for..." className="w-full bg-transparent text-gray-300 placeholder-gray-400 text-sm outline-none border-none h-8 sm:h-10 mb-4 sm:mb-6 rounded-xl sm:rounded-2xl px-2 sm:px-4" style={{ minWidth: 0, fontSize: '0.875rem' }} />
 
               <div className="flex items-center justify-between absolute bottom-4 left-4 right-4 sm:left-6 sm:right-6 w-auto">
                 <div className="flex items-center gap-2 sm:gap-3 relative">

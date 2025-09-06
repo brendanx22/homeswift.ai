@@ -1,6 +1,8 @@
 // Google OAuth 2.0 Direct Implementation
 const GOOGLE_CLIENT_ID = '1067853597134-52q9qfuu1t1epa6av8lg4c6v6udcpd2c.apps.googleusercontent.com';
-const REDIRECT_URI = `${window.location.protocol}//${window.location.host}/auth/callback`;
+const REDIRECT_URI = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+  ? `http://localhost:${window.location.port}/auth/callback`
+  : `${window.location.protocol}//${window.location.host}/auth/callback`;
 const SCOPES = 'openid email profile';
 
 // Generate a random state parameter for security

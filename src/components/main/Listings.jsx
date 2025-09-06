@@ -1,37 +1,33 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Home, Star, BookmarkPlus, Share2 } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { properties, searchProperties } from '../../data/dummyProperties';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { ArrowLeft, Heart, MapPin, Bed, Bath, Square, Star, Bookmark, BookmarkPlus, Home } from 'lucide-react';
+import { properties } from '../../data/dummyProperties';
 
-const Listings = () => {
-  const navigate = useNavigate();
+export default function Listings() {
   const location = useLocation();
-  const [displayProperties, setDisplayProperties] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const navigate = useNavigate();
+  const [favorites, setFavorites] = useState(new Set());
+  
+  // Only show search results from navigation state, not all properties
+  const searchResults = location.state?.searchResults || [];
+  const searchQuery = location.state?.query || '';
 
-  useEffect(() => {
-    // Check if we have search results from navigation state
-    if (location.state?.searchResults) {
-      setDisplayProperties(location.state.searchResults);
-      setSearchQuery(location.state.query || '');
-    } else {
-      // Show all properties if no search results
-      setDisplayProperties(properties);
-    }
-  }, [location.state]);
+  const toggleFavorite = (propertyId) => {
+    setFavorites(prev => {
+      const newFavorites = new Set(prev);
+      if (newFavorites.has(propertyId)) {
+        newFavorites.delete(propertyId);
+      } else {
+        newFavorites.add(propertyId);
+      }
+      return newFavorites;
+    });
+  };
 
   const handlePropertyClick = (propertyId) => {
     navigate(`/property/${propertyId}`);
   };
-
-  // Group properties by category for display
-  const groupedProperties = displayProperties.reduce((acc, property) => {
-    if (!acc[property.category]) {
-      acc[property.category] = [];
-    }
-    acc[property.category].push(property);
-    return acc;
-  }, {});
 
   // Sample listing data (keeping as fallback)
   const sections = [
@@ -300,8 +296,84 @@ const Listings = () => {
           </p>
         </div>
 
-        {/* Listings Sections with Carousel on Mobile */}
-        {sections.map((section) => (
+        {/* Search Results Display */}
+        {searchResults.length > 0 ? (
+          <div className="mb-12">
+            <h3 className="text-2xl font-bold text-white mb-4">
+              {searchQuery ? `Results for "${searchQuery}"` : 'Search Results'}
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {searchResults.map((property) => (
+                <div
+                  key={property.id}
+                  className="relative bg-[#23262b] rounded-3xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow border border-gray-400/30 flex flex-col justify-end min-h-[320px] cursor-pointer"
+                  style={{ backgroundImage: `url(${property.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
+                  onClick={() => handlePropertyClick(property.id)}
+                >
+                  <div className="absolute inset-0 bg-black/30"></div>
+                  <button 
+                    className="absolute top-2 left-2 p-2 rounded-full shadow z-10" 
+                    style={{ background: '#40403E' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleFavorite(property.id);
+                    }}
+                  >
+                    <Bookmark size={20} className={`${favorites.has(property.id) ? 'text-yellow-400' : 'text-white'}`} />
+                  </button>
+                  <div className={
+                    `absolute top-2 right-2 px-4 py-1 rounded-xl text-xs sm:text-sm font-bold z-10 shadow-lg ` +
+                    (property.type === 'For Sale' || property.type === 'For Rent'
+                      ? 'bg-[#40403E] text-white'
+                      : 'bg-[#2563eb] text-white')
+                  }>
+                    {property.type}
+                  </div>
+                  <div className="relative z-10 p-4">
+                    <div className="flex flex-col gap-1">
+                      <h3 className="text-lg font-bold text-white drop-shadow">{property.title}</h3>
+                      <span className="text-lg font-bold text-white drop-shadow">{property.currency}{property.price}</span>
+                      <div className="flex items-center gap-2 text-gray-300 text-sm mt-2">
+                        <MapPin size={14} />
+                        <span>{property.location}</span>
+                      </div>
+                      <div className="flex items-center gap-4 text-gray-300 text-sm mt-1">
+                        <div className="flex items-center gap-1">
+                          <Bed size={14} />
+                          <span>{property.bedrooms}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Bath size={14} />
+                          <span>{property.bathrooms}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Square size={14} />
+                          <span>{property.area}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <h3 className="text-2xl font-bold text-white mb-4">No Properties Found</h3>
+            <p className="text-gray-300 mb-6">
+              {searchQuery ? `No properties match your search for "${searchQuery}"` : 'No search results to display'}
+            </p>
+            <button 
+              onClick={() => navigate('/main')}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+            >
+              Back to Search
+            </button>
+          </div>
+        )}
+
+        {/* Fallback sections - only show if no search results */}
+        {searchResults.length === 0 && sections.map((section) => (
           <div key={section.name} className="mb-12">
             <h3 className="text-2xl font-bold text-white mb-4">{section.name}</h3>
             {/* Carousel for mobile, grid for desktop */}
@@ -379,5 +451,3 @@ const Listings = () => {
     </div>
   );
 };
-
-export default Listings;
