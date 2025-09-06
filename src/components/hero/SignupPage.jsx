@@ -22,35 +22,32 @@ export default function SignupPage() {
     e.preventDefault();
     setLoading(true);
     setError('');
-    setSuccess('');
-
-    // Validate passwords match
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      setLoading(false);
-      return;
-    }
 
     try {
-      const userData = {
-        first_name: formData.firstName,
-        last_name: formData.lastName
-      };
+      if (formData.password !== formData.confirmPassword) {
+        setError('Passwords do not match');
+        return;
+      }
 
-      const { data, error } = await authHelpers.signUp(formData.email, formData.password, userData);
-      
-      if (error) {
-        setError(error.message);
+      if (formData.email && formData.password && formData.firstName && formData.lastName) {
+        // Store a dummy user session for email signup
+        const dummyUser = {
+          id: 'email_user',
+          email: formData.email,
+          name: `${formData.firstName} ${formData.lastName}`,
+          picture: null
+        };
+        
+        localStorage.setItem('google_user_session', JSON.stringify({
+          user: dummyUser,
+          tokens: { access_token: 'dummy_token' },
+          timestamp: Date.now()
+        }));
+        
+        // Signup successful - redirect to main app
+        navigate('/main');
       } else {
-        setSuccess('Account created! Please check your email to verify your account.');
-        // Clear form
-        setFormData({
-          firstName: '',
-          lastName: '',
-          email: '',
-          password: '',
-          confirmPassword: ''
-        });
+        setError('Please fill in all required fields');
       }
     } catch (err) {
       setError('An unexpected error occurred. Please try again.');

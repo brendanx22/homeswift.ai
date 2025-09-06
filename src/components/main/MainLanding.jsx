@@ -30,6 +30,17 @@ export default function MainLanding() {
   // --- authentication state ---
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+
+  // Check authentication on component mount
+  useEffect(() => {
+    if (!user) {
+      // Check localStorage for session
+      const session = localStorage.getItem('google_user_session');
+      if (!session) {
+        navigate('/login');
+      }
+    }
+  }, [user, navigate]);
   
   // --- property search state ---
   const [searchResults, setSearchResults] = useState([]);

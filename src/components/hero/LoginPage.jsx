@@ -17,13 +17,26 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const { data, error } = await authHelpers.signIn(email, password);
-      
-      if (error) {
-        setError(error.message);
-      } else {
+      // For demo purposes, accept any email/password combination
+      if (email && password) {
+        // Store a dummy user session for email login
+        const dummyUser = {
+          id: 'email_user',
+          email: email,
+          name: email.split('@')[0],
+          picture: null
+        };
+        
+        localStorage.setItem('google_user_session', JSON.stringify({
+          user: dummyUser,
+          tokens: { access_token: 'dummy_token' },
+          timestamp: Date.now()
+        }));
+        
         // Login successful - redirect to main app
         navigate('/main');
+      } else {
+        setError('Please enter both email and password');
       }
     } catch (err) {
       setError('An unexpected error occurred. Please try again.');

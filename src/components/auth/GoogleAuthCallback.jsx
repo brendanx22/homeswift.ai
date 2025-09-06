@@ -39,7 +39,8 @@ const GoogleAuthCallback = () => {
         storeUserSession(userInfo, tokens);
 
         // Redirect immediately to main app without showing success page
-        navigate('/main');
+        console.log('Redirecting to /main...');
+        window.location.href = '/main';
 
       } catch (error) {
         console.error('OAuth callback error:', error);
