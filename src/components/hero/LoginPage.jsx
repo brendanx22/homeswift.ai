@@ -34,15 +34,30 @@ export default function LoginPage() {
 
   const handleGoogleLogin = async () => {
     try {
+      console.log('Starting Google OAuth flow...');
       setLoading(true);
+      setError(''); // Clear any previous errors
+      
+      console.log('Supabase client:', supabase);
+      console.log('Current URL:', window.location.href);
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google"
       });
       
-      if (error) throw error;
+      console.log('OAuth response data:', data);
+      console.log('OAuth response error:', error);
+      
+      if (error) {
+        console.error('OAuth error details:', error);
+        throw error;
+      }
+      
+      console.log('OAuth initiated successfully, waiting for redirect...');
       // Redirect will be handled by Supabase
     } catch (error) {
       console.error('Google login error:', error);
+      console.error('Error stack:', error.stack);
       setError(error.message || 'Failed to sign in with Google');
     } finally {
       setLoading(false);
