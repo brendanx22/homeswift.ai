@@ -62,10 +62,16 @@ export default function SignupPage() {
   const handleGoogleSignup = async () => {
     try {
       setLoading(true);
+      // Force production URL when in production
+      const isProduction = window.location.hostname === 'homeswift-ai.vercel.app';
+      const redirectUrl = isProduction 
+        ? 'https://homeswift-ai.vercel.app/main'
+        : `${window.location.origin}/main`;
+        
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/main`,
+          redirectTo: redirectUrl,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
