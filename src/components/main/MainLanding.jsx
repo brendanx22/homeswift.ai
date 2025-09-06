@@ -23,7 +23,8 @@ import {
   Clock,
   Star,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  X
 } from "lucide-react";
 import { searchProperties, getFeaturedProperties } from "../../data/dummyProperties";
 import { useAuth } from "../auth/AuthProvider";
@@ -36,19 +37,6 @@ export default function MainLanding() {
   // --- property search state ---
   const [searchResults, setSearchResults] = useState([]);
   const [featuredProperties, setFeaturedProperties] = useState([]);
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-white">Loading...</div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    navigate('/login');
-    return null;
-  }
 
   // --- sidebar and layout state ---
   const [showSidePanel, setShowSidePanel] = useState(true);
@@ -58,19 +46,23 @@ export default function MainLanding() {
   );
 
   // --- preview, uploads, UI state ---
-  const [previewItem, setPreviewItem] = useState(null);
-  const [previewURL, setPreviewURL] = useState(null);
-  const previewDropdownRef = useRef(null);
 
-  const [uploadedFiles, setUploadedFiles] = useState([]);
-  const [uploadedImages, setUploadedImages] = useState([]);
-  const fileInputRef = useRef(null);
-  const imageInputRef = useRef(null);
+  // --- chat data ---
 
-  const [showPlusDropdown, setShowPlusDropdown] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
-  const [searchText, setSearchText] = useState("");
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  // ✅ Only after hooks → handle auth states
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!user && !loading) {
+    navigate('/login');
+    return null;
+  }
+
 
   // Initialize featured properties on component mount
   useEffect(() => {
@@ -93,23 +85,6 @@ export default function MainLanding() {
   };
 
   // --- chat data ---
-  const [chatHistory, setChatHistory] = useState(() => {
-    try {
-      const raw = localStorage.getItem("hs_chat_history_v1");
-      return raw ? JSON.parse(raw) : [
-        { id: 1, title: "Modern Downtown Apartment", date: "2 hours ago" },
-        { id: 2, title: "Family Home with Garden", date: "1 day ago" },
-        { id: 3, title: "Luxury Ocean View Condo", date: "3 days ago" },
-        { id: 4, title: "Cozy Studio Near Campus", date: "1 week ago" },
-        { id: 5, title: "Waterfront Property Search", date: "2 weeks ago" },
-        { id: 6, title: "Pet-friendly Apartments", date: "3 weeks ago" },
-      ];
-    } catch (e) {
-      return [];
-    }
-  });
-  const [activeChat, setActiveChat] = useState(null);
-  const [hoveredChat, setHoveredChat] = useState(null);
 
   const suggestions = [
     "Modern 2-bedroom apartment downtown",
@@ -271,32 +246,7 @@ export default function MainLanding() {
   // --- dynamic layout calc ---
   const sidebarWidthPx = compactMode ? 80 : (isSmUp ? 320 : 0);
 
-  // Authentication effect
-  useEffect(() => {
-    // Get initial session
-    const getInitialSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        setUser(session?.user ?? null);
-      } catch (error) {
-        console.error('Error getting session:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    getInitialSession();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setUser(session?.user ?? null);
-        setLoading(false);
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, []);
+  // Remove conflicting auth logic - AuthProvider handles this
 
   // Set body background
   useEffect(() => {
