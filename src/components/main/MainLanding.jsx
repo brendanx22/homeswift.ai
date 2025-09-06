@@ -49,7 +49,7 @@ export default function MainLanding() {
 
   // --- chat data ---
 
-  // ✅ Only after hooks → handle auth states
+  // --- handle auth states
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
