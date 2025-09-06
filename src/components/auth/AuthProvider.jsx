@@ -20,12 +20,24 @@ export const AuthProvider = ({ children }) => {
     const checkAuth = () => {
       try {
         console.log('AuthProvider checking authentication...');
-        if (isAuthenticated()) {
-          const currentUser = getCurrentUser();
-          console.log('User found:', currentUser);
-          setUser(currentUser);
+        
+        // Check localStorage directly for session
+        const session = localStorage.getItem('google_user_session');
+        if (session) {
+          try {
+            const sessionData = JSON.parse(session);
+            console.log('Session data found:', sessionData);
+            
+            if (sessionData.user) {
+              setUser(sessionData.user);
+              console.log('User set from session:', sessionData.user);
+            }
+          } catch (parseError) {
+            console.error('Error parsing session data:', parseError);
+            localStorage.removeItem('google_user_session');
+          }
         } else {
-          console.log('No authenticated user found');
+          console.log('No session found in localStorage');
         }
       } catch (error) {
         console.error('Error checking authentication:', error);

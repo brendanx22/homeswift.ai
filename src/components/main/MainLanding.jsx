@@ -28,22 +28,20 @@ import { useAuth } from "../auth/AuthProvider";
 
 export default function MainLanding() {
   // --- authentication state ---
-  const { user, logout } = useAuth();
+  const { user, logout, loading } = useAuth();
   const navigate = useNavigate();
-
-  // Show loading while checking authentication
-  if (!user) {
-    const session = localStorage.getItem('google_user_session');
-    if (!session) {
-      navigate('/login');
-      return null;
-    }
-    // Show loading spinner while auth context loads
+  
+  if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
         <div className="text-white">Loading...</div>
       </div>
     );
+  }
+
+  if (!user) {
+    navigate('/login');
+    return null;
   }
   
   // --- property search state ---
