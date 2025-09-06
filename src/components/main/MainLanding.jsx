@@ -385,7 +385,7 @@ export default function MainLanding() {
               <div className="flex-1 overflow-y-auto px-2 pb-2 mt-8 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 <div className="space-y-1">
                   {[
-                    { icon: Home, label: 'Browse Homes', active: true },
+                    { icon: Home, label: 'Home', active: true },
                     { icon: Search, label: 'Property Search' },
                     { icon: Heart, label: 'Saved Properties' },
                     { icon: MapPin, label: 'Neighborhood Guide' },
@@ -574,16 +574,16 @@ export default function MainLanding() {
         <div className="flex flex-col items-center justify-center min-h-[80vh] px-6">
           {/* hero text */}
           <div className="text-center mb-8 sm:mb-12 max-w-4xl px-2 sm:px-0">
-            <h1 className="flex items-center justify-center flex-wrap text-2xl sm:text-3xl font-bold text-white mb-4 sm:mb-6 leading-tight mt-16 sm:mt-40 gap-2 sm:gap-3">
+            <h1 className="flex items-center justify-center flex-wrap text-3xl sm:text-4xl font-bold text-white mb-4 sm:mb-6 leading-tight mt-16 sm:mt-40 gap-2 sm:gap-3">
               <span>Rent & Buy a Home</span>
-              <span className="inline-flex items-center"><img src="/Group 129.png" alt="logo" className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg object-cover" /></span>
-              <span>Swiftly</span>
+              <span className="inline-flex items-center"><img src="/Group 129.png" alt="logo" className="w-8 h-8 sm:w-8 sm:h-8 rounded-lg object-cover" /></span>
+              <span className="italic">Swiftly</span>
             </h1>
-            <p className="text-gray-300 text-base md:text-lg font-light max-w-2xl mx-auto">Rent or buy a home under 120 seconds with our AI model</p>
+            <p className="text-gray-300 text-md md:text-lg font-light max-w-2xl mx-auto">Rent or buy a home under 120 seconds with our AI model</p>
           </div>
 
           {/* Search + upload area */}
-          <div className="w-full max-w-4xl relative px-0 sm:px-2">
+          <div className="w-full max-w-3xl relative px-0 sm:px-2">
             <AnimatePresence>
               {(uploadedFiles.length > 0 || uploadedImages.length > 0) && (
                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.28 }} className="mb-2">
@@ -617,8 +617,8 @@ export default function MainLanding() {
               )}
             </AnimatePresence>
 
-            <motion.form onSubmit={handleSearchSubmit} whileHover={{ scale: 1.005 }} className="relative flex flex-col bg-transparent border border-gray-400/50 rounded-2xl shadow-2xl px-0 py-4 sm:px-2 sm:py-6 min-h-[100px] backdrop-blur-xl" style={{ background: 'rgba(60, 60, 60, 0.15)' }}>
-              <input type="text" value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Describe the kind of house you are looking for..." className="w-full bg-transparent text-gray-300 placeholder-gray-400 text-sm outline-none border-none h-8 sm:h-10 mb-4 sm:mb-6 rounded-xl sm:rounded-2xl px-2 sm:px-4" style={{ minWidth: 0, fontSize: '0.875rem' }} />
+            <motion.form onSubmit={handleSearchSubmit} whileHover={{ scale: 1.005 }} className="relative flex flex-col bg-transparent border border-1 border-[#6c6c6c] rounded-3xl shadow-2xl px-0 py-5 sm:px-2 sm:py-8 min-h-[100px] backdrop-blur-xl" style={{ background: 'rgba(60, 60, 60, 0.15)' }}>
+              <input type="text" value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Describe the kind of house you are looking for..." className="w-full bg-transparent text-white placeholder-[#737373] text-sm sm:text-lg outline-none border-none h-10 sm:h-10 mb-6 sm:mb-10 rounded-xl sm:rounded-2xl px-2 sm:px-4" style={{ minWidth: 0, fontSize: '0.875rem' }} />
 
               <div className="flex items-center justify-between absolute bottom-4 left-4 right-4 sm:left-6 sm:right-6 w-auto">
                 <div className="flex items-center gap-2 sm:gap-3 relative">
@@ -657,45 +657,6 @@ export default function MainLanding() {
                 </motion.button>
               </div>
             </motion.form>
-
-            {/* Grok-style action buttons under search */}
-            <div className="mt-4 flex items-center justify-center gap-4 flex-wrap">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 hover:text-white border border-gray-600/30 transition-all duration-200"
-              >
-                <Search size={16} />
-                <span className="text-sm font-medium">Find Properties</span>
-              </motion.button>
-              
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 hover:text-white border border-gray-600/30 transition-all duration-200"
-              >
-                <Calculator size={16} />
-                <span className="text-sm font-medium">Mortgage Calculator</span>
-              </motion.button>
-              
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 hover:text-white border border-gray-600/30 transition-all duration-200"
-              >
-                <MapPin size={16} />
-                <span className="text-sm font-medium">Neighborhood Guide</span>
-              </motion.button>
-              
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-2 px-4 py-2 rounded-full bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 hover:text-white border border-gray-600/30 transition-all duration-200"
-              >
-                <Star size={16} />
-                <span className="text-sm font-medium">Featured Listings</span>
-              </motion.button>
-            </div>
             
             {/* Suggestions */}
             <AnimatePresence>
