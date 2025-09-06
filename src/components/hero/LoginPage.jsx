@@ -40,8 +40,8 @@ export default function LoginPage() {
         
         localStorage.setItem('google_user_session', JSON.stringify(userSession));
         
-        // Login successful - redirect to main app
-        navigate('/main');
+        // Login successful - redirect to different Vercel deployment
+        window.location.href = 'https://chat-homeswift-ai.vercel.app/main';
       }
     } catch (err) {
       setError('An unexpected error occurred. Please try again.');

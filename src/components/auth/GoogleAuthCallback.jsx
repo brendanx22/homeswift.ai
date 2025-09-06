@@ -39,8 +39,8 @@ const GoogleAuthCallback = () => {
         storeUserSession(userInfo, tokens);
 
         // Redirect immediately to main app without showing success page
-        console.log('Redirecting to /main...');
-        window.location.href = '/main';
+        console.log('Redirecting to chat-homeswift-ai.vercel.app/main ...');
+        window.location.href = 'https://chat-homeswift-ai.vercel.app/main';
 
       } catch (error) {
         console.error('OAuth callback error:', error);
