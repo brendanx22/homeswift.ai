@@ -1,7 +1,6 @@
 import React from 'react';
 import HeroSection from './components/hero/HeroSection';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import LandingPage from './components/hero/LandingPage';
 import LoginPage from './components/hero/LoginPage';
 import SignupPage from './components/hero/SignupPage';
 import MainLanding from './components/main/MainLanding';
@@ -14,7 +13,6 @@ export default function App() {
     <Router>
       <Routes>
         <Route path="/" element={<HeroSection />} />
-        <Route path="/landing" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/main" element={<MainLanding />} />
