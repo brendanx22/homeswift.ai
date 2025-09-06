@@ -38,12 +38,8 @@ const GoogleAuthCallback = () => {
         // Store session
         storeUserSession(userInfo, tokens);
 
-        setStatus('success');
-        
-        // Redirect to main app
-        setTimeout(() => {
-          navigate('/main');
-        }, 1000);
+        // Redirect immediately to main app without showing success page
+        navigate('/main');
 
       } catch (error) {
         console.error('OAuth callback error:', error);
