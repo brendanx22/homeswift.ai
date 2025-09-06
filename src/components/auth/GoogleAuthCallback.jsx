@@ -28,15 +28,12 @@ const GoogleAuthCallback = () => {
         console.log('State parameter:', state);
         setStatus('exchanging_tokens');
 
-        // Exchange code for tokens
-        const tokens = await exchangeCodeForTokens(code, state);
-        console.log('Tokens received successfully:', tokens);
+        // Exchange code for tokens (server handles both token exchange and user info)
+        const authData = await exchangeCodeForTokens(code, state);
+        console.log('Auth data received successfully:', authData);
 
-        setStatus('getting_user_info');
-
-        // Get user information
-        const userInfo = await getUserInfo(tokens.access_token);
-        console.log('User info received:', userInfo);
+        // Server returns both tokens and user info
+        const { tokens, user: userInfo } = authData;
 
         // Store session
         storeUserSession(userInfo, tokens);

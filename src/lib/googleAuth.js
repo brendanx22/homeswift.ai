@@ -1,6 +1,6 @@
 // Google OAuth 2.0 Direct Implementation
 const GOOGLE_CLIENT_ID = '1067853597134-52q9qfuu1t1epa6av8lg4c6v6udcpd2c.apps.googleusercontent.com';
-const REDIRECT_URI = window.location.origin + '/auth/callback';
+const REDIRECT_URI = `${window.location.protocol}//${window.location.host}/auth/callback`;
 const SCOPES = 'openid email profile';
 
 // Generate a random state parameter for security
@@ -46,9 +46,9 @@ export const signInWithGoogle = () => {
   window.location.href = authUrl;
 };
 
-// Exchange authorization code for tokens
+// Exchange authorization code for tokens via server-side endpoint
 export const exchangeCodeForTokens = async (code, state) => {
-  console.log('Starting token exchange...');
+  console.log('Starting server-side token exchange...');
   console.log('Code:', code);
   console.log('State:', state);
   console.log('Redirect URI:', REDIRECT_URI);
@@ -63,43 +63,28 @@ export const exchangeCodeForTokens = async (code, state) => {
   }
   clearAuthState();
   
-  // For public OAuth clients, we need to use PKCE instead of client_secret
-  // But Google's OAuth for web apps typically requires a client_secret
-  // Let's try without client_secret first (public client flow)
-  
-  const tokenEndpoint = 'https://oauth2.googleapis.com/token';
-  
-  const params = new URLSearchParams({
-    client_id: GOOGLE_CLIENT_ID,
-    code: code,
-    grant_type: 'authorization_code',
-    redirect_uri: REDIRECT_URI
-  });
-  
-  console.log('Token request params:', params.toString());
-  
   try {
-    const response = await fetch(tokenEndpoint, {
+    const response = await fetch('/api/auth/google', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/json',
       },
-      body: params.toString()
+      body: JSON.stringify({
+        code: code,
+        redirect_uri: REDIRECT_URI
+      })
     });
     
-    console.log('Token response status:', response.status);
-    console.log('Token response headers:', response.headers);
+    console.log('Server response status:', response.status);
     
-    const responseText = await response.text();
-    console.log('Token response body:', responseText);
+    const responseData = await response.json();
+    console.log('Server response data:', responseData);
     
     if (!response.ok) {
-      throw new Error(`Token exchange failed (${response.status}): ${responseText}`);
+      throw new Error(`Server token exchange failed (${response.status}): ${responseData.error || 'Unknown error'}`);
     }
     
-    const tokens = JSON.parse(responseText);
-    console.log('Tokens received:', tokens);
-    return tokens;
+    return responseData;
   } catch (error) {
     console.error('Token exchange error:', error);
     throw error;
