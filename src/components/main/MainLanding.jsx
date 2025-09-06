@@ -21,7 +21,9 @@ import {
   Map,
   Filter,
   Clock,
-  Star
+  Star,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { searchProperties, getFeaturedProperties } from "../../data/dummyProperties";
 import { useAuth } from "../auth/AuthProvider";
