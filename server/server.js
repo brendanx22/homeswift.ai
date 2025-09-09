@@ -24,13 +24,10 @@ if (process.env.NODE_ENV === 'production') {
 
 // Configure CORS with whitelisted origins - MUST BE BEFORE OTHER MIDDLEWARE
 const allowedOrigins = [
-  'http://localhost:3000',
-  'http://localhost:5173',
-  'https://homeswift-6dj3xbt75-brendanx22s-projects.vercel.app',
-  'https://homeswift-9q6emy4q1-brendanx22s-projects.vercel.app',
-  'https://homeswift-mkkp9yq4e-brendanx22s-projects.vercel.app',
-  'https://homeswift.ai',
-  'https://www.homeswift.ai'
+  /^https?:\/\/localhost(:\d+)?$/,  // Allow any localhost with any port
+  /\.vercel\.app$/,                   // Allow any Vercel preview domain
+  'https://homeswift.ai',              // Production domain
+  'https://www.homeswift.ai'           // Production domain with www
 ];
 
 app.use(cors({
@@ -38,7 +35,17 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.includes(origin)) {
+    // Check if the origin matches any of the allowed patterns
+    const isAllowed = allowedOrigins.some(pattern => {
+      if (typeof pattern === 'string') {
+        return pattern === origin;
+      } else if (pattern instanceof RegExp) {
+        return pattern.test(origin);
+      }
+      return false;
+    });
+    
+    if (isAllowed) {
       return callback(null, true);
     }
     
