@@ -51,10 +51,12 @@ export default ({ mode }) => {
         }
       }
     },
+    base: '/',
     build: {
       outDir: 'build',
       assetsDir: 'assets',
       sourcemap: false,
+      assetsInlineLimit: 0, // Ensure all assets are emitted as files
       modulePreload: {
         polyfill: false,
       },
