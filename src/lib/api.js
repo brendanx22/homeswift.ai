@@ -2,12 +2,15 @@ import axios from 'axios';
 
 // Create axios instance with base URL
 const api = axios.create({
-  baseURL: process.env.VITE_API_BASE_URL || 'http://localhost:5001/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+// Log the API base URL for debugging (remove in production)
+console.log('API Base URL:', import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api');
 
 // Add request interceptor to add auth token to requests
 api.interceptors.request.use(

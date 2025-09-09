@@ -44,7 +44,7 @@ export default ({ mode }) => {
       strictPort: true,
       proxy: {
         '/api': {
-          target: process.env.VITE_API_BASE_URL || 'http://localhost:5001',
+          target: process.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5001',
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path.replace(/^\/api/, '')
@@ -53,7 +53,7 @@ export default ({ mode }) => {
     },
     base: '/',
     build: {
-      outDir: 'build',
+      outDir: 'dist',
       assetsDir: 'assets',
       sourcemap: false,
       assetsInlineLimit: 0, // Ensure all assets are emitted as files
@@ -80,3 +80,4 @@ export default ({ mode }) => {
     },
   });
 };
+
