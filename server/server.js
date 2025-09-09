@@ -5,9 +5,18 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import session from 'express-session';
-import SequelizeStore from 'connect-session-sequelize';
+import SequelizeStoreModule from 'connect-session-sequelize';
 import cookieParser from 'cookie-parser';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import models from './models/index.js';
+
+// ES Modules fix for __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 // Import middleware
 import { checkRememberToken, loadUser } from './middleware/auth.js';
@@ -19,14 +28,26 @@ import userRoutes from './routes/users.js';
 import searchRoutes from './routes/search.js';
 import { propertyRouter } from './routes/propertyRoutes.js';
 
-// Load environment variables
-dotenv.config();
-
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Initialize models and database connection
-await models.initialize();
+console.log('Initializing database connection...');
+try {
+  await models.initialize();
+  console.log('✅ Database connection established');
+} catch (error) {
+  console.error('❌ Database connection failed:', error);
+  process.exit(1);
+}
+
+// Create session store
+const sessionStore = new (SequelizeStoreModule(session.Store))({
+  db: models.sequelize,
+  tableName: 'sessions',
+  checkExpirationInterval: 15 * 60 * 1000, // Clean up expired sessions every 15 minutes
+  expiration: 24 * 60 * 60 * 1000 // Session expires after 24 hours
+});
 
 // Security middleware
 app.use(helmet({
