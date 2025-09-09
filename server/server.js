@@ -121,59 +121,52 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Determine if we're in production
 const isProduction = process.env.NODE_ENV === 'production';
 
-// Session configuration
+// Simple in-memory session configuration
 const sessionConfig = {
-  secret: process.env.SESSION_SECRET || 'your-super-secret-session-key',
+  secret: process.env.SESSION_SECRET || 'dev-secret-key',
   resave: false,
   saveUninitialized: false,
-  proxy: isProduction, // Trust the reverse proxy in production
+  proxy: isProduction,
   cookie: {
-    secure: isProduction ? true : 'auto', // 'auto' allows http in development
+    secure: isProduction ? true : 'auto',
     httpOnly: true,
-    sameSite: isProduction ? 'none' : 'lax', // Required for cross-site cookies
-    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+    sameSite: isProduction ? 'none' : 'lax',
+    maxAge: 1000 * 60 * 60 * 2, // 2 hours
     domain: isProduction ? '.homeswift-ai.vercel.app' : 'localhost'
-  }
+  },
+  store: new session.MemoryStore({
+    checkPeriod: 15 * 60 * 1000 // Check for expired sessions every 15 minutes
+  })
 };
 
-// Use Redis in production, in-memory in development
-if (isProduction && process.env.REDIS_URL) {
-  console.log('🔴 Using Redis for session storage');
-  const RedisStore = (await import('connect-redis')).default;
-  const { createClient } = await import('ioredis');
-  
-  const redisClient = createClient({
-    url: process.env.REDIS_URL,
-    tls: {},
-    retryStrategy: (times) => {
-      const delay = Math.min(times * 100, 5000);
-      return delay;
-    }
-  });
-  
-  redisClient.on('error', (err) => console.error('Redis Client Error:', err));
-  await redisClient.connect();
-  
-  sessionConfig.store = new RedisStore({
-    client: redisClient,
-    prefix: 'session:',
-    ttl: 86400 // 1 day in seconds
-  });
-} else {
-  console.log('💾 Using in-memory session storage (not recommended for production)');
-  sessionConfig.store = new session.MemoryStore();
-}
+console.log(isProduction ? '🚀 Production mode: Using in-memory session store' : '💻 Development mode: Using in-memory session store');
 
-// Initialize session with the configured store
-app.use(session(sessionConfig));
-
-// Sync session store
-sessionStore.sync();
+// Initialize session
+const sessionMiddleware = session(sessionConfig);
+app.use(sessionMiddleware);
 
 // Logging middleware
 if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev'));
 }
+
+// Test session endpoint
+app.get('/api/session-test', (req, res) => {
+  // Initialize view count if it doesn't exist
+  if (!req.session.views) {
+    req.session.views = 0;
+  }
+  
+  // Increment view count
+  req.session.views++;
+  
+  res.status(200).json({
+    message: 'Session test successful',
+    views: req.session.views,
+    sessionId: req.sessionID,
+    session: req.session
+  });
+});
 
 // Health check endpoint
 app.get('/health', (req, res) => {
