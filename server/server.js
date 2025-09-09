@@ -37,6 +37,50 @@ if (process.env.NODE_ENV === 'production') {
   app.set('trust proxy', 1);
 }
 
+// Configure CORS with whitelisted origins
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'https://homeswift-9q6emy4q1-brendanx22s-projects.vercel.app',
+  'https://homeswift-mkkp9yq4e-brendanx22s-projects.vercel.app',
+  'https://homeswift.ai',
+  'https://www.homeswift.ai'
+];
+
+// CORS middleware
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = `CORS policy: ${origin} not allowed`;
+      console.warn(msg);
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'X-Access-Token',
+    'X-Refresh-Token',
+    'X-XSRF-TOKEN'
+  ],
+  exposedHeaders: [
+    'Content-Range',
+    'X-Total-Count',
+    'X-Access-Token',
+    'X-Refresh-Token'
+  ],
+  maxAge: 86400 // 24 hours
+}));
+
 // Initialize models and database connection
 console.log('Initializing database connection...');
 try {
