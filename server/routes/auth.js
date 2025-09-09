@@ -13,9 +13,6 @@ const authLimiter = rateLimit({
   message: { error: 'Too many authentication attempts, please try again later.' }
 });
 
-// Apply remember token check to all auth routes
-router.use(checkRememberToken);
-
 // Register
 router.post('/register', 
   authLimiter,
@@ -45,8 +42,8 @@ router.post('/login',
 // Logout
 router.post('/logout', authController.logout);
 
-// Get current user - requires authentication
-router.get('/me', loadUser, (req, res) => {
+// Get current user - requires authentication (handled by jwtAuth middleware in server.js)
+router.get('/me', (req, res) => {
   if (!req.user) {
     return res.status(401).json({ error: 'Not authenticated' });
   }

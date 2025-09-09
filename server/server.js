@@ -173,7 +173,7 @@ if (!isProduction) {
   app.use(morgan('dev'));
 }
 
-// ------------------ Routes ------------------
+// ------------------ Public Routes ------------------
 app.get('/api/session-test', (req, res) => {
   req.session.views = (req.session.views || 0) + 1;
   res.json({
@@ -192,11 +192,15 @@ app.get('/health', (req, res) => {
   });
 });
 
+// ------------------ Public API Routes ------------------
+app.use('/api/auth', authRoutes);
+
+// ------------------ Protected Routes ------------------
+// Apply auth middleware to all routes below this point
 app.use(jwtAuth);
 app.use(checkRememberToken);
 app.use(loadUser);
 
-app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/test', testRoutes);

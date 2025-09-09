@@ -2,6 +2,7 @@ import express from 'express';
 import { body, validationResult } from 'express-validator';
 import { Op } from 'sequelize';
 import models from '../models/index.js';
+import { requireAuth } from '../middleware/jwtAuth.js';
 import jwtAuth from '../middleware/jwtAuth.js';
 
 const router = express.Router();
@@ -209,7 +210,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
 }));
 
 // POST /api/properties - Create new property (requires authentication)
-router.post('/', jwtAuth, validateProperty, asyncHandler(async (req, res) => {
+router.post('/', jwtAuth, requireAuth, validateProperty, asyncHandler(async (req, res) => {
   try {
     const propertyData = {
       ...req.body,
@@ -256,7 +257,7 @@ router.post('/', jwtAuth, validateProperty, asyncHandler(async (req, res) => {
 }));
 
 // PUT /api/properties/:id - Update property (requires authentication)
-router.put('/:id', jwtAuth, validateProperty, asyncHandler(async (req, res) => {
+router.put('/:id', jwtAuth, requireAuth, validateProperty, asyncHandler(async (req, res) => {
   try {
     const property = await models.Property.findByPk(req.params.id);
     
@@ -292,7 +293,7 @@ router.put('/:id', jwtAuth, validateProperty, asyncHandler(async (req, res) => {
 }));
 
 // DELETE /api/properties/:id - Delete property (requires authentication)
-router.delete('/:id', jwtAuth, asyncHandler(async (req, res) => {
+router.delete('/:id', jwtAuth, requireAuth, asyncHandler(async (req, res) => {
   try {
     const property = await models.Property.findByPk(req.params.id);
     

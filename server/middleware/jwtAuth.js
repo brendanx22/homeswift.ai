@@ -3,6 +3,12 @@ import models from '../models/index.js';
 
 const jwtAuth = async (req, res, next) => {
   try {
+    // Skip authentication for public routes
+    const publicRoutes = ['/api/auth/register', '/api/auth/login', '/health', '/api/session-test'];
+    if (publicRoutes.some(route => req.path.startsWith(route))) {
+      return next();
+    }
+
     // Get token from header, cookies, or query parameter
     let token;
     const authHeader = req.headers.authorization;
@@ -20,12 +26,9 @@ const jwtAuth = async (req, res, next) => {
       token = req.query.token;
     }
 
-    // If no token found, return 401
+    // If no token found, continue to next middleware (could be public route)
     if (!token) {
-      return res.status(401).json({ 
-        success: false,
-        message: 'Authentication required: No token provided' 
-      });
+      return next();
     }
 
     // Verify token
@@ -99,11 +102,13 @@ const jwtAuth = async (req, res, next) => {
 };
 
 // Middleware to require authentication
-export const requireAuth = (req, res, next) => {
+const requireAuth = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({ 
       success: false,
-      message: 'Authentication required' 
+      message: 'Authentication required',
+      code: 'UNAUTHORIZED',
+      status: 401
     });
   }
   next();
