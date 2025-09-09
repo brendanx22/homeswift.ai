@@ -1,14 +1,11 @@
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 import { validationResult } from 'express-validator';
+import supabase from '../utils/supabase.js';
+import jwt from 'jsonwebtoken';
 import models from '../models/index.js';
-import { sendWelcomeEmail, sendEmailVerification } from '../utils/email.mjs';
 
 const authController = {
-  // Register a new user
+  // Register a new user with Supabase
   async register(req, res) {
-    const t = await models.sequelize.transaction();
-    
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
@@ -17,36 +14,37 @@ const authController = {
           field: errors.array()[0].path 
         });
       }
-      
-      // Auto-verify emails in non-production environments
-      const isProduction = process.env.NODE_ENV === 'production';
 
-      const { firstName, lastName, email, password, remember } = req.body;
+      const { firstName, lastName, email, password } = req.body;
 
-      // Check if user exists
-      const existingUser = await models.User.findOne({ where: { email } });
+      // Check if user exists in Supabase Auth
+      const { data: existingUser, error: userCheckError } = await supabase
+        .from('users')
+        .select('id')
+        .eq('email', email.toLowerCase())
+        .single();
+
       if (existingUser) {
         return res.status(400).json({ error: 'Email already registered' });
       }
 
-      // Hash password before creating user
-      const salt = await bcrypt.genSalt(10);
-      const hashedPassword = await bcrypt.hash(password, salt);
-
-      // Prepare user data with hashed password
-      const userData = {
-        firstName,
-        lastName,
+      // Create user in Supabase Auth
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: email.toLowerCase(),
-        password_hash: hashedPassword,
-        password, // Keep plain password for beforeSave hook
-        // Auto-verify in non-production environments
-        is_email_verified: !isProduction,
-        email_verified_at: !isProduction ? new Date() : null
-      };
+        password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+            email_verified: false
+          }
+        }
+      });
 
-      // Create user within transaction
-      const user = await models.User.create(userData, { transaction: t });
+      if (signUpError) {
+        console.error('Supabase signup error:', signUpError);
+        return res.status(400).json({ error: signUpError.message });
+      }
 
       // Generate and send verification email only in production
       if (isProduction) {
@@ -148,176 +146,162 @@ const authController = {
     }
   },
 
-  // Login user
+  // Login user with Supabase
   async login(req, res) {
     try {
       const { email, password, remember } = req.body;
 
-      // Find user by email
-      const user = await models.User.findOne({ where: { email: email.toLowerCase() } });
-      if (!user) {
-        console.log(`Login attempt failed: No user found with email ${email}`);
-        return res.status(401).json({ error: 'Invalid email or password' });
-      }
+      // Sign in with Supabase
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.toLowerCase(),
+        password,
+      });
 
-      // Check if password is correct
-      const isMatch = await user.comparePassword(password);
-      if (!isMatch) {
-        console.log(`Login attempt failed: Incorrect password for user ${user.id}`);
-        return res.status(401).json({ error: 'Invalid email or password' });
-      }
-
-      // Skip email verification check in development
-      if (process.env.NODE_ENV !== 'development' && !user.is_email_verified) {
-        console.log(`Login attempt failed: Email not verified for user ${user.id}`);
-        return res.status(403).json({ 
-          error: 'Please verify your email before logging in',
-          needsVerification: true,
-          email: user.email
+      if (error) {
+        console.error('Login error:', error);
+        return res.status(400).json({ 
+          error: error.message.includes('Invalid login credentials') 
+            ? 'Invalid credentials' 
+            : error.message 
         });
       }
 
-      // Generate JWT token
+      // Get user details from Supabase
+      const { data: { user } } = await supabase.auth.getUser(data.session.access_token);
+
+      // Check if email is verified
+      if (!user.email_confirmed_at) {
+        return res.status(400).json({ 
+          error: 'Please verify your email address before logging in',
+          code: 'EMAIL_NOT_VERIFIED'
+        });
+      }
+
+      // Create JWT payload
+      const payload = {
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role || 'user' // Default role if not set
+        }
+      };
+
+      // Sign JWT
       const token = jwt.sign(
-        { id: user.id, email: user.email, role: user.role },
-        process.env.JWT_SECRET || 'your-secret-key',
+        payload,
+        process.env.JWT_SECRET || 'your-secret-key', // Fallback for development
         { expiresIn: remember ? '30d' : '1d' }
       );
 
-      // Generate session
+      // Set session
       req.session.userId = user.id;
-      req.session.role = user.role;
+      req.session.role = user.role || 'user';
 
-      // Handle remember me
-      let rememberToken;
-      if (remember) {
-        rememberToken = user.generateRememberToken();
-        await user.save();
-      }
-
-      const response = {
-        success: true,
-        user: user.toJSON(),
-        token: token
-      };
-
-      // Set remember me cookies if needed
-      if (remember && rememberToken) {
-        const thirtyDays = 30 * 24 * 60 * 60 * 1000;
-        const cookieOptions = {
-          maxAge: thirtyDays,
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict'
-        };
-        
-        res.cookie('remember_token', rememberToken, cookieOptions);
-        res.cookie('remember_user', user.id.toString(), cookieOptions);
-      }
-
-      res.json(response);
+      res.json({ 
+        token,
+        user: {
+          id: user.id,
+          email: user.email,
+          role: user.role || 'user',
+          isAuthenticated: true
+        }
+      });
     } catch (error) {
       console.error('Login error:', error);
-      res.status(500).json({ error: 'Login failed. Please try again.' });
+      res.status(500).json({ error: 'Server error during login' });
     }
   },
 
   // Logout user
   async logout(req, res) {
     try {
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('Supabase sign out error:', error);
+        // Continue with session destruction even if Supabase sign out fails
+      }
+
       // Clear session
-      req.session.destroy();
-      
-      // Clear remember me cookies
-      res.clearCookie('connect.sid');
-      res.clearCookie('remember_token');
-      res.clearCookie('remember_user');
-      
-      res.json({ success: true, message: 'Logged out successfully' });
+      req.session.destroy(err => {
+        if (err) {
+          console.error('Error destroying session:', err);
+          return res.status(500).json({ error: 'Error logging out' });
+        }
+        
+        // Clear session cookie
+        res.clearCookie('connect.sid');
+        res.json({ message: 'Logged out successfully' });
+      });
     } catch (error) {
       console.error('Logout error:', error);
-      res.status(500).json({ error: 'Logout failed' });
+      res.status(500).json({ error: 'Server error during logout' });
     }
   },
 
   // Get current user
   async getCurrentUser(req, res) {
     try {
-      // First check JWT token
-      const authHeader = req.headers.authorization;
-      let token;
-      
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        token = authHeader.split(' ')[1];
-      } else if (req.cookies && req.cookies.token) {
-        token = req.cookies.token;
-      }
-      
-      if (!token && !req.session.userId) {
+      // Check if user is authenticated via session
+      if (!req.session.userId) {
         return res.status(401).json({ error: 'Not authenticated' });
       }
-      
-      let user;
-      
-      // Verify JWT token if present
-      if (token) {
+
+      // Get user from Supabase
+      const { data: { user }, error } = await supabase.auth.getUser(req.session.userId);
+
+      if (error || !user) {
+        console.error('Error fetching user from Supabase:', error);
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Get additional user data from your database if needed
+      const userProfile = await models.UserProfile.findOne({
+        where: { userId: user.id },
+        attributes: ['id', 'bio', 'phone', 'avatar', 'location']
+      });
+
+      // If user is authenticated but not via session (e.g., JWT), check token
+      if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
         try {
+          const token = req.headers.authorization.split(' ')[1];
           const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-          user = await models.User.findByPk(decoded.id);
-        } catch (err) {
-          console.error('JWT verification error:', err);
-          // Continue to check session if JWT is invalid
+          
+          // Verify the token matches the session user
+          if (decoded.user.id !== req.session.userId) {
+            return res.status(401).json({ error: 'Token does not match session' });
+          }
+        } catch (error) {
+          console.error('Token verification error:', error);
+          return res.status(401).json({ error: 'Invalid or expired token' });
         }
       }
-      
-      // Fall back to session if no user from JWT
-      if (!user && req.session.userId) {
-        user = await models.User.findByPk(req.session.userId);
-      }
-      
-      if (!user) {
-        return res.status(401).json({ error: 'User not found' });
-      }
-      
-      // Update session
-      req.session.userId = user.id;
-      req.session.role = user.role;
-      
-      // Generate a new token with updated expiration
+
+      // Generate a fresh JWT token
       const newToken = jwt.sign(
-        { id: user.id, email: user.email, role: user.role },
+        { id: user.id, email: user.email, role: user.role || 'user' },
         process.env.JWT_SECRET || 'your-secret-key',
         { expiresIn: '1d' }
       );
-      
-      // Return user data (exclude sensitive info)
-      const userData = user.toJSON();
-      delete userData.password_hash;
-      delete userData.resetPasswordToken;
-      delete userData.resetPasswordExpires;
-      
-      // Ensure we have the name fields properly set
+
       const responseData = {
-        id: userData.id,
-        email: userData.email,
-        firstName: userData.firstName || userData.first_name || '',
-        lastName: userData.lastName || userData.last_name || '',
-        name: userData.firstName ? 
-          `${userData.firstName} ${userData.lastName || ''}`.trim() : 
-          (userData.first_name ? 
-            `${userData.first_name} ${userData.last_name || ''}`.trim() : 
-            userData.email.split('@')[0]
-          ),
-        role: userData.role,
-        isEmailVerified: userData.is_email_verified || userData.isEmailVerified || false,
-        createdAt: userData.createdAt,
-        updatedAt: userData.updatedAt
+        id: user.id,
+        email: user.email,
+        firstName: user.user_metadata?.first_name || '',
+        lastName: user.user_metadata?.last_name || '',
+        name: user.user_metadata?.first_name || user.email.split('@')[0],
+        role: user.role || 'user',
+        isEmailVerified: !!user.email_confirmed_at,
+        profile: userProfile || {},
+        createdAt: user.created_at,
+        updatedAt: user.updated_at
       };
       
       return res.json({ 
         success: true, 
         user: responseData,
-        token: newToken  // Return a fresh token
+        token: newToken
       });
     } catch (error) {
       console.error('Get current user error:', error);

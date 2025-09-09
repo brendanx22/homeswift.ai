@@ -26,6 +26,7 @@ import jwtAuth from './middleware/jwtAuth.js';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import searchRoutes from './routes/search.js';
+import testRoutes from './routes/test.js';
 import { propertyRouter } from './routes/propertyRoutes.js';
 
 const app = express();
@@ -185,14 +186,10 @@ app.use(loadUser);
 
 // API routes
 app.use('/api/auth', authRoutes);
-app.use('/api/properties', propertyRouter);
 app.use('/api/users', userRoutes);
 app.use('/api/search', searchRoutes);
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
-});
+app.use('/api/test', testRoutes);
+app.use('/api/properties', propertyRouter);
 
 // 404 handler
 app.use('*', (req, res) => {

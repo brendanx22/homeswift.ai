@@ -11,73 +11,102 @@ dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 class Database {
   constructor() {
-    this.sequelize = null;
+    this.sequelize = this._initSequelize();
+  }
+
+  _initSequelize() {
+    const isProduction = process.env.NODE_ENV === 'production';
+    
+    if (isProduction) {
+      console.log('🚀 Initializing Sequelize in PRODUCTION mode (Supabase)');
+      return new Sequelize(
+        process.env.SUPABASE_DB_NAME,
+        process.env.SUPABASE_DB_USER,
+        process.env.SUPABASE_DB_PASSWORD,
+        {
+          host: process.env.SUPABASE_DB_HOST,
+          port: process.env.SUPABASE_DB_PORT || 6543,
+          dialect: 'postgres',
+          logging: process.env.NODE_ENV === 'development' ? console.log : false,
+          dialectOptions: {
+            ssl: {
+              require: true,
+              rejectUnauthorized: false
+            },
+            statement_timeout: 10000,
+            idle_in_transaction_session_timeout: 10000,
+            application_name: 'homeswift-production',
+            options: '-c search_path=public'
+          },
+          pool: {
+            max: 10,
+            min: 0,
+            acquire: 30000,
+            idle: 10000
+          },
+          define: {
+            timestamps: true,
+            underscored: true,
+            createdAt: 'created_at',
+            updatedAt: 'updated_at'
+          }
+        }
+      );
+    } else {
+      console.log('💻 Initializing Sequelize in DEVELOPMENT mode (Local DB)');
+      return new Sequelize(
+        process.env.DB_NAME,
+        process.env.DB_USER,
+        process.env.DB_PASSWORD,
+        {
+          host: process.env.DB_HOST,
+          port: process.env.DB_PORT || 5432,
+          dialect: 'postgres',
+          logging: console.log,
+          dialectOptions: {
+            statement_timeout: 10000,
+            idle_in_transaction_session_timeout: 10000,
+            application_name: 'homeswift-development'
+          },
+          pool: {
+            max: 5,
+            min: 0,
+            acquire: 30000,
+            idle: 10000
+          },
+          define: {
+            timestamps: true,
+            underscored: true,
+            createdAt: 'created_at',
+            updatedAt: 'updated_at'
+          }
+        }
+      );
+    }
   }
 
   async connect() {
     try {
-      // Use DATABASE_URL if available, otherwise fall back to individual parameters
-      const connectionConfig = process.env.DATABASE_URL 
-        ? {
-            connectionString: process.env.DATABASE_URL,
-            dialect: 'postgres',
-            dialectOptions: {
-              ssl: {
-                require: true,
-                rejectUnauthorized: false // For self-signed certificates
-              }
-            },
-            logging: process.env.NODE_ENV === 'development' ? console.log : false,
-            pool: {
-              max: 10,
-              min: 0,
-              acquire: 30000,
-              idle: 10000
-            }
-          }
-        : {
-            database: process.env.DB_NAME || 'homeswift',
-            username: process.env.DB_USER || 'postgres',
-            password: process.env.DB_PASSWORD || 'homeswift123',
-            host: process.env.DB_HOST || 'localhost',
-            port: process.env.DB_PORT || 5432,
-            dialect: 'postgres',
-            logging: process.env.NODE_ENV === 'development' ? console.log : false,
-            pool: {
-              max: 10,
-              min: 0,
-              acquire: 30000,
-              idle: 10000
-            }
-          };
-
-      this.sequelize = new Sequelize(connectionConfig);
-
-      // Test the connection with detailed error handling
+      console.log('🔍 Environment:', process.env.NODE_ENV || 'development');
+      
+      // Test the connection
+      await this.sequelize.authenticate();
+      console.log('✅ Database connection established successfully!');
+      
+      // Verify database structure
       try {
-        await this.sequelize.authenticate();
-        console.log('✅ PostgreSQL connection has been established successfully.');
-        
-        // Verify database structure
-        try {
-          const [results] = await this.sequelize.query(`
-            SELECT table_name 
-            FROM information_schema.tables 
-            WHERE table_schema = 'public';
-          `);
-          console.log('📊 Available tables:', results.map(r => r.table_name).join(', '));
-        } catch (queryError) {
-          console.warn('⚠️ Could not list tables - database might be empty or permissions issue:', queryError.message);
-        }
-        
-        return this.sequelize;
-      } catch (authError) {
-        console.error('❌ Authentication failed:', authError.message);
-        if (authError.original) {
-          console.error('❌ Original error:', authError.original);
-        }
-        throw authError;
+        const [results] = await this.sequelize.query(`
+          SELECT table_name 
+          FROM information_schema.tables 
+          WHERE table_schema = 'public';
+        `);
+        console.log('📊 Available tables:', results.length ? results.map(r => r.table_name).join(', ') : 'No tables found');
+      } catch (queryError) {
+        console.warn('⚠️ Could not list tables - database might be empty or permissions issue:', queryError.message);
       }
+      
+      return this.sequelize;
+      
     } catch (error) {
       console.error('❌ Failed to connect to the database:', error.message);
       throw error;
