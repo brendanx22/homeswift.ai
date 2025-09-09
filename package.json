@@ -6,10 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "start": "node server/server.js",
     "lint": "eslint .",
     "preview": "vite preview",
     "build:hero": "vite build --outDir components/hero --config vite.hero.config.js",
-    "build:main": "rimraf dist && vite build --outDir dist --config vite.main.config.js && node scripts/after-main-build.mjs"
+    "build:main": "rimraf dist && vite build --outDir dist --config vite.main.config.js && node scripts/after-main-build.mjs",
+    "vercel-build": "npm install && npm run build && cd server && npm install"
   },
   "dependencies": {
     "@emotion/babel-plugin": "^11.13.5",
