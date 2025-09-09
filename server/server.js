@@ -52,14 +52,23 @@ const corsOptions = {
     // In production, only allow specific origins
     const allowedOrigins = [
       'https://homeswift-ai.vercel.app',
-      'https://www.homeswift.ai'
+      'https://homeswift-ai.vercel.app',
+      'http://localhost:3000',  // For local development
+      'http://localhost:5173'   // Vite default dev server port
     ];
     
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
+    // Allow requests with no origin (like mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    
+    // Check if the origin is allowed
+    if (allowedOrigins.some(allowedOrigin => 
+      origin === allowedOrigin || 
+      origin.startsWith(allowedOrigin.replace('https://', 'http://'))
+    )) {
+      return callback(null, true);
     }
+    
+    callback(new Error(`Not allowed by CORS. Origin: ${origin}`));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
@@ -82,16 +91,10 @@ const corsOptions = {
   maxAge: 86400 // 24 hours
 };
 
-// Apply CORS middleware
+// Apply CORS middleware with the configured options
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // Enable preflight for all routes
-
-// Handle preflight requests
+// Enable preflight for all routes
 app.options('*', cors(corsOptions));
-
-// CORS middleware is already configured above with corsOptions
-// The following middleware is redundant and can be removed since we're already using cors(corsOptions)
-// The cors middleware will handle all the necessary CORS headers
 
 // Cookie parser middleware
 app.use(cookieParser());
