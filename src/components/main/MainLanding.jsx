@@ -7,7 +7,7 @@ import {
   Sparkles,
   ArrowUp,
   FileUp,
-  ImageUp,
+  Image as ImageUp,
   MessageSquare,
   HelpCircle,
   Settings,

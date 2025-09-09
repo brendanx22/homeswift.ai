@@ -14,10 +14,19 @@ export default ({ mode }) => {
       react({
         jsxImportSource: '@emotion/react',
         babel: {
-          plugins: ['@emotion/babel-plugin'],
+          plugins: [
+            ['@emotion/babel-plugin', {
+              autoLabel: 'dev-only',
+              labelFormat: '[local]',
+              cssPropOptimization: true,
+            }],
+          ],
         },
       })
     ],
+    esbuild: {
+      logOverride: { 'this-is-undefined-in-esm': 'silent' }
+    },
     base: isProduction ? './' : '/',
     define: {
       'process.env': {}
@@ -50,7 +59,7 @@ export default ({ mode }) => {
         polyfill: false,
       },
       commonjsOptions: {
-        include: [],
+        include: [/node_modules/],
       },
       rollupOptions: {
         output: {
