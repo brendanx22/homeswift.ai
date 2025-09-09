@@ -7,7 +7,7 @@ import {
   resetPassword,
   updatePassword
 } from '../utils/auth.js';
-import { supabase } from '../utils/supabase.js';
+import supabase from '../utils/supabase.js';
 import jwt from 'jsonwebtoken';
 
 // Helper: create JWT token

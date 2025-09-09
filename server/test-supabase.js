@@ -22,16 +22,20 @@ async function testConnection() {
   try {
     console.log('🔌 Testing Supabase connection...');
     
-    // Test a simple query
-    const { data, error } = await supabase
-      .from('properties')
-      .select('*')
-      .limit(1);
+    // List all tables in the public schema
+    const { data: tables, error } = await supabase
+      .from('pg_catalog.pg_tables')
+      .select('tablename')
+      .eq('schemaname', 'public');
     
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Error listing tables:', error);
+      return;
+    }
     
     console.log('✅ Successfully connected to Supabase!');
-    console.log('Sample data:', data);
+    console.log('📋 Available tables in public schema:');
+    tables.forEach(table => console.log(`- ${table.tablename}`));
     
   } catch (error) {
     console.error('❌ Error connecting to Supabase:', error.message);
