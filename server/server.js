@@ -5,7 +5,6 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import session from 'express-session';
-import SequelizeStoreModule from 'connect-session-sequelize';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -25,25 +24,25 @@ if (process.env.NODE_ENV === 'production') {
 // Configure CORS with whitelisted origins - MUST BE BEFORE OTHER MIDDLEWARE
 const allowedOrigins = [
   /^https?:\/\/localhost(:\d+)?$/,  // Allow any localhost with any port
-  /\.vercel\.app$/,                  // Allow any Vercel preview domain
-  'https://homeswift.ai',             // Production domain
-  'https://www.homeswift.ai'          // Production domain with www
+  /\.vercel\.app$/,                 // Allow any Vercel preview domain
+  'https://homeswift.ai',           // Production domain
+  'https://www.homeswift.ai'        // Production domain with www
 ];
 
 const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
+
     // Check if the origin matches any of the allowed patterns
-    const isAllowed = allowedOrigins.some(pattern => 
+    const isAllowed = allowedOrigins.some(pattern =>
       (pattern instanceof RegExp ? pattern.test(origin) : pattern === origin)
     );
-    
+
     if (isAllowed) {
       return callback(null, true);
     }
-    
+
     const msg = `CORS policy: ${origin} not allowed`;
     console.warn(msg);
     return callback(new Error(msg), false);
@@ -101,8 +100,6 @@ try {
   process.exit(1);
 }
 
-// Create session store with Sequelize
-
 // Security middleware
 app.use(helmet({
   crossOriginEmbedderPolicy: false
@@ -111,7 +108,7 @@ app.use(helmet({
 // Rate limiting
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // limit each IP to 100 requests per windowMs
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // limit each IP
   message: { error: 'Too many requests, please try again later.' }
 });
 app.use(limiter);
@@ -123,8 +120,6 @@ app.get('/', (req, res) => {
 
 // Favicon route
 app.get('/favicon.ico', (req, res) => res.status(204).end());
-
-// CORS is already configured at the top of the file
 
 // Cookie parser middleware
 app.use(cookieParser());
@@ -143,11 +138,11 @@ const sessionConfig = {
   saveUninitialized: false,
   proxy: isProduction,
   cookie: {
-    secure: isProduction ? true : 'auto',
+    secure: isProduction, // must be true in production
     httpOnly: true,
     sameSite: isProduction ? 'none' : 'lax',
-    maxAge: 1000 * 60 * 60 * 2, // 2 hours
-    domain: isProduction ? '.homeswift-ai.vercel.app' : 'localhost'
+    maxAge: 1000 * 60 * 60 * 2 // 2 hours
+    // ⚠️ Removed domain so it works for all vercel previews + prod
   },
   store: new session.MemoryStore({
     checkPeriod: 15 * 60 * 1000 // Check for expired sessions every 15 minutes
@@ -161,20 +156,17 @@ const sessionMiddleware = session(sessionConfig);
 app.use(sessionMiddleware);
 
 // Logging middleware
-if (process.env.NODE_ENV !== 'production') {
+if (!isProduction) {
   app.use(morgan('dev'));
 }
 
 // Test session endpoint
 app.get('/api/session-test', (req, res) => {
-  // Initialize view count if it doesn't exist
   if (!req.session.views) {
     req.session.views = 0;
   }
-  
-  // Increment view count
   req.session.views++;
-  
+
   res.status(200).json({
     message: 'Session test successful',
     views: req.session.views,
@@ -216,10 +208,9 @@ app.use('*', (req, res) => {
 // Global error handler
 app.use((err, req, res, next) => {
   console.error('Global error handler:', err.stack);
-  
   res.status(err.status || 500).json({
     success: false,
-    error: process.env.NODE_ENV === 'production' ? 'Something went wrong!' : err.message
+    error: isProduction ? 'Something went wrong!' : err.message
   });
 });
 
@@ -234,15 +225,6 @@ process.on('SIGTERM', async () => {
   console.log('\n🛑 Shutting down gracefully...');
   await models.getSequelize().close();
   process.exit(0);
-});
-
-// Error handling middleware (must be last)
-app.use((err, req, res, next) => {
-  console.error('Server Error:', err.stack || err);
-  res.status(err.status || 500).json({ 
-    error: err.message || 'Internal Server Error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-  });
 });
 
 // Start server
