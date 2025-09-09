@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
-import { signInWithGoogle } from '../../lib/googleAuth';
+import { AppContext } from '../../contexts/AppContext';
 // import { supabase } from '../../lib/supabase'; // Removed - using custom auth
 
 export default function SignupPage() {
@@ -18,6 +18,15 @@ export default function SignupPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
+  const { register, isAuthenticated, isLoading } = useContext(AppContext);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      console.log('User already authenticated, redirecting to main');
+      navigate('/main', { replace: true });
+    }
+  }, [isAuthenticated, isLoading, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -30,53 +39,41 @@ export default function SignupPage() {
         return;
       }
 
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          name: `${formData.firstName} ${formData.lastName}`,
-        }),
+      console.log('Registration attempt with:', { 
+        email: formData.email, 
+        name: `${formData.firstName} ${formData.lastName}`,
+        password: '***'
       });
 
-      const data = await response.json();
+      // Use the register function from AppContext
+      const userData = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        password: formData.password
+      };
+      
+      // Register the user
+      await register(userData);
 
-      if (!response.ok) {
-        setError(data.error || 'Registration failed');
-      } else {
-        // Store user session
-        localStorage.setItem('google_user_session', JSON.stringify(data.session));
-        
-        setSuccess('Account created successfully! Redirecting...');
-        
-        // Registration successful - redirect to main page (cross-domain)
-        setTimeout(() => {
-          window.location.href = 'https://chat-homeswift-ai.vercel.app/main';
-        }, 1500);
-      }
+      // Redirect to verification page
+      navigate('/verify-email', { 
+        state: { 
+          email: formData.email,
+          message: `We've sent a verification link to ${formData.email}. Please check your email to verify your account.`,
+          status: 'pending'
+        } 
+      });
     } catch (err) {
-      setError('An unexpected error occurred. Please try again.');
+      console.error('Registration error:', err);
+      setError(err.message || 'An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleSignup = () => {
-    try {
-      console.log('Starting Google OAuth signup flow...');
-      setLoading(true);
-      setError(''); // Clear any previous errors
-      
-      // Redirect to Google OAuth
-      signInWithGoogle();
-    } catch (error) {
-      console.error('Google signup error:', error);
-      setError(error.message || 'Failed to sign up with Google');
-      setLoading(false);
-    }
+    setError('Google Sign-Up is temporarily disabled. Please use email registration.');
   };
 
   const handleInputChange = (e) => {

@@ -1,0 +1,99 @@
+{
+  "apartment": [
+    "/property-images/apartment-1.jpg",
+    "/property-images/apartment-2.jpg",
+    "/property-images/apartment-3.jpg"
+  ],
+  "luxury apartment": [
+    "/property-images/luxury-apartment-1.jpg"
+  ],
+  "studio apartment": [
+    "/property-images/studio-apartment-1.jpg"
+  ],
+  "duplex": [
+    "/property-images/duplex-1.jpg",
+    "/property-images/duplex-2.jpg",
+    "/property-images/duplex-3.jpg",
+    "/property-images/duplex-4.jpg"
+  ],
+  "detached house": [
+    "/property-images/detached-house-1.jpg",
+    "/property-images/detached-house-2.jpg",
+    "/property-images/detached-house-3.jpg"
+  ],
+  "semi-detached house": [
+    "/property-images/semi-detached-house-1.jpg",
+    "/property-images/semi-detached-house-2.jpg",
+    "/property-images/semi-detached-house-3.jpg",
+    "/property-images/semi-detached-house-4.jpg"
+  ],
+  "terrace house": [
+    "/property-images/terrace-house-1.jpg"
+  ],
+  "bungalow": [
+    "/property-images/bungalow-1.jpg",
+    "/property-images/bungalow-2.jpg",
+    "/property-images/bungalow-3.jpg",
+    "/property-images/bungalow-4.jpg"
+  ],
+  "mansion": [
+    "/property-images/mansion-1.jpg",
+    "/property-images/mansion-2.jpg"
+  ],
+  "penthouse": [
+    "/property-images/penthouse-1.jpg",
+    "/property-images/penthouse-2.jpg"
+  ],
+  "townhouse": [
+    "/property-images/townhouse-1.jpg",
+    "/property-images/townhouse-2.jpg",
+    "/property-images/townhouse-3.jpg"
+  ],
+  "villa": [
+    "/property-images/villa-1.jpg",
+    "/property-images/villa-2.jpg"
+  ],
+  "beach house": [
+    "/property-images/beach-house-1.jpg",
+    "/property-images/beach-house-2.jpg",
+    "/property-images/beach-house-3.jpg",
+    "/property-images/beach-house-4.jpg"
+  ],
+  "farmhouse": [
+    "/property-images/farmhouse-1.jpg"
+  ],
+  "commercial property": [
+    "/property-images/commercial-property-1.jpg",
+    "/property-images/commercial-property-2.jpg"
+  ],
+  "office space": [
+    "/property-images/office-space-1.jpg",
+    "/property-images/office-space-2.jpg"
+  ],
+  "retail space": [
+    "/property-images/retail-space-1.jpg",
+    "/property-images/retail-space-2.jpg",
+    "/property-images/retail-space-3.jpg"
+  ],
+  "warehouse": [
+    "/property-images/warehouse-1.jpg",
+    "/property-images/warehouse-2.jpg",
+    "/property-images/warehouse-3.jpg"
+  ],
+  "land": [
+    "/property-images/land-1.jpg"
+  ],
+  "hotel": [
+    "/property-images/hotel-1.jpg",
+    "/property-images/hotel-2.jpg",
+    "/property-images/hotel-3.jpg"
+  ],
+  "guest house": [
+    "/property-images/guest-house-1.jpg",
+    "/property-images/guest-house-2.jpg"
+  ],
+  "resort": [
+    "/property-images/resort-1.jpg",
+    "/property-images/resort-2.jpg"
+  ]
+}

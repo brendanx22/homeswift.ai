@@ -1,0 +1,16 @@
+-- Grant permissions on all tables
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO homeswift_user;
+
+-- Grant permissions on all sequences
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO homeswift_user;
+
+-- Grant permissions on all functions
+GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO homeswift_user;
+
+-- Grant usage on schema
+GRANT USAGE ON SCHEMA public TO homeswift_user;
+
+-- Set default privileges for future objects
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON TABLES TO homeswift_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON SEQUENCES TO homeswift_user;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL PRIVILEGES ON FUNCTIONS TO homeswift_user;

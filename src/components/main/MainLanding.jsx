@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useContext, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
@@ -12,7 +12,6 @@ import {
   HelpCircle,
   Settings,
   LogOut,
-  Search,
   User,
   Bell,
   Heart,
@@ -26,61 +25,203 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
-  Trash2
+  Trash2,
+  Loader2
 } from "lucide-react";
-import { searchProperties, getFeaturedProperties } from "../../data/dummyProperties";
-// import { useAuth } from "../auth/AuthProvider"; // Removed for cross-domain deployment
+import propertyService from '../../services/propertyService';
+import { AppContext } from '../../contexts/AppContext';
 
 export default function MainLanding() {
   // --- authentication state ---
   const navigate = useNavigate();
+  const { user, logout: contextLogout, isAuthenticated } = useContext(AppContext);
   
-  // Handle auth without context for cross-domain deployment
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  
+  // Redirect if not authenticated
   useEffect(() => {
-    // Check for existing session on component load
-    const checkAuth = () => {
-      try {
-        const session = localStorage.getItem('google_user_session');
-        if (session) {
-          try {
-            const sessionData = JSON.parse(session);
-            if (sessionData.user) {
-              setUser(sessionData.user);
-            }
-          } catch (parseError) {
-            console.error('Error parsing session data:', parseError);
-            localStorage.removeItem('google_user_session');
-          }
-        }
-      } catch (error) {
-        console.error('Error checking authentication:', error);
-      } finally {
-        setLoading(false);
+    if (!isAuthenticated) {
+      navigate('/login');
+    }
+  }, [isAuthenticated, navigate]);
+
+  const logout = async () => {
+    try {
+      await contextLogout();
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout error:', error);
+      navigate('/login');
+    }
+  };
+  
+  // --- search state ---
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState(null);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchTimeoutRef = useRef(null);
+  
+  // Handle search submission with debounce
+  const handleSearchSubmit = useCallback(async (e) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
+    const query = searchQuery.trim();
+    if (!query) {
+      setSearchError('Please enter a search term');
+      return;
+    }
+    
+    try {
+      setIsSearching(true);
+      setSearchError(null);
+      setShowSuggestions(false);
+      
+      // Navigate to listings page with search query
+      navigate('/listings', { 
+        state: { 
+          searchQuery: query,
+          timestamp: Date.now() // Ensure component re-renders with new search
+        },
+        replace: true
+      });
+    } catch (error) {
+      console.error('Search error:', error);
+      setSearchError('Failed to perform search. Please try again.');
+    } finally {
+      setIsSearching(false);
+    }
+  }, [searchQuery, navigate]);
+  
+  // Handle search input change
+  const handleSearchChange = useCallback((e) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    setSearchError(null);
+    
+    // Show suggestions when typing
+    if (value.trim()) {
+      setShowSuggestions(true);
+    } else {
+      setShowSuggestions(false);
+    }
+  }, [handleSearchSubmit]);
+  
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
+  
+  // --- sidebar and layout state ---
+  const [isDesktop, setIsDesktop] = useState(false);
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+  
+  // Initialize sidebar visibility based on screen size
+  useEffect(() => {
+    // Check if we're in a browser environment
+    if (typeof window === 'undefined') return;
+    
+    const checkIfDesktop = () => {
+      const width = window.innerWidth;
+      const desktop = width >= 1024;
+      setIsDesktop(desktop);
+      
+      // Close mobile sidebar when switching to desktop
+      if (desktop) {
+        setShowMobileSidebar(false);
+      }
+      
+      console.log('Window width:', width, 'Desktop:', desktop);
+    };
+    
+    // Initial check
+    checkIfDesktop();
+    
+    // Handle window resize with debounce
+    let resizeTimer;
+    const handleResize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(checkIfDesktop, 100);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(resizeTimer);
+    };
+  }, []);
+  
+  const [compactMode, setCompactMode] = useState(() => {
+    // Initialize compact mode from localStorage if it exists
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('sidebarCompact');
+      return saved !== null ? JSON.parse(saved) : false;
+    }
+    return false;
+  });
+  
+  const [isSmUp, setIsSmUp] = useState(false);
+
+  // Handle responsive sidebar behavior
+  useEffect(() => {
+    const checkScreenSize = () => {
+      const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
+      const isTablet = window.matchMedia("(min-width: 640px)").matches;
+      
+      setIsSmUp(isTablet);
+      
+      // Auto-show sidebar on desktop if not set in localStorage
+      if (isDesktop && localStorage.getItem('sidebarOpen') === null) {
+        setShowSidePanel(true);
+      } else if (!isDesktop && localStorage.getItem('sidebarOpen') === null) {
+        setShowSidePanel(false);
       }
     };
 
-    checkAuth();
+    // Set initial state
+    checkScreenSize();
+    
+    // Add event listener for window resize
+    window.addEventListener('resize', checkScreenSize);
+    
+    // Cleanup
+    return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
-  const logout = () => {
-    localStorage.removeItem('google_user_session');
-    setUser(null);
-    navigate('/login');
-  };
-  
-  // --- property search state ---
-  const [searchResults, setSearchResults] = useState([]);
-  const [featuredProperties, setFeaturedProperties] = useState([]);
+  // Persist compact mode state to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sidebarCompact', JSON.stringify(compactMode));
+    }
+  }, [compactMode]);
 
-  // --- sidebar and layout state ---
-  const [showSidePanel, setShowSidePanel] = useState(true);
-  const [compactMode, setCompactMode] = useState(false);
-  const [isSmUp, setIsSmUp] = useState(() =>
-    typeof window !== "undefined" ? window.matchMedia("(min-width: 640px)").matches : true
-  );
+  // Persist mobile sidebar state to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !isDesktop) {
+      localStorage.setItem('sidebarMobileOpen', JSON.stringify(showMobileSidebar));
+    }
+  }, [showMobileSidebar, isDesktop]);
+
+  // Load initial state from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedCompact = localStorage.getItem('sidebarCompact');
+      if (savedCompact !== null) setCompactMode(JSON.parse(savedCompact));
+      
+      // Only load mobile sidebar state if we're on mobile
+      if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+        const savedMobileOpen = localStorage.getItem('sidebarMobileOpen');
+        if (savedMobileOpen !== null) setShowMobileSidebar(JSON.parse(savedMobileOpen));
+      }
+    } catch (e) {
+      console.error("Failed to load sidebar state:", e);
+    }
+  }, []);
 
   // --- preview, uploads, UI state ---
   const [previewItem, setPreviewItem] = useState(null);
@@ -92,8 +233,11 @@ export default function MainLanding() {
   const imageInputRef = useRef(null);
   const [showPlusDropdown, setShowPlusDropdown] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-  const [searchText, setSearchText] = useState("");
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  
+  // --- property states ---
+  const [properties, setProperties] = useState([]);
+  const [filteredProperties, setFilteredProperties] = useState([]);
+  const [featuredProperties, setFeaturedProperties] = useState([]);
 
   // --- chat data ---
   const [chatHistory, setChatHistory] = useState(() => {
@@ -113,21 +257,66 @@ export default function MainLanding() {
   });
   const [activeChat, setActiveChat] = useState(null);
   const [hoveredChat, setHoveredChat] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
 
 
-  // Initialize featured properties on component mount
+  // Load properties on component mount
   useEffect(() => {
-    setFeaturedProperties(getFeaturedProperties());
+    const loadProperties = async () => {
+      try {
+        setError(null);
+        setIsLoading(true);
+        
+        // Log that we're starting to load properties
+        console.log('Loading properties...');
+        // Fetch properties from the backend
+        const response = await propertyService.getProperties();
+        // Ensure we have an array of properties
+        const properties = Array.isArray(response) ? response : (response.data || []);
+        setProperties(properties);
+        setFilteredProperties(properties);
+        // First 3 as featured, or all if less than 3
+        setFeaturedProperties(properties.slice(0, Math.min(3, properties.length)));
+        setError(null);
+      } catch (err) {
+        const errorMessage = err.response?.data?.message || err.message || 'Failed to load properties. Please try again later.';
+        console.error("Error fetching properties:", errorMessage, err);
+        
+        // Set error state with user-friendly message
+        setError(errorMessage);
+        
+        // Reset properties to empty arrays on error
+        setProperties([]);
+        setFilteredProperties([]);
+        setFeaturedProperties([]);
+        
+        // Log additional error details in development
+        if (process.env.NODE_ENV === 'development') {
+          console.error('Error details:', {
+            response: err.response?.data,
+            status: err.response?.status,
+            config: err.config
+          });
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProperties();
   }, []);
 
-  // Handle search functionality
-  const handleSearch = (query = searchText) => {
-    if (query.trim()) {
-      const results = searchProperties(query);
-      setSearchResults(results);
-      // Navigate to listings page with search results
-      navigate('/listings', { state: { searchResults: results, query } });
-    }
+  // Handle property search functionality
+  const searchProperties = (query) => {
+    if (!query.trim()) return [];
+    const searchTerm = query.toLowerCase();
+    return properties.filter(property => 
+      property.title.toLowerCase().includes(searchTerm) ||
+      property.description?.toLowerCase().includes(searchTerm) ||
+      property.location?.toLowerCase().includes(searchTerm) ||
+      property.type?.toLowerCase().includes(searchTerm)
+    );
   };
 
 
@@ -173,19 +362,12 @@ export default function MainLanding() {
     localStorage.setItem("hs_compact_v1", JSON.stringify(compactMode));
   }, [compactMode]);
 
+  // Clean up old localStorage keys
   useEffect(() => {
-    localStorage.setItem("hs_show_side_v1", JSON.stringify(showSidePanel));
-  }, [showSidePanel]);
-
-  useEffect(() => {
-    // hydrate compactMode + showSidePanel from storage on mount
-    try {
-      const c = localStorage.getItem("hs_compact_v1");
-      if (c) setCompactMode(JSON.parse(c));
-      const s = localStorage.getItem("hs_show_side_v1");
-      if (s) setShowSidePanel(JSON.parse(s));
-    } catch (e) {
-      // noop
+    if (typeof window !== 'undefined') {
+      // Remove old keys if they exist
+      localStorage.removeItem("hs_show_side_v1");
+      localStorage.removeItem("hs_compact_v1");
     }
   }, []);
 
@@ -260,25 +442,14 @@ export default function MainLanding() {
   const closePreview = () => setPreviewItem(null);
 
   // --- suggestions / search ---
-  const handleSuggestionClick = () => setShowSuggestions((s) => !s);
+  const handleSuggestionClick = () => {
+    setShowSuggestions(!showSuggestions);
+  };
 
-  const handleSearchSubmit = (e) => {
-    e?.preventDefault();
-    if (!searchText.trim()) return;
-    
-    // Use the property search functionality
-    handleSearch();
-    
-    const newChat = {
-      id: Date.now(),
-      title: searchText.length > 40 ? searchText.substring(0, 40) + "..." : searchText,
-      date: "Just now",
-    };
-    setChatHistory((p) => [newChat, ...p]);
-    setActiveChat(newChat.id);
-    setSearchText("");
-    setShowPlusDropdown(false);
+  const handleSuggestionSelect = (suggestion) => {
+    setSearchQuery(suggestion);
     setShowSuggestions(false);
+    handleSearchSubmit({ preventDefault: () => {} }, suggestion);
   };
 
   const deleteChat = (id, e) => {
@@ -335,19 +506,43 @@ export default function MainLanding() {
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-gray-700/20 via-transparent to-transparent" />
 
       {/* Left floating open-button (small screens) */}
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => setShowSidePanel(true)}
-        className="fixed left-4 top-4 z-30 w-10 h-10 flex items-center justify-center rounded-lg bg-gray-800/70 text-white border border-gray-600/50 backdrop-blur-sm sm:hidden"
-        aria-label="Open chat sidebar"
-      >
-        <MessageSquare size={20} />
-      </motion.button>
+      {/* Mobile toggle - single oval container */}
+      {!isDesktop && (
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.2, 0, 0, 1] }}
+          className="fixed left-4 top-4 z-30 sm:hidden"
+        >
+          <div className="flex items-center p-1 rounded-full backdrop-blur-sm border border-white/20 bg-transparent">
+            <motion.button
+              whileHover={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowMobileSidebar(true)}
+              className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors"
+              aria-label="Open chat"
+            >
+              <MessageSquare className="text-white" size={18} />
+            </motion.button>
+            
+            <div className="w-px h-5 bg-white/20 mx-1"></div>
+            
+            <motion.button
+              whileHover={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => { /* Add your plus button action here */ }}
+              className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/10 transition-colors"
+              aria-label="Add new"
+            >
+              <Plus className="text-white" size={18} />
+            </motion.button>
+          </div>
+        </motion.div>
+      )}
 
-      {/* Sidebar (ChatGPT-style) */}
-      <AnimatePresence>
-        {showSidePanel && (
+      {/* Sidebar - Always render on desktop, conditionally on mobile */}
+      <AnimatePresence initial={false}>
+        {(showMobileSidebar || isDesktop) && (
           <>
             {/* mobile overlay to close */}
             <motion.div
@@ -356,16 +551,19 @@ export default function MainLanding() {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.18 }}
               className="fixed inset-0 bg-black/50 z-40 sm:hidden"
-              onClick={() => setShowSidePanel(false)}
+              onClick={() => setShowMobileSidebar(false)}
             />
 
             <motion.aside
-              initial={{ x: -320 }}
-              animate={{ x: 0 }}
-              exit={{ x: -320 }}
-              transition={{ duration: 0.28, ease: "easeOut" }}
+              initial={isDesktop ? { x: 0, opacity: 1 } : { x: -320, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={isDesktop ? { x: 0, opacity: 1 } : { x: -320, opacity: 0 }}
+              transition={{ duration: 0.3, ease: [0.2, 0, 0, 1] }}
               className={`fixed left-0 top-0 z-50 h-full backdrop-blur-xl flex flex-col border-r border-gray-800/50 ${compactMode ? 'w-16' : 'w-64'}`}
-              style={{ background: 'rgba(15, 15, 15, 0.95)' }}
+              style={{ 
+                background: 'rgba(15, 15, 15, 0.95)',
+                boxShadow: '2px 0 10px rgba(0, 0, 0, 0.2)'
+              }}
             >
               {/* HomeSwift sidebar header */}
               <div className="p-3 flex-shrink-0">
@@ -385,20 +583,22 @@ export default function MainLanding() {
 
                   {!compactMode && (
                     <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => setCompactMode((s) => !s)}
-                        className="hidden sm:inline-flex items-center justify-center p-2 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-all duration-200"
-                        title={compactMode ? 'Expand sidebar' : 'Collapse sidebar'}
-                      >
-                        {compactMode ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-                      </button>
-
-                      <button 
-                        onClick={() => setShowSidePanel(false)} 
-                        className="sm:hidden p-2 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-all duration-200"
-                      >
-                        <X size={18} />
-                      </button>
+                      {!isDesktop ? (
+                        <button 
+                          onClick={() => setShowMobileSidebar(false)} 
+                          className="p-2 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-all duration-200"
+                        >
+                          <X size={18} />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setCompactMode((s) => !s)}
+                          className="inline-flex items-center justify-center p-2 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-all duration-200"
+                          title={compactMode ? 'Expand sidebar' : 'Collapse sidebar'}
+                        >
+                          {compactMode ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -421,7 +621,7 @@ export default function MainLanding() {
                 <div className="space-y-1">
                   {[
                     { icon: Home, label: 'Home', active: true },
-                    { icon: Search, label: 'Property Search' },
+                    { icon: MapPin, label: 'Find Properties' },
                     { icon: Heart, label: 'Saved Properties' },
                     { icon: MapPin, label: 'Neighborhood Guide' },
                     { icon: Calculator, label: 'Mortgage Calculator' },
@@ -501,16 +701,18 @@ export default function MainLanding() {
                     <div className="flex items-center gap-2">
                       {user ? (
                         <>
-                          <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center">
-                            <span className="text-white text-xs font-bold">
-                              {user.user_metadata?.first_name?.charAt(0) || user.email?.charAt(0) || 'U'}
+                          <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                            <span className="text-white text-sm font-bold">
+                              {user?.firstName?.charAt(0) || user?.email?.charAt(0).toUpperCase() || 'U'}
                             </span>
                           </div>
-                          <div className="flex flex-col">
-                            <span className="text-gray-300 text-sm">
-                              {user.user_metadata?.first_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User'}
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-gray-100 text-sm font-medium truncate">
+                              {user?.firstName || user?.email?.split('@')[0]}
                             </span>
-                            <span className="text-gray-500 text-xs">{user.email}</span>
+                            <span className="text-gray-400 text-xs truncate">
+                              {user?.email}
+                            </span>
                           </div>
                         </>
                       ) : (
@@ -605,16 +807,15 @@ export default function MainLanding() {
       </motion.nav>
 
       {/* MAIN area (hero + search) */}
-      <div style={{ paddingLeft: isSmUp && showSidePanel ? (compactMode ? '80px' : '320px') : 0 }} className="relative z-10 transition-all duration-300">
-        <div className="flex flex-col items-center justify-center min-h-[80vh] px-6">
+      <div style={{ paddingLeft: isDesktop ? (compactMode ? '80px' : '320px') : 0 }} className="relative z-10 transition-all duration-300">
+        <div className="flex flex-col items-center justify-center min-h-[70vh] px-6 pt-32 sm:pt-24">
           {/* hero text */}
-          <div className="text-center mb-8 sm:mb-12 max-w-4xl px-2 sm:px-0">
-            <h1 className="flex items-center justify-center flex-wrap text-3xl sm:text-4xl font-bold text-white mb-4 sm:mb-6 leading-tight mt-16 sm:mt-40 gap-2 sm:gap-3">
-              <span>Rent & Buy a Home</span>
+          <div className="text-center mb-8 sm:mb-10 max-w-4xl px-2 sm:px-0">
+            <h1 className="flex items-center justify-center flex-wrap text-3xl sm:text-4xl font-bold text-white mb-4 sm:mb-5 leading-tight gap-2 sm:gap-3">
+              <span>Welcome back, {user?.firstName || user?.first_name || (user?.name ? user.name.split(' ')[0] : 'User')}!</span>
               <span className="inline-flex items-center"><img src="/Group 129.png" alt="logo" className="w-8 h-8 sm:w-8 sm:h-8 rounded-lg object-cover" /></span>
-              <span className="italic">Swiftly</span>
             </h1>
-            <p className="text-gray-300 text-md md:text-lg font-light max-w-2xl mx-auto">Rent or buy a home under 120 seconds with our AI model</p>
+            <p className="text-gray-300 text-md md:text-lg font-light max-w-2xl mx-auto">Find your dream home with HomeSwift's AI-powered search</p>
           </div>
 
           {/* Search + upload area */}
@@ -652,28 +853,59 @@ export default function MainLanding() {
               )}
             </AnimatePresence>
 
-            <motion.form onSubmit={handleSearchSubmit} whileHover={{ scale: 1.005 }} className="relative flex flex-col bg-transparent border border-1 border-[#6c6c6c] rounded-3xl shadow-2xl px-0 py-5 sm:px-2 sm:py-8 min-h-[100px] backdrop-blur-xl" style={{ background: 'rgba(60, 60, 60, 0.15)' }}>
-              <input type="text" value={searchText} onChange={(e) => setSearchText(e.target.value)} placeholder="Describe the kind of house you are looking for..." className="w-full bg-transparent text-white placeholder-[#737373] text-sm sm:text-lg outline-none border-none h-10 sm:h-10 mb-6 sm:mb-10 rounded-xl sm:rounded-2xl px-2 sm:px-4" style={{ minWidth: 0, fontSize: '0.875rem' }} />
+            <motion.form 
+              onSubmit={handleSearchSubmit}
+              whileHover={{ scale: 1.005 }} 
+              className="relative flex flex-col bg-transparent border border-1 border-[#6c6c6c] rounded-3xl shadow-2xl px-0 py-6 sm:px-4 sm:py-10 min-h-[120px] backdrop-blur-xl" 
+              style={{ background: 'rgba(60, 60, 60, 0.15)' }}
+            >
+              <div className="relative">
+                <div className="relative w-full flex items-center">
+                  <input 
+                    type="text" 
+                    value={searchQuery} 
+                    onChange={handleSearchChange}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit(e)}
+                    onFocus={() => searchQuery.trim() && setShowSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                    placeholder="Search by location, type, or features..." 
+                    className="w-full bg-transparent text-white placeholder-[#737373] outline-none border-none h-14 sm:h-16 rounded-xl sm:rounded-2xl px-6 pr-16 pt-2 pb-1" 
+                    style={{ 
+                      minWidth: 0, 
+                      fontSize: '1.1rem', 
+                      lineHeight: '1.2'
+                    }}
+                    autoComplete="off"
+                    aria-label="Search properties"
+                    disabled={isSearching}
+                  />
+                  {searchError && (
+                    <div className="absolute bottom-0 left-0 right-0 text-red-400 text-xs mt-1">
+                      {searchError}
+                    </div>
+                  )}
+                </div>
+              </div>
 
               <div className="flex items-center justify-between absolute bottom-4 left-4 right-4 sm:left-6 sm:right-6 w-auto">
                 <div className="flex items-center gap-2 sm:gap-3 relative">
-                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} type="button" className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-gray-700/40 hover:bg-gray-600/50 text-gray-300 border border-gray-500" tabIndex={-1} onClick={() => setShowPlusDropdown((s) => !s)}>
-                    <Plus size={18} />
+                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} type="button" className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full bg-gray-700/40 hover:bg-gray-600/50 text-gray-300 border border-gray-500" tabIndex={-1} onClick={() => setShowPlusDropdown((s) => !s)}>
+                    <Plus size={12} />
                   </motion.button>
 
                   <AnimatePresence>
                     {showPlusDropdown && (
-                      <motion.div initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} transition={{ duration: 0.18 }} className="absolute bottom-14 left-0 border border-gray-400/50 rounded-2xl shadow-2xl z-50 px-2 py-1 sm:px-4 sm:py-2 min-w-[220px] w-[220px] h-[90px] sm:h-[120px] backdrop-blur-xl" style={{ background: 'rgba(60, 60, 60, 0.85)' }}>
-                        <div className="space-y-2">
-                          <button onClick={() => { handleFileUploadClick(); setShowPlusDropdown(false); }} className="w-full flex items-center gap-2 text-left text-gray-300 hover:text-white hover:bg-gray-700/50 p-2 sm:p-3 rounded-lg text-sm sm:text-base">
-                            <FileUp size={18} />
-                            <span>Upload File</span>
+                      <motion.div initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} transition={{ duration: 0.18 }} className="absolute bottom-14 left-0 border border-gray-400/50 rounded-lg shadow-2xl z-50 px-1 py-0.5 min-w-[180px] w-[180px] h-[60px] backdrop-blur-xl" style={{ background: 'rgba(60, 60, 60, 0.9)' }}>
+                        <div className="space-y-0">
+                          <button onClick={() => { handleFileUploadClick(); setShowPlusDropdown(false); }} className="w-full flex items-center gap-0.5 text-left text-gray-300 hover:text-white hover:bg-gray-700/50 px-1.5 py-0.5 rounded text-[10px] leading-tight">
+                            <FileUp size={8} className="flex-shrink-0" />
+                            <span className="truncate">Upload File</span>
                           </button>
                           <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
 
-                          <button onClick={() => { handleImageUploadClick(); setShowPlusDropdown(false); }} className="w-full flex items-center gap-2 text-left text-gray-300 hover:text-white hover:bg-gray-700/50 p-2 sm:p-3 rounded-lg text-sm sm:text-base">
-                            <ImageUp size={18} />
-                            <span className="whitespace-nowrap -mt-1">Upload Image</span>
+                          <button onClick={() => { handleImageUploadClick(); setShowPlusDropdown(false); }} className="w-full flex items-center gap-0.5 text-left text-gray-300 hover:text-white hover:bg-gray-700/50 px-1.5 py-0.5 rounded text-[10px] leading-tight">
+                            <ImageUp size={8} className="flex-shrink-0" />
+                            <span className="truncate">Upload Image</span>
                           </button>
                           <input type="file" accept="image/*" ref={imageInputRef} style={{ display: 'none' }} onChange={handleImageChange} />
                         </div>
@@ -681,13 +913,20 @@ export default function MainLanding() {
                     )}
                   </AnimatePresence>
 
-                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} type="button" onClick={handleSuggestionClick} className="flex items-center gap-1 sm:gap-2 px-2 py-1 sm:px-4 sm:py-2 rounded-full bg-transparent border border-gray-400/50 text-gray-300 font-medium hover:bg-gray-700/30 text-sm sm:text-base">
+                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} type="button" onClick={handleSuggestionClick} className="flex items-center gap-1 sm:gap-1 px-1 py-1 sm:px-3 sm:py-1 rounded-full bg-transparent border border-gray-400/50 text-gray-300 font-small hover:bg-gray-700/30 text-xs sm:text-base">
                     <Sparkles size={18} />
                     <span>Suggestions</span>
                   </motion.button>
                 </div>
 
-                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} type="submit" className={`w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full text-white shadow-lg border border-gray-400/50 ${!searchText ? 'opacity-50 cursor-not-allowed' : ''}`} style={{ background: 'linear-gradient(180deg, #3a3d42 0%, #23262b 100%)', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }} disabled={!searchText}>
+                <motion.button 
+                  whileHover={{ scale: 1.05 }} 
+                  whileTap={{ scale: 0.95 }} 
+                  type="submit" 
+                  className={`w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full text-white shadow-lg border border-gray-400/50 ${!searchQuery.trim() ? 'opacity-50 cursor-not-allowed' : ''}`} 
+                  style={{ background: 'linear-gradient(180deg, #3a3d42 0%, #23262b 100%)', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }} 
+                  disabled={!searchQuery.trim() || isSearching}
+                >
                   <ArrowUp size={18} />
                 </motion.button>
               </div>
@@ -696,12 +935,21 @@ export default function MainLanding() {
             {/* Suggestions */}
             <AnimatePresence>
               {showSuggestions && (
-                <motion.div initial={{ opacity: 0, y: -10, height: 0 }} animate={{ opacity: 1, y: 0, height: 'auto' }} exit={{ opacity: 0, y: -10, height: 0 }} transition={{ duration: 0.2 }} className="absolute top-full left-0 right-0 mt-2 sm:mt-4 border border-gray-400/50 rounded-2xl shadow-2xl z-20" style={{ backgroundImage: 'url("/Rectangle 135.png")', backgroundSize: 'cover', backgroundPosition: 'center', backdropFilter: 'blur(12px)' }}>
+                <motion.div initial={{ opacity: 0, y: -10, height: 0 }} animate={{ opacity: 1, y: 0, height: 'auto' }} exit={{ opacity: 0, y: -10, height: 0 }} transition={{ duration: 0.2 }} className="absolute top-full left-0 right-0 mt-2 sm:mt-4 border border-gray-400/50 rounded-2xl shadow-2xl z-20 overflow-hidden" style={{ backgroundImage: 'url("/Rectangle 135.png")', backgroundSize: 'cover', backgroundPosition: 'center', backdropFilter: 'blur(12px)' }}>
                   <div className="p-4" style={{ background: 'transparent' }}>
-                    <h3 className="text-white font-semibold mb-2 sm:mb-3 text-base sm:text-lg">Popular Searches</h3>
-                    <div className="space-y-2">
+                    <h3 className="text-white font-semibold mb-3 sm:mb-4 text-lg sm:text-xl">Popular Searches</h3>
+                    <div className="space-y-1">
                       {suggestions.map((sug, idx) => (
-                        <button key={idx} onClick={() => { setSearchText(sug); setShowSuggestions(false); }} className="w-full text-left text-gray-300 hover:text-white hover:bg-gray-700/50 p-2 sm:p-3 rounded-lg text-sm sm:text-base">{sug}</button>
+                        <motion.button 
+                          key={idx} 
+                          whileHover={{ scale: 1.01 }}
+                          whileTap={{ scale: 0.99 }}
+                          onClick={() => handleSuggestionSelect(sug)} 
+                          className="w-full text-left text-gray-300 hover:text-white hover:bg-gray-700/50 px-4 py-2.5 rounded-lg leading-normal transition-all duration-150"
+                          style={{ fontSize: '15px' }}
+                        >
+                          {sug}
+                        </motion.button>
                       ))}
                     </div>
                   </div>
@@ -710,7 +958,6 @@ export default function MainLanding() {
             </AnimatePresence>
           </div>
         </div>
-
         {/* preview modal */}
         <AnimatePresence>
           {previewItem && (

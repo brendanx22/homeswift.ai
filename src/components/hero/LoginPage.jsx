@@ -1,65 +1,133 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { signInWithGoogle } from '../../lib/googleAuth';
-// import { supabase } from '../../lib/supabase'; // Removed - using custom auth
+import React, { useState, useContext, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { AppContext } from '../../contexts/AppContext';
 import { ArrowLeft, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import api from '../../lib/api';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState({ message: '', needsVerification: false });
+  const [isVerified, setIsVerified] = useState(false);
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { login, isAuthenticated, isLoading } = useContext(AppContext);
+
+  // Check for verification status and redirect if authenticated
+  useEffect(() => {
+    console.log('LoginPage - isAuthenticated:', isAuthenticated, 'isLoading:', isLoading);
+    
+    // Only proceed if we're done loading
+    if (isLoading) return;
+    
+    // Check for verification success in URL params
+    const verified = searchParams.get('verified') === 'true';
+    const redirectPath = searchParams.get('redirect') || '/main';
+    
+    if (verified) {
+      setIsVerified(true);
+      // Clear the URL params
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+    
+    // If already authenticated, redirect to main or the specified path
+    if (isAuthenticated) {
+      console.log('Already authenticated, redirecting to', redirectPath);
+      navigate(redirectPath, { replace: true });
+    }
+  }, [isAuthenticated, isLoading, navigate, searchParams]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
+    setError({ message: '', needsVerification: false });
+
+    // Basic validation
+    if (!email || !password) {
+      setError({
+        message: 'Please enter both email and password.',
+        needsVerification: false
+      });
+      setLoading(false);
+      return;
+    }
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: email,
-          password: password,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.error || 'Login failed');
-      } else {
-        // Store user session
-        localStorage.setItem('google_user_session', JSON.stringify(data));
-        
-        // Login successful - redirect to main page (cross-domain)
-        window.location.href = 'https://chat-homeswift-ai.vercel.app/main';
-      }
+      console.log('Login attempt with:', { email, password: '***' });
+      
+      // Use the login function from AppContext
+      const userData = await login({ email, password });
+      
+      console.log('Login successful:', userData);
+      
+      // Get redirect path from URL or default to '/main'
+      const redirectPath = searchParams.get('redirect') || '/main';
+      console.log('Redirecting to:', redirectPath);
+      
+      // Redirect to the specified path or main page
+      navigate(redirectPath);
+      
     } catch (err) {
-      setError('An unexpected error occurred. Please try again.');
+      console.error('Login error:', err);
+      
+      // Handle email verification required case
+      if (err.needsVerification) {
+        setError({
+          message: 'Please verify your email before logging in.',
+          needsVerification: true,
+          email: err.email || email
+        });
+      } else {
+        // Handle other login errors
+        let errorMessage = 'Login failed. Please check your credentials and try again.';
+        
+        // More specific error messages based on status code
+        if (err.response?.status === 401) {
+          errorMessage = 'Invalid email or password. Please try again.';
+        } else if (err.response?.status === 429) {
+          errorMessage = 'Too many login attempts. Please try again later.';
+        } else if (err.message) {
+          errorMessage = err.message;
+        }
+        
+        setError({
+          message: errorMessage,
+          needsVerification: false
+        });
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendVerification = async (emailToVerify) => {
+    try {
+      setLoading(true);
+      await api.post('/auth/resend-verification', { email: emailToVerify });
+      setError({
+        message: `Verification email sent to ${emailToVerify}! Please check your inbox.`,
+        needsVerification: false
+      });
+    } catch (err) {
+      console.error('Failed to resend verification email:', err);
+      setError({
+        message: 'Failed to resend verification email. Please try again later.',
+        needsVerification: true,
+        email: emailToVerify
+      });
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleLogin = () => {
-    try {
-      console.log('Starting Google OAuth flow...');
-      setLoading(true);
-      setError(''); // Clear any previous errors
-      
-      // Redirect to Google OAuth
-      signInWithGoogle();
-    } catch (error) {
-      console.error('Google login error:', error);
-      setError(error.message || 'Failed to sign in with Google');
-      setLoading(false);
-    }
+    setError({
+      message: 'Google Sign-In is temporarily disabled. Please use email login.',
+      needsVerification: false
+    });
   };
 
   const handleBackToHome = () => {
@@ -95,13 +163,39 @@ export default function LoginPage() {
         {/* Login Form */}
         <div className="bg-transparent border border-gray-400/50 rounded-[2rem] p-8">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
-            <p className="text-gray-300">Sign in to your HomeSwift account</p>
+            <h1 className="text-3xl font-bold text-white mb-2">
+              {isVerified ? 'Email Verified!' : 'Welcome Back'}
+            </h1>
+            <p className="text-gray-300">
+              {isVerified 
+                ? 'Your email has been successfully verified. You can now sign in to your account.' 
+                : 'Sign in to your HomeSwift account'}
+            </p>
+            {isVerified && (
+              <div className="mt-4 p-3 bg-green-50 text-green-700 rounded-md text-sm">
+                Email verification successful! You can now log in to your account.
+              </div>
+            )}
           </div>
 
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-              {error}
+          {error.message && (
+            <div className={`mt-4 p-3 rounded-md text-sm ${
+              error.needsVerification ? 'bg-yellow-50 text-yellow-700' : 'bg-red-50 text-red-700'
+            }`}>
+              {error.needsVerification ? (
+                <div>
+                  <p>{error.message}</p>
+                  <button 
+                    onClick={() => handleResendVerification(error.email)}
+                    className="mt-2 text-sm font-medium text-yellow-700 hover:text-yellow-800 focus:outline-none"
+                    disabled={loading}
+                  >
+                    {loading ? 'Sending...' : 'Resend verification email'}
+                  </button>
+                </div>
+              ) : (
+                error.message
+              )}
             </div>
           )}
 
