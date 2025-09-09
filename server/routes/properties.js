@@ -1,50 +1,10 @@
 import express from 'express';
-import cors from 'cors';
 import { body, validationResult } from 'express-validator';
 import { Op } from 'sequelize';
 import models from '../models/index.js';
-import { requireAuth, requireRole } from '../middleware/jwtAuth.js';
+import jwtAuth from '../middleware/jwtAuth.js';
 
 const router = express.Router();
-
-// CORS Configuration
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, Postman, etc.)
-    if (!origin) return callback(null, true);
-    
-    // List of allowed origins
-    const allowedOrigins = [
-      'https://homeswift-ai.vercel.app',
-      'https://homeswift-ai-brendanx22s-projects.vercel.app',
-      /\.vercel\.app$/, // Allow all Vercel deployment subdomains
-      'http://localhost:3000', // Local development
-      'http://localhost:3001'
-    ];
-    
-    // Check if the origin matches any allowed pattern
-    if (allowedOrigins.some(allowedOrigin => {
-      if (typeof allowedOrigin === 'string') {
-        return origin === allowedOrigin;
-      } else if (allowedOrigin instanceof RegExp) {
-        return allowedOrigin.test(origin);
-      }
-      return false;
-    })) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true, // Allow cookies/auth headers
-  optionsSuccessStatus: 200 // For legacy browser support
-};
-
-// Use CORS middleware
-router.use(cors(corsOptions));
-
-// Handle preflight requests for all routes
-router.options('*', cors(corsOptions));
 
 // Error handling middleware
 const asyncHandler = (fn) => (req, res, next) => {
@@ -141,7 +101,7 @@ const buildPropertyFilter = (query) => {
   return filter;
 };
 
-// GET /api/properties - Get all properties with filtering
+// GET /api/properties - Get all properties with filtering (public access)
 router.get('/', asyncHandler(async (req, res) => {
   try {
     const {
@@ -187,7 +147,7 @@ router.get('/', asyncHandler(async (req, res) => {
   }
 }));
 
-// GET /api/properties/featured - Get featured properties
+// GET /api/properties/featured - Get featured properties (public access)
 router.get('/featured', asyncHandler(async (req, res) => {
   try {
     const properties = await models.Property.findAll({
@@ -211,7 +171,7 @@ router.get('/featured', asyncHandler(async (req, res) => {
   }
 }));
 
-// GET /api/properties/:id - Get property by ID
+// GET /api/properties/:id - Get property by ID (public access)
 router.get('/:id', asyncHandler(async (req, res) => {
   try {
     const property = await models.Property.findByPk(req.params.id, {
@@ -249,7 +209,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
 }));
 
 // POST /api/properties - Create new property (requires authentication)
-router.post('/', requireAuth, validateProperty, asyncHandler(async (req, res) => {
+router.post('/', jwtAuth, validateProperty, asyncHandler(async (req, res) => {
   try {
     const propertyData = {
       ...req.body,
@@ -296,7 +256,7 @@ router.post('/', requireAuth, validateProperty, asyncHandler(async (req, res) =>
 }));
 
 // PUT /api/properties/:id - Update property (requires authentication)
-router.put('/:id', requireAuth, validateProperty, asyncHandler(async (req, res) => {
+router.put('/:id', jwtAuth, validateProperty, asyncHandler(async (req, res) => {
   try {
     const property = await models.Property.findByPk(req.params.id);
     
@@ -332,7 +292,7 @@ router.put('/:id', requireAuth, validateProperty, asyncHandler(async (req, res) 
 }));
 
 // DELETE /api/properties/:id - Delete property (requires authentication)
-router.delete('/:id', requireAuth, asyncHandler(async (req, res) => {
+router.delete('/:id', jwtAuth, asyncHandler(async (req, res) => {
   try {
     const property = await models.Property.findByPk(req.params.id);
     

@@ -18,7 +18,6 @@ router.use(checkRememberToken);
 
 // Register
 router.post('/register', 
-  requireGuest,
   authLimiter,
   [
     body('firstName').trim().isLength({ min: 2 }).withMessage('First name is required'),
@@ -35,7 +34,6 @@ router.post('/register',
 
 // POST /api/auth/login - User login
 router.post('/login', 
-  requireGuest,
   authLimiter,
   [
     body('email').isEmail().withMessage('Valid email is required'),

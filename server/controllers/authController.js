@@ -42,15 +42,44 @@ const authController = {
         return res.status(400).json({ errors: errors.array() });
       }
 
-      const { email, password, fullName } = req.body;
-      const { user, error } = await signUpWithEmail(email, password, { fullName });
+      const { email, password, firstName, lastName } = req.body;
+      
+      // Check if user already exists
+      const existingUser = await models.User.findOne({ where: { email } });
+      if (existingUser) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Email already in use' 
+        });
+      }
 
-      if (error) throw error;
+      // Create user
+      const user = await models.User.create({
+        email,
+        password,
+        firstName,
+        lastName,
+        role: 'user',
+        status: 'active'
+      });
+
+      // Generate JWT token
+      const token = createToken(user);
+      
+      // Set token in cookie
+      setAuthCookie(res, token);
+
+      // Return user data (excluding password) and token
+      const userResponse = user.get({ plain: true });
+      delete userResponse.password;
 
       return res.status(201).json({
         success: true,
-        message: 'Registration successful. Please check your email to verify your account.',
-        user
+        message: 'Registration successful',
+        data: {
+          user: userResponse,
+          token
+        }
       });
     } catch (error) {
       console.error('Register error:', error);
@@ -70,17 +99,46 @@ const authController = {
       }
 
       const { email, password } = req.body;
-      const { user, error } = await signInWithEmail(email, password);
+      
+      // Find user by email
+      const user = await models.User.findOne({ 
+        where: { email },
+        attributes: { exclude: ['password'] } // Don't return password
+      });
 
-      if (error) throw error;
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid email or password'
+        });
+      }
 
+      // Verify password
+      const isValidPassword = await user.validPassword(password);
+      if (!isValidPassword) {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid email or password'
+        });
+      }
+
+      // Generate JWT token
       const token = createToken(user);
+      
+      // Set token in cookie
       setAuthCookie(res, token);
+
+      // Get user data (excluding password)
+      const userResponse = user.get({ plain: true });
+      delete userResponse.password;
 
       return res.json({
         success: true,
-        user,
-        token
+        message: 'Login successful',
+        data: {
+          user: userResponse,
+          token
+        }
       });
     } catch (error) {
       console.error('Login error:', error);
