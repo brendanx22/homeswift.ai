@@ -32,6 +32,11 @@ import { propertyRouter } from './routes/propertyRoutes.js';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust proxy in production (Vercel, etc.)
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+}
+
 // Initialize models and database connection
 console.log('Initializing database connection...');
 try {
@@ -56,6 +61,14 @@ const limiter = rateLimit({
   message: { error: 'Too many requests, please try again later.' }
 });
 app.use(limiter);
+
+// Root route
+app.get('/', (req, res) => {
+  res.send('HomeSwift API is running 🚀');
+});
+
+// Favicon route
+app.get('/favicon.ico', (req, res) => res.status(204).end());
 
 // Development CORS configuration - permissive for local development
 const corsOptions = {
