@@ -25,25 +25,20 @@ if (process.env.NODE_ENV === 'production') {
 // Configure CORS with whitelisted origins - MUST BE BEFORE OTHER MIDDLEWARE
 const allowedOrigins = [
   /^https?:\/\/localhost(:\d+)?$/,  // Allow any localhost with any port
-  /\.vercel\.app$/,                   // Allow any Vercel preview domain
-  'https://homeswift.ai',              // Production domain
-  'https://www.homeswift.ai'           // Production domain with www
+  /\.vercel\.app$/,                  // Allow any Vercel preview domain
+  'https://homeswift.ai',             // Production domain
+  'https://www.homeswift.ai'          // Production domain with www
 ];
 
-app.use(cors({
+const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
     // Check if the origin matches any of the allowed patterns
-    const isAllowed = allowedOrigins.some(pattern => {
-      if (typeof pattern === 'string') {
-        return pattern === origin;
-      } else if (pattern instanceof RegExp) {
-        return pattern.test(origin);
-      }
-      return false;
-    });
+    const isAllowed = allowedOrigins.some(pattern => 
+      (pattern instanceof RegExp ? pattern.test(origin) : pattern === origin)
+    );
     
     if (isAllowed) {
       return callback(null, true);
@@ -75,10 +70,11 @@ app.use(cors({
   maxAge: 86400, // 24 hours
   preflightContinue: false,
   optionsSuccessStatus: 204
-}));
+};
 
-// Handle preflight requests
-app.options('*', cors());
+// Apply CORS middleware
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Enable preflight for all routes
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '.env') });
@@ -128,60 +124,7 @@ app.get('/', (req, res) => {
 // Favicon route
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 
-// Development CORS configuration - permissive for local development
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow all origins in development
-    if (process.env.NODE_ENV !== 'production') {
-      return callback(null, true);
-    }
-    
-    // In production, only allow specific origins
-    const allowedOrigins = [
-      'https://homeswift-ai.vercel.app',
-      'https://homeswift-ai.vercel.app',
-      'http://localhost:3000',  // For local development
-      'http://localhost:5173'   // Vite default dev server port
-    ];
-    
-    // Allow requests with no origin (like mobile apps, curl, etc.)
-    if (!origin) return callback(null, true);
-    
-    // Check if the origin is allowed
-    if (allowedOrigins.some(allowedOrigin => 
-      origin === allowedOrigin || 
-      origin.startsWith(allowedOrigin.replace('https://', 'http://'))
-    )) {
-      return callback(null, true);
-    }
-    
-    callback(new Error(`Not allowed by CORS. Origin: ${origin}`));
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'X-Requested-With',
-    'Accept',
-    'Origin',
-    'Access-Control-Allow-Headers',
-    'X-Requested-With'
-  ],
-  exposedHeaders: [
-    'Content-Length',
-    'X-Foo',
-    'X-Bar'
-  ],
-  optionsSuccessStatus: 200, // Some legacy browsers choke on 204
-  preflightContinue: false,
-  maxAge: 86400 // 24 hours
-};
-
-// Apply CORS middleware with the configured options
-app.use(cors(corsOptions));
-// Enable preflight for all routes
-app.options('*', cors(corsOptions));
+// CORS is already configured at the top of the file
 
 // Cookie parser middleware
 app.use(cookieParser());
