@@ -52,7 +52,7 @@ export default ({ mode }) => {
       }
     },
     build: {
-      outDir: 'dist',
+      outDir: 'build',
       assetsDir: 'assets',
       sourcemap: false,
       modulePreload: {
