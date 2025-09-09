@@ -1,5 +1,14 @@
 {
   "version": 2,
+  "github": {
+    "enabled": true,
+    "autoAlias": true,
+    "autoJobCancelation": true,
+    "silent": false
+  },
+  "public": true,
+  "cleanUrls": true,
+  "trailingSlash": false,
   "routes": [
     {
       "src": "/assets/(.*)",
