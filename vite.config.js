@@ -23,9 +23,12 @@ export default ({ mode }) => {
       'process.env': {}
     },
     resolve: {
-      alias: {
-        'hoist-non-react-statics': 'hoist-non-react-statics/dist/hoist-non-react-statics.cjs.js'
-      }
+      alias: [
+        {
+          find: /^hoist-non-react-statics(\/.*)?$/,
+          replacement: 'hoist-non-react-statics/dist/hoist-non-react-statics.cjs.js'
+        }
+      ]
     },
     server: {
       port: 3000,
