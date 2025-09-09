@@ -51,7 +51,6 @@ export default ({ mode }) => {
         }
       }
     },
-    base: '/',
     build: {
       outDir: 'dist',
       assetsDir: 'assets',
