@@ -20,8 +20,12 @@ export default ({ mode }) => {
     ],
     base: isProduction ? './' : '/',
     define: {
-      'process.env': process.env,
-      global: 'globalThis',
+      'process.env': {}
+    },
+    resolve: {
+      alias: {
+        'hoist-non-react-statics': 'hoist-non-react-statics/dist/hoist-non-react-statics.cjs.js'
+      }
     },
     server: {
       port: 3000,
@@ -59,9 +63,6 @@ export default ({ mode }) => {
           drop_debugger: true,
         },
       },
-    },
-    define: {
-      'process.env': {},
     },
   });
 };
