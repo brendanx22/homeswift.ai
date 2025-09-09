@@ -31,7 +31,7 @@ class Database {
           dialectOptions: {
             ssl: {
               require: true,
-              rejectUnauthorized: false
+              rejectUnauthorized: false // For self-signed certificates
             },
             statement_timeout: 10000,
             idle_in_transaction_session_timeout: 10000,
