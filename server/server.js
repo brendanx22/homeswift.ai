@@ -23,21 +23,44 @@ if (process.env.NODE_ENV === 'production') {
 
 // Configure CORS with whitelisted origins - MUST BE BEFORE OTHER MIDDLEWARE
 const allowedOrigins = [
+  // Local development
   /^https?:\/\/localhost(:\d+)?$/,  // Allow any localhost with any port
-  /\.vercel\.app$/,                 // Allow any Vercel preview domain
-  'https://homeswift.ai',           // Production domain
-  'https://www.homeswift.ai'        // Production domain with www
+  
+  // Vercel deployments
+  /^https?:\/\/homeswift-ai(-\w+)?\.vercel\.app$/,  // Main Vercel app
+  /^https?:\/\/homeswift-\w+\-brendanx22s-projects\.vercel\.app$/,  // Vercel PR previews
+  
+  // Production domains
+  'https://homeswift.ai',
+  'https://www.homeswift.ai',
+  
+  // Development and testing
+  /^https?:\/\/homeswift-\w{8,}-\d+\.vercel\.app$/,  // Vercel deployment hashes
+  /^https?:\/\/homeswift-\w+-\w+\.vercel\.app$/,     // Vercel branch deployments
 ];
 
 const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
+    if (!origin) {
+      console.log('CORS: No origin (non-web request)');
+      return callback(null, true);
+    }
 
+    // Log all incoming origins for debugging
+    console.log(`CORS: Checking origin: ${origin}`);
+    
     // Check if the origin matches any of the allowed patterns
-    const isAllowed = allowedOrigins.some(pattern =>
-      (pattern instanceof RegExp ? pattern.test(origin) : pattern === origin)
-    );
+    const isAllowed = allowedOrigins.some(pattern => {
+      const matches = (pattern instanceof RegExp) 
+        ? pattern.test(origin)
+        : pattern === origin;
+      
+      if (matches) {
+        console.log(`CORS: Allowed ${origin} (matched pattern: ${pattern})`);
+      }
+      return matches;
+    });
 
     if (isAllowed) {
       return callback(null, true);
