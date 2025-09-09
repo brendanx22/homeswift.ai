@@ -121,25 +121,51 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Determine if we're in production
 const isProduction = process.env.NODE_ENV === 'production';
 
-// Initialize session store with a simple in-memory store first
-const MemoryStore = session.MemoryStore;
-const tempStore = new MemoryStore();
-
-// Initialize session with temporary store
-app.use(session({
+// Session configuration
+const sessionConfig = {
   secret: process.env.SESSION_SECRET || 'your-super-secret-session-key',
   resave: false,
   saveUninitialized: false,
-  store: tempStore,
   proxy: isProduction, // Trust the reverse proxy in production
   cookie: {
     secure: isProduction ? true : 'auto', // 'auto' allows http in development
     httpOnly: true,
-    sameSite: isProduction ? 'none' : 'lax',
+    sameSite: isProduction ? 'none' : 'lax', // Required for cross-site cookies
     maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
     domain: isProduction ? '.homeswift-ai.vercel.app' : 'localhost'
   }
-}));
+};
+
+// Use Redis in production, in-memory in development
+if (isProduction && process.env.REDIS_URL) {
+  console.log('🔴 Using Redis for session storage');
+  const RedisStore = (await import('connect-redis')).default;
+  const { createClient } = await import('ioredis');
+  
+  const redisClient = createClient({
+    url: process.env.REDIS_URL,
+    tls: {},
+    retryStrategy: (times) => {
+      const delay = Math.min(times * 100, 5000);
+      return delay;
+    }
+  });
+  
+  redisClient.on('error', (err) => console.error('Redis Client Error:', err));
+  await redisClient.connect();
+  
+  sessionConfig.store = new RedisStore({
+    client: redisClient,
+    prefix: 'session:',
+    ttl: 86400 // 1 day in seconds
+  });
+} else {
+  console.log('💾 Using in-memory session storage (not recommended for production)');
+  sessionConfig.store = new session.MemoryStore();
+}
+
+// Initialize session with the configured store
+app.use(session(sessionConfig));
 
 // Sync session store
 sessionStore.sync();
