@@ -5,15 +5,27 @@ import path from 'path';
 // https://vite.dev/config/
 export default ({ mode }) => {
   // Load app-level env vars to node's process.env
-  process.env = { ...process.env, ...loadEnv(mode, process.cwd()) };
+  process.env = { ...process.env, ...loadEnv(mode, process.cwd(), '') };
 
   const isProduction = mode === 'production';
   
   return defineConfig({
-    plugins: [react()],
+    plugins: [
+      react({
+        jsxImportSource: '@emotion/react',
+        babel: {
+          plugins: ['@emotion/babel-plugin'],
+        },
+      })
+    ],
     base: isProduction ? './' : '/',
+    define: {
+      'process.env': process.env,
+      global: 'globalThis',
+    },
     server: {
       port: 3000,
+      strictPort: true,
       proxy: {
         '/api': {
           target: process.env.VITE_API_BASE_URL || 'http://localhost:5001',
