@@ -27,12 +27,18 @@ const authService = {
         const userResponse = await api.get('/auth/me');
         if (userResponse.data?.user) {
           console.log('Bypassing email verification in development mode');
+          // Store a mock token for development
+          localStorage.setItem('token', 'dev-token-bypass');
           return userResponse.data.user;
         }
       }
       
       // Handle successful login
       if (response.status === 200 && response.data?.success) {
+        // Store the token in localStorage
+        if (response.data.token) {
+          localStorage.setItem('token', response.data.token);
+        }
         return response.data.user;
       }
       
@@ -90,9 +96,17 @@ const authService = {
   // Get current user profile
   getCurrentUser: async () => {
     try {
+      const token = localStorage.getItem('token');
+      const headers = {};
+      
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+      
       const response = await api.get('/auth/me', {
         // Don't throw on 401 status as it's an expected response for unauthenticated users
-        validateStatus: status => status === 200 || status === 401
+        validateStatus: status => status === 200 || status === 401,
+        headers
       });
       
       if (response.status === 200 && response.data?.success) {
@@ -109,13 +123,19 @@ const authService = {
   // Check if user is authenticated
   isAuthenticated: async () => {
     try {
-      const response = await api.get('/auth/me', {
-        // Don't throw on 401 status as it's an expected response for unauthenticated users
-        validateStatus: status => status === 200 || status === 401
-      });
-      return response.status === 200 && response.data?.success === true;
+      // First check if we have a token
+      const token = localStorage.getItem('token');
+      if (!token) return false;
+      
+      // Then verify the token is still valid by making an API call
+      const user = await authService.getCurrentUser();
+      return !!user;
     } catch (error) {
-      console.error('Authentication check failed:', error);
+      console.error('Auth check failed:', error);
+      // Clear invalid token
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+      }
       return false;
     }
   },
