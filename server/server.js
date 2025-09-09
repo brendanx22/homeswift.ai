@@ -9,56 +9,42 @@ import SequelizeStoreModule from 'connect-session-sequelize';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import models from './models/index.js';
 
 // ES Modules fix for __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load environment variables
-dotenv.config({ path: path.join(__dirname, '.env') });
-
-// Import middleware
-import { checkRememberToken, loadUser } from './middleware/auth.js';
-import jwtAuth from './middleware/jwtAuth.js';
-
-// Import routes
-import authRoutes from './routes/auth.js';
-import userRoutes from './routes/users.js';
-import searchRoutes from './routes/search.js';
-import testRoutes from './routes/test.js';
-import { propertyRouter } from './routes/propertyRoutes.js';
-
+// Initialize express app first
 const app = express();
-const PORT = process.env.PORT || 5000;
 
 // Trust proxy in production (Vercel, etc.)
 if (process.env.NODE_ENV === 'production') {
   app.set('trust proxy', 1);
 }
 
-// Configure CORS with whitelisted origins
+// Configure CORS with whitelisted origins - MUST BE BEFORE OTHER MIDDLEWARE
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:5173',
+  'https://homeswift-6dj3xbt75-brendanx22s-projects.vercel.app',
   'https://homeswift-9q6emy4q1-brendanx22s-projects.vercel.app',
   'https://homeswift-mkkp9yq4e-brendanx22s-projects.vercel.app',
   'https://homeswift.ai',
   'https://www.homeswift.ai'
 ];
 
-// CORS middleware
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = `CORS policy: ${origin} not allowed`;
-      console.warn(msg);
-      return callback(new Error(msg), false);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
     }
-    return callback(null, true);
+    
+    const msg = `CORS policy: ${origin} not allowed`;
+    console.warn(msg);
+    return callback(new Error(msg), false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
@@ -76,10 +62,31 @@ app.use(cors({
     'Content-Range',
     'X-Total-Count',
     'X-Access-Token',
-    'X-Refresh-Token'
+    'X-Refresh-Token',
+    'Set-Cookie'
   ],
-  maxAge: 86400 // 24 hours
+  maxAge: 86400, // 24 hours
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 }));
+
+// Handle preflight requests
+app.options('*', cors());
+
+// Load environment variables
+dotenv.config({ path: path.join(__dirname, '.env') });
+
+// Import middleware and routes after CORS is configured
+import models from './models/index.js';
+import { checkRememberToken, loadUser } from './middleware/auth.js';
+import jwtAuth from './middleware/jwtAuth.js';
+import authRoutes from './routes/auth.js';
+import userRoutes from './routes/users.js';
+import searchRoutes from './routes/search.js';
+import testRoutes from './routes/test.js';
+import { propertyRouter } from './routes/propertyRoutes.js';
+
+const PORT = process.env.PORT || 5000;
 
 // Initialize models and database connection
 console.log('Initializing database connection...');
