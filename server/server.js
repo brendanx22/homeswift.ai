@@ -41,13 +41,7 @@ try {
   process.exit(1);
 }
 
-// Create session store
-const sessionStore = new (SequelizeStoreModule(session.Store))({
-  db: models.sequelize,
-  tableName: 'sessions',
-  checkExpirationInterval: 15 * 60 * 1000, // Clean up expired sessions every 15 minutes
-  expiration: 24 * 60 * 60 * 1000 // Session expires after 24 hours
-});
+// Create session store with Sequelize
 
 // Security middleware
 app.use(helmet({
@@ -124,10 +118,13 @@ app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Session configuration
-const SessionStore = SequelizeStore(session.Store);
+// Session store configuration
+const SessionStore = SequelizeStoreModule(session.Store);
 const sessionStore = new SessionStore({
-  db: models.getSequelize()
+  db: models.sequelize,
+  tableName: 'sessions',
+  checkExpirationInterval: 15 * 60 * 1000, // Clean up expired sessions every 15 minutes
+  expiration: 24 * 60 * 60 * 1000 // Session expires after 24 hours
 });
 
 // Determine if we're in production
