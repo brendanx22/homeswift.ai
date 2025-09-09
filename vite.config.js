@@ -7,9 +7,11 @@ export default ({ mode }) => {
   // Load app-level env vars to node's process.env
   process.env = { ...process.env, ...loadEnv(mode, process.cwd()) };
 
+  const isProduction = mode === 'production';
+  
   return defineConfig({
     plugins: [react()],
-    base: '/',
+    base: isProduction ? './' : '/',
     server: {
       port: 3000,
       proxy: {
@@ -25,6 +27,12 @@ export default ({ mode }) => {
       outDir: 'dist',
       assetsDir: 'assets',
       sourcemap: false,
+      modulePreload: {
+        polyfill: false,
+      },
+      commonjsOptions: {
+        include: [],
+      },
       rollupOptions: {
         output: {
           manualChunks: {
