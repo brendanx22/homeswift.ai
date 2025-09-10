@@ -5,15 +5,33 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
 console.log('Supabase URL:', supabaseUrl)
 console.log('Supabase Anon Key exists:', !!supabaseAnonKey)
-console.log('Environment variables:', import.meta.env)
+
+// Create a mock client if environment variables are missing
+let supabase;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase environment variables!')
-  console.error('VITE_SUPABASE_URL:', supabaseUrl)
-  console.error('VITE_SUPABASE_ANON_KEY exists:', !!supabaseAnonKey)
+  console.warn('Missing Supabase environment variables! Creating mock client.')
+  console.warn('VITE_SUPABASE_URL:', supabaseUrl)
+  console.warn('VITE_SUPABASE_ANON_KEY exists:', !!supabaseAnonKey)
+  console.warn('Please create a .env file with your Supabase credentials.')
+  
+  // Create a mock client that doesn't crash the app
+  supabase = {
+    auth: {
+      signUp: async () => ({ data: null, error: { message: 'Supabase not configured' } }),
+      signInWithPassword: async () => ({ data: null, error: { message: 'Supabase not configured' } }),
+      signOut: async () => ({ error: null }),
+      getUser: async () => ({ data: { user: null }, error: null }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      resetPasswordForEmail: async () => ({ data: null, error: { message: 'Supabase not configured' } }),
+      signInWithOAuth: async () => ({ data: null, error: { message: 'Supabase not configured' } })
+    }
+  };
+} else {
+  supabase = createClient(supabaseUrl, supabaseAnonKey)
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export { supabase }
 
 // Auth helper functions
 export const authHelpers = {
