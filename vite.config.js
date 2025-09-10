@@ -4,7 +4,6 @@ import path from 'path';
 import tailwindcss from 'tailwindcss';
 import autoprefixer from 'autoprefixer';
 
-// https://vite.dev/config/
 export default ({ mode }) => {
   // Load app-level env vars to node's process.env
   const env = loadEnv(mode, process.cwd(), '');
@@ -24,12 +23,16 @@ export default ({ mode }) => {
         jsxImportSource: '@emotion/react',
         babel: {
           plugins: [
+            ['@babel/plugin-transform-react-jsx', {
+              runtime: 'automatic',
+              importSource: '@emotion/react'
+            }],
             ['@emotion/babel-plugin', {
               autoLabel: 'dev-only',
               labelFormat: '[local]',
-              cssPropOptimization: true,
-            }],
-          ],
+              cssPropOptimization: true
+            }]
+          ]
         },
       })
     ],
