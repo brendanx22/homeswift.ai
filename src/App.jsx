@@ -71,16 +71,26 @@ const AnimatedPage = ({ children }) => (
 
 function AppRoutes() {
   const location = useLocation();
+  const { isAuthenticated } = useAuth();
   
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
+        {/* Root route - shows MainLanding when authenticated, HeroSection when not */}
         <Route
           path="/"
           element={
-            <AnimatedPage>
-              <HeroSection />
-            </AnimatedPage>
+            isAuthenticated ? (
+              <ProtectedRoute>
+                <AnimatedPage>
+                  <MainLanding />
+                </AnimatedPage>
+              </ProtectedRoute>
+            ) : (
+              <AnimatedPage>
+                <HeroSection />
+              </AnimatedPage>
+            )
           }
         />
         
@@ -154,7 +164,7 @@ function AppRoutes() {
         {/* Catch-all route */}
         <Route path="*" element={
           <AnimatedPage>
-            <Navigate to="/" replace />
+            <Navigate to="/welcome" replace />
           </AnimatedPage>
         } />
       </Routes>

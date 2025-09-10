@@ -37,20 +37,20 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const { login, isAuthenticated, loading: authLoading, resetPassword, signInWithGoogle } = useAuth();
 
-  // Redirect if authenticated
+  // Redirect if already authenticated
   useEffect(() => {
-    const redirectPath = searchParams.get('redirect') || '/';
     const errorParam = searchParams.get('error');
+    const redirectPath = searchParams.get('redirect') || '/main';
+
+    if (isAuthenticated) {
+      navigate(redirectPath, { replace: true });
+      return;
+    }
 
     if (errorParam) {
       setError({ message: errorParam });
       const cleanUrl = window.location.pathname;
       window.history.replaceState({}, document.title, cleanUrl);
-      return;
-    }
-
-    if (isAuthenticated) {
-      navigate(redirectPath, { replace: true });
     }
   }, [isAuthenticated, navigate, searchParams]);
 
@@ -77,14 +77,12 @@ export default function LoginPage() {
         throw error;
       }
 
-      // Get the full user data
-      const { data: { user } } = await supabase.auth.getUser();
-      
       // Update the auth context
       await login({ email, password });
       
+      // Redirect to main page or the intended destination
       const redirectPath = searchParams.get('redirect') || '/main';
-      navigate(redirectPath);
+      navigate(redirectPath, { replace: true });
     } catch (err) {
       console.error('Login error:', err);
       let errorMessage = 'Login failed. Please check your credentials and try again.';
