@@ -48,8 +48,8 @@ export function AuthProvider({ children }) {
 
     checkAuth();
 
-    // Set up auth state change listener
-    const { data: { subscription } = supabase.auth.onAuthStateChange(handleAuthChange);
+    // Set up auth state change listener with proper destructuring
+    const { data: { subscription } = {} } = supabase.auth.onAuthStateChange(handleAuthChange) || {};
 
     // Clean up subscription on unmount
     return () => {
