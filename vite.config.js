@@ -16,7 +16,28 @@ export default ({ mode }) => {
 
   const isProduction = mode === 'production';
   
+  // Expose environment variables to the client
+  const envWithProcessPrefix = {
+    'process.env': Object.entries(env).reduce(
+      (prev, [key, val]) => {
+        if (key.startsWith('VITE_')) {
+          prev[key] = JSON.stringify(val);
+        }
+        return prev;
+      },
+      {}
+    ),
+  };
+
   return defineConfig({
+    define: {
+      ...envWithProcessPrefix,
+      // Ensure these are always available
+      'process.env.NODE_ENV': JSON.stringify(mode),
+      'process.env.VITE_APP_URL': JSON.stringify(env.VITE_APP_URL || 'http://localhost:5173'),
+      'process.env.VITE_SUPABASE_URL': JSON.stringify(env.VITE_SUPABASE_URL || ''),
+      'process.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(env.VITE_SUPABASE_ANON_KEY || ''),
+    },
     plugins: [
       react({
         jsxRuntime: 'automatic',
@@ -48,9 +69,6 @@ export default ({ mode }) => {
       logOverride: { 'this-is-undefined-in-esm': 'silent' }
     },
     base: isProduction ? './' : '/',
-    define: {
-      'process.env.NODE_ENV': JSON.stringify(mode)
-    },
     resolve: {
       alias: [
         {

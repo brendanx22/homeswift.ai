@@ -183,6 +183,7 @@ export default function SignupPage() {
                   <input
                     type="text"
                     name="firstName"
+                    autoComplete="given-name"
                     value={formData.firstName}
                     onChange={handleInputChange}
                     className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-4 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
@@ -200,6 +201,7 @@ export default function SignupPage() {
                   <input
                     type="text"
                     name="lastName"
+                    autoComplete="family-name"
                     value={formData.lastName}
                     onChange={handleInputChange}
                     className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-4 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
@@ -220,6 +222,7 @@ export default function SignupPage() {
                 <input
                   type="email"
                   name="email"
+                  autoComplete="email"
                   value={formData.email}
                   onChange={handleInputChange}
                   className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-4 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
@@ -238,7 +241,8 @@ export default function SignupPage() {
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  name="password"
+                  name="new-password"
+                  autoComplete="new-password"
                   value={formData.password}
                   onChange={handleInputChange}
                   className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-12 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
@@ -264,7 +268,8 @@ export default function SignupPage() {
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                 <input
                   type={showConfirmPassword ? 'text' : 'password'}
-                  name="confirmPassword"
+                  name="confirm-password"
+                  autoComplete="new-password"
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
                   className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-12 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"

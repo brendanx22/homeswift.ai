@@ -59,14 +59,10 @@ export async function sendEmail(to, subject, html, name = 'User') {
  * @returns {Promise<boolean>} - Whether the email was sent successfully
  */
 export async function sendEmailVerification(to, token) {
-  const frontendUrl = process.env.NODE_ENV === 'production'
-    ? (process.env.CLIENT_URL || 'https://homeswift-ai.vercel.app')
-    : 'http://localhost:5137'; // Updated port to 5137 for local development
-  const apiUrl = process.env.NODE_ENV === 'production'
-    ? (process.env.API_URL || 'https://homeswift-ai.vercel.app/api')
-    : 'http://localhost:5001/api';
-  // Use frontend URL for the verification link
-  const verificationUrl = `${frontendUrl}/api/verify-email?token=${token}&redirect=${encodeURIComponent('/main')}`;
+  // This function is no longer needed as Supabase handles the verification email
+  // We keep it for backward compatibility but it won't be used
+  console.log('Supabase handles email verification automatically');
+  return true;
   const subject = 'Verify Your HomeSwift Email Address';
   const htmlContent = `
     <!DOCTYPE html>

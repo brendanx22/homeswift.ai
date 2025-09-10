@@ -45,10 +45,14 @@ router.post('/logout', authController.logout);
 // Get current user
 router.get('/me', requireAuth, authController.getCurrentUser);
 
-// Email verification
-router.get('/verify', (req, res) => {
-  // This is handled client-side with Supabase
-  res.redirect(`${process.env.FRONTEND_URL}/auth/verify`);
+// Email verification - This is handled client-side by Supabase
+// We keep this route for backward compatibility but it redirects to the frontend
+router.get('/verify-email', (req, res) => {
+  const { token, redirect = '/main' } = req.query;
+  const redirectUrl = new URL('/auth/verify', process.env.FRONTEND_URL);
+  if (token) redirectUrl.searchParams.set('token', token);
+  if (redirect) redirectUrl.searchParams.set('redirect_to', redirect);
+  return res.redirect(redirectUrl.toString());
 });
 
 // Resend verification email

@@ -192,7 +192,10 @@ const Listings = () => {
                 <Search className="h-5 w-5 text-gray-400" />
               </div>
               <input
-                type="text"
+                type="search"
+                name="search-properties"
+                autoComplete="off"
+                aria-label="Search properties"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 className="block w-full pl-10 pr-3 py-3 border border-gray-700 rounded-lg bg-gray-900 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"

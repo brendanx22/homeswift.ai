@@ -809,7 +809,10 @@ export default function MainLanding() {
               <div className="relative">
                 <div className="relative w-full flex items-center">
                   <input 
-                    type="text" 
+                    type="search" 
+                    name="search"
+                    autoComplete="off"
+                    aria-label="Search properties"
                     value={searchQuery} 
                     onChange={handleSearchChange}
                     onKeyDown={(e) => e.key === 'Enter' && handleSearchSubmit(e)}
@@ -822,8 +825,6 @@ export default function MainLanding() {
                       fontFamily: 'Raleway, sans-serif',
                       letterSpacing: '0.01em'
                     }}
-                    autoComplete="off"
-                    aria-label="Search properties"
                     disabled={isSearching}
                   />
                   {searchError && (
