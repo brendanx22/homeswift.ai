@@ -167,7 +167,7 @@ const Listings = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
             <div className="flex items-center ml-4">
-              <img src="/Group 129.png" alt="HomeSwift Logo" className="w-8 h-8 rounded-lg object-cover" />
+              <img src="/images/logo.png" alt="HomeSwift Logo" className="w-8 h-8 rounded-lg object-cover" />
               <h1 className="ml-3 text-3xl font-bold text-white tracking-tight group-hover:opacity-80 transition-opacity">
                 Home<span className="italic">Swift</span>
               </h1>

@@ -20,6 +20,7 @@ export default ({ mode }) => {
   return defineConfig({
     plugins: [
       react({
+        jsxRuntime: 'automatic',
         jsxImportSource: '@emotion/react',
         babel: {
           plugins: [

@@ -500,11 +500,11 @@ export default function MainLanding() {
                   <div className="flex items-center gap-2">
                     {compactMode ? (
                       <div className="flex justify-center w-full">
-                        <img src="/Group 129.png" alt="HomeSwift Logo" className="w-10 h-10 rounded-lg object-cover" />
+                        <img src="/images/logo.png" alt="HomeSwift Logo" className="w-10 h-10 rounded-lg object-cover" />
                       </div>
                     ) : (
                       <>
-                        <img src="/Group 129.png" alt="HomeSwift Logo" className="w-8 h-8 rounded-lg object-cover" />
+                        <img src="/images/logo.png" alt="HomeSwift Logo" className="w-8 h-8 rounded-lg object-cover" />
                         <span className="text-white font-semibold text-lg">HomeSwift</span>
                       </>
                     )}
@@ -742,7 +742,7 @@ export default function MainLanding() {
           <div className="text-center mb-8 sm:mb-10 max-w-4xl px-2 sm:px-0">
             <h1 className="flex items-center justify-center flex-wrap text-3xl sm:text-4xl font-bold text-white mb-4 sm:mb-5 leading-tight gap-2 sm:gap-3">
               <span>Welcome back, {user?.firstName || user?.first_name || (user?.name ? user.name.split(' ')[0] : 'User')}!</span>
-              <span className="inline-flex items-center"><img src="/Group 129.png" alt="logo" className="w-8 h-8 sm:w-8 sm:h-8 rounded-lg object-cover" /></span>
+              <span className="inline-flex items-center"><img src="/images/logo.png" alt="logo" className="w-8 h-8 sm:w-8 sm:h-8 rounded-lg object-cover" /></span>
             </h1>
             <p className="text-gray-300 text-md md:text-lg font-light max-w-2xl mx-auto">Find your dream home with HomeSwift's AI-powered search</p>
           </div>
