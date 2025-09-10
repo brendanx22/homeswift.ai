@@ -1,8 +1,8 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { body } from 'express-validator';
-import { requireGuest, checkRememberToken, loadUser } from '../middleware/auth.js';
-import authController from '../controllers/authController.js';
+import * as authController from '../controllers/supabaseAuthController.js';
+import { requireAuth } from '../middleware/supabaseAuth.js';
 
 const router = express.Router();
 
@@ -29,7 +29,7 @@ router.post('/register',
   authController.register
 );
 
-// POST /api/auth/login - User login
+// Login
 router.post('/login', 
   authLimiter,
   [
@@ -42,21 +42,37 @@ router.post('/login',
 // Logout
 router.post('/logout', authController.logout);
 
-// Get current user - requires authentication (handled by jwtAuth middleware in server.js)
-router.get('/me', (req, res) => {
-  if (!req.user) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-  // Return user data without sensitive information
-  const userData = req.user.toJSON();
-  delete userData.password_hash;
-  res.json({ success: true, user: userData });
+// Get current user
+router.get('/me', requireAuth, authController.getCurrentUser);
+
+// Email verification
+router.get('/verify', (req, res) => {
+  // This is handled client-side with Supabase
+  res.redirect(`${process.env.FRONTEND_URL}/auth/verify`);
 });
 
-// Email verification endpoint
-router.get('/verify-email', authController.verifyEmail);
-
 // Resend verification email
-router.post('/resend-verification', authController.resendVerification);
+router.post('/resend-verification', requireAuth, async (req, res) => {
+  try {
+    const { data, error } = await supabase.auth.resend({
+      type: 'signup',
+      email: req.user.email
+    });
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      message: 'Verification email resent successfully'
+    });
+  } catch (error) {
+    console.error('Resend verification error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to resend verification email',
+      error: error.message
+    });
+  }
+});
 
 export default router;

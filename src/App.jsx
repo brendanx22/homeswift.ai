@@ -1,16 +1,19 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AppProvider, useAppContext } from './contexts/AppContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import HeroSection from './components/hero/HeroSection';
-import LoginPage from './components/hero/LoginPage';
-import SignupPage from './components/hero/SignupPage';
-import EmailVerification from './components/hero/EmailVerification';
-import MainLanding from './components/main/MainLanding';
-import PropertyDetails from './components/main/PropertyDetails';
-import Listings from './components/main/Listings';
-import './index.css';
+import { CircularProgress, Box } from '@mui/material';
+
+// Lazy load components for better performance
+const HeroSection = React.lazy(() => import('./components/hero/HeroSection'));
+const LoginPage = React.lazy(() => import('./components/hero/LoginPage'));
+const SignupPage = React.lazy(() => import('./components/hero/SignupPage'));
+const EmailVerification = React.lazy(() => import('./components/hero/EmailVerification'));
+const MainLanding = React.lazy(() => import('./components/main/MainLanding'));
+const PropertyDetails = React.lazy(() => import('./components/main/PropertyDetails'));
+const Listings = React.lazy(() => import('./components/main/Listings'));
+const AuthCallback = React.lazy(() => import('./pages/AuthCallback'));
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -95,6 +98,20 @@ function AppRoutes() {
           </AnimatedPage>
         } />
         
+        {/* OAuth Callback Route */}
+        <Route path="/auth/callback" element={
+          <Suspense fallback={<div>Loading...</div>}>
+            <AuthCallback />
+          </Suspense>
+        } />
+        
+        {/* Password Reset Callback */}
+        <Route path="/reset-password" element={
+          <AnimatedPage>
+            <ResetPasswordPage />
+          </AnimatedPage>
+        } />
+        
         {/* Protected Routes */}
         <Route
           path="/main"
@@ -141,13 +158,28 @@ function AppRoutes() {
 }
 
 export default function App() {
+  // Loading component for Suspense fallback
+  const LoadingSpinner = () => (
+    <Box sx={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      minHeight: '100vh',
+      backgroundColor: 'background.default'
+    }}>
+      <CircularProgress />
+    </Box>
+  );
+
   return (
     <Router>
-      <AuthProvider>
+      <Suspense fallback={<LoadingSpinner />}>
         <AppProvider>
-          <AppRoutes />
+          <AuthProvider>
+            <AppRoutes />
+          </AuthProvider>
         </AppProvider>
-      </AuthProvider>
+      </Suspense>
     </Router>
   );
 }

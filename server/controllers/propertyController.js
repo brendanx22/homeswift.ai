@@ -458,4 +458,14 @@ const propertyController = {
   }
 };
 
+// Export individual functions as named exports
+export const searchProperties = propertyController.searchProperties;
+export const getProperties = propertyController.getProperties;
+export const getFeaturedProperties = propertyController.getFeaturedProperties;
+export const getPropertyById = propertyController.getPropertyById;
+export const createProperty = propertyController.createProperty;
+export const updateProperty = propertyController.updateProperty;
+export const deleteProperty = propertyController.deleteProperty;
+
+// Also export as default for backward compatibility
 export default propertyController;

@@ -1,121 +1,113 @@
-import api from '../lib/api';
+import { supabase, authHelpers } from '../lib/supabase';
 
 const authService = {
   // Register a new user
   register: async (userData) => {
     try {
-      const response = await api.post('/auth/register', userData);
-      // Backend uses session-based auth, no token needed
-      return response.data.user;
+      const { email, password, firstName, lastName } = userData;
+      const { data, error } = await authHelpers.signUp(email, password, {
+        first_name: firstName,
+        last_name: lastName,
+        role: 'user'
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Registration failed');
+      }
+
+      // Return the user data
+      return {
+        id: data.user.id,
+        email: data.user.email,
+        firstName: data.user.user_metadata?.first_name,
+        lastName: data.user.user_metadata?.last_name,
+        role: data.user.user_metadata?.role || 'user'
+      };
     } catch (error) {
       console.error('Registration error:', error);
-      const message = error.response?.data?.error || error.message || 'Registration failed';
-      throw new Error(message);
+      throw new Error(error.message || 'Registration failed');
     }
   },
 
   // Login user
   login: async (credentials) => {
     try {
-      const response = await api.post('/auth/login', credentials, {
-        validateStatus: status => status === 200 || status === 403
-      });
+      const { data, error } = await authHelpers.signIn(credentials.email, credentials.password);
       
-      // In development, bypass email verification
-      if (process.env.NODE_ENV === 'development' && response.status === 403) {
-        // If we get a 403 in development, try to get the user data anyway
-        const userResponse = await api.get('/auth/me');
-        if (userResponse.data?.user) {
-          console.log('Bypassing email verification in development mode');
-          // Store a mock token for development
-          localStorage.setItem('token', 'dev-token-bypass');
-          return userResponse.data.user;
+      if (error) {
+        // Handle email verification required
+        if (error.message.includes('Email not confirmed')) {
+          const verificationError = new Error('Email verification required');
+          verificationError.needsVerification = true;
+          verificationError.email = credentials.email;
+          throw verificationError;
         }
+        throw new Error(error.message || 'Login failed');
       }
       
-      // Handle successful login
-      if (response.status === 200 && response.data?.success) {
-        // Store the token in localStorage
-        if (response.data.token) {
-          localStorage.setItem('token', response.data.token);
-        }
-        return response.data.user;
+      // Get the full user profile
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        throw new Error(userError?.message || 'Failed to load user profile');
       }
       
-      // Handle email verification required (only in production)
-      if (process.env.NODE_ENV === 'production' && response.status === 403) {
-        const errorData = response.data || {};
-        const verificationError = new Error(errorData.error || 'Email verification required');
-        verificationError.needsVerification = true;
-        verificationError.email = errorData.email || credentials.email;
-        throw verificationError;
-      }
-      
-      // Handle other errors
-      throw new Error(response.data?.error || 'Login failed');
+      // Return the user data in the expected format
+      return {
+        id: user.id,
+        email: user.email,
+        firstName: user.user_metadata?.first_name,
+        lastName: user.user_metadata?.last_name,
+        role: user.user_metadata?.role || 'user',
+        emailVerified: user.email_confirmed_at != null,
+        avatar: user.user_metadata?.avatar_url
+      };
       
     } catch (error) {
       console.error('Login error:', error);
-      
-      // In development, try to bypass verification errors
-      if (process.env.NODE_ENV === 'development' && error.response?.status === 403) {
-        try {
-          const userResponse = await api.get('/auth/me');
-          if (userResponse.data?.user) {
-            console.log('Bypassing email verification in development mode (fallback)');
-            return userResponse.data.user;
-          }
-        } catch (fallbackError) {
-          console.error('Fallback authentication failed:', fallbackError);
-        }
-      }
       
       // If it's already our custom error, just rethrow it
       if (error.needsVerification) {
         throw error;
       }
       
-      // Handle other errors
-      const message = error.response?.data?.error || error.message || 'Login failed';
-      throw new Error(message);
+      throw new Error(error.message || 'Login failed');
     }
   },
 
   // Logout user
   logout: async () => {
     try {
-      await api.post('/auth/logout');
-      // Clear any local storage
-      localStorage.removeItem('google_user_session');
+      const { error } = await authHelpers.signOut();
+      if (error) throw error;
+      return true;
     } catch (error) {
       console.error('Logout error:', error);
+      return false;
     }
-    // Don't redirect here - let the component handle it
   },
 
   // Get current user profile
   getCurrentUser: async () => {
     try {
-      const token = localStorage.getItem('token');
-      const headers = {};
+      const { data: { user }, error } = await supabase.auth.getUser();
       
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
+      if (error || !user) {
+        return null;
       }
       
-      const response = await api.get('/auth/me', {
-        // Don't throw on 401 status as it's an expected response for unauthenticated users
-        validateStatus: status => status === 200 || status === 401,
-        headers
-      });
-      
-      if (response.status === 200 && response.data?.success) {
-        return response.data.user;
-      }
-      // If we get here, the user is not authenticated
-      return null;
+      // Return the user data in the expected format
+      return {
+        id: user.id,
+        email: user.email,
+        firstName: user.user_metadata?.first_name,
+        lastName: user.user_metadata?.last_name,
+        role: user.user_metadata?.role || 'user',
+        emailVerified: user.email_confirmed_at != null,
+        avatar: user.user_metadata?.avatar_url
+      };
     } catch (error) {
-      console.error('Error fetching user profile:', error);
+      console.error('Get current user error:', error);
       return null;
     }
   },
@@ -123,27 +115,96 @@ const authService = {
   // Check if user is authenticated
   isAuthenticated: async () => {
     try {
-      // First check if we have a token
-      const token = localStorage.getItem('token');
-      if (!token) return false;
-      
-      // Then verify the token is still valid by making an API call
-      const user = await authService.getCurrentUser();
+      const { data: { user } } = await supabase.auth.getUser();
       return !!user;
     } catch (error) {
-      console.error('Auth check failed:', error);
-      // Clear invalid token
-      if (error.response?.status === 401) {
-        localStorage.removeItem('token');
-      }
+      console.error('Auth check error:', error);
       return false;
     }
   },
 
-  // Get auth token (not used with session-based auth)
-  getToken: () => {
-    return null; // Session-based auth doesn't use tokens
+  // Get auth token
+  getToken: async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      return session?.access_token || null;
+    } catch (error) {
+      console.error('Get token error:', error);
+      return null;
+    }
   },
+  
+  // Reset password
+  resetPassword: async (email) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`
+      });
+      
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Reset password error:', error);
+      throw error;
+    }
+  },
+  
+  // Update user password
+  updatePassword: async (newPassword) => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Update password error:', error);
+      throw error;
+    }
+  },
+  
+  // Sign in with Google
+  signInWithGoogle: async () => {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          },
+          redirectTo: `${window.location.origin}/auth/callback`
+        }
+      });
+      
+      if (error) throw error;
+      return data;
+    } catch (error) {
+      console.error('Google sign in error:', error);
+      throw error;
+    }
+  },
+  
+  // Handle OAuth callback
+  handleAuthCallback: async () => {
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (!data.session) {
+        throw new Error('No active session');
+      }
+      
+      return data.session.user;
+    } catch (error) {
+      console.error('Auth callback error:', error);
+      throw error;
+    }
+  }
 };
 
 export default authService;

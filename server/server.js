@@ -4,11 +4,9 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
-import session from 'express-session';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import connectSessionSequelize from 'connect-session-sequelize';
 
 // ES Modules fix for __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -101,15 +99,16 @@ app.use((req, res, next) => {
 
 // ------------------ Models ------------------
 import models from './models/index.js';
-import { checkRememberToken, loadUser } from './middleware/auth.js';
-import jwtAuth from './middleware/jwtAuth.js';
+import { createClient } from './middleware/supabaseAuth.js';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import searchRoutes from './routes/search.js';
 import testRoutes from './routes/test.js';
 import { propertyRouter } from './routes/propertyRoutes.js';
+import Database from './config/database.js';
 
 const PORT = process.env.PORT || 5000;
+const db = new Database();
 
 // Initialize DB
 console.log('Initializing database connection...');
@@ -141,70 +140,53 @@ app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// ------------------ Session Store (Sequelize) ------------------
-const SequelizeStore = connectSessionSequelize(session.Store);
-const sequelize = models.getSequelize();
-
-const sessionStore = new SequelizeStore({
-  db: sequelize,
-  tableName: 'Sessions',
-  checkExpirationInterval: 15 * 60 * 1000,
-  expiration: 1000 * 60 * 60 * 2 // 2 hours
+// Initialize Supabase client
+app.use((req, res, next) => {
+  req.supabase = createClient(req, res);
+  next();
 });
-
-const sessionMiddleware = session({
-  secret: process.env.SESSION_SECRET || 'dev-secret-key',
-  resave: false,
-  saveUninitialized: false,
-  proxy: isProduction,
-  store: sessionStore,
-  cookie: {
-    secure: isProduction, // must be true in prod
-    httpOnly: true,
-    sameSite: isProduction ? 'none' : 'lax',
-    maxAge: 1000 * 60 * 60 * 2
-  }
-});
-
-app.use(sessionMiddleware);
-sessionStore.sync(); // ensure sessions table exists
 
 if (!isProduction) {
   app.use(morgan('dev'));
 }
 
-// ------------------ Public Routes ------------------
-app.get('/api/session-test', (req, res) => {
-  req.session.views = (req.session.views || 0) + 1;
-  res.json({
-    message: 'Session test successful',
-    views: req.session.views,
-    sessionId: req.sessionID
-  });
-});
-
+// ================== PUBLIC ROUTES ==================
+// Health check
 app.get('/health', (req, res) => {
   res.json({
     status: 'OK',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
-    database: sequelize ? 'connected' : 'disconnected'
+    database: 'n/a' // Supabase handles the database connection
   });
 });
 
-// ------------------ Public API Routes ------------------
+// Public API routes
 app.use('/api/auth', authRoutes);
 
-// ------------------ Protected Routes ------------------
-// Apply auth middleware to all routes below this point
-app.use(jwtAuth);
-app.use(checkRememberToken);
-app.use(loadUser);
+// Public property routes (read-only)
+app.get('/api/properties', propertyRouter);
+app.get('/api/properties/featured', propertyRouter);
+app.get('/api/properties/:id', propertyRouter);
 
-app.use('/api/users', userRoutes);
-app.use('/api/search', searchRoutes);
-app.use('/api/test', testRoutes);
-app.use('/api/properties', propertyRouter);
+// ================== PROTECTED ROUTES ==================
+import { requireAuth } from './middleware/supabaseAuth.js';
+
+// Apply auth middleware to all routes below this point
+app.use((req, res, next) => {
+  console.log(`Auth check for protected route: ${req.method} ${req.path}`);
+  next();
+});
+
+// Protected API routes
+app.use('/api/users', requireAuth, userRoutes);
+app.use('/api/search', requireAuth, searchRoutes);
+app.use('/api/test', requireAuth, testRoutes);
+
+// Protected property routes (write operations)
+app.post('/api/properties', requireAuth, propertyRouter);
+app.put('/api/properties/:id', requireAuth, propertyRouter);
+app.delete('/api/properties/:id', requireAuth, propertyRouter);
 
 // ------------------ Error Handling ------------------
 app.use('*', (req, res) => {
@@ -219,15 +201,12 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('\n🛑 Shutting down gracefully...');
-  await sequelize.close();
-  process.exit(0);
-});
+// Handle graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('\n🛑 Shutting down gracefully...');
-  await sequelize.close();
+  if (db.sequelize) {
+    await db.sequelize.close();
+  }
   process.exit(0);
 });
 
@@ -236,7 +215,7 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🌐 CORS enabled`);
-  console.log(`🗄️  Database: ${sequelize ? 'Connected' : 'Disconnected'}`);
+  console.log(`🗄️  Database: ${db.sequelize ? 'Connected' : 'Disconnected'}`);
 });
 
 export default app;
