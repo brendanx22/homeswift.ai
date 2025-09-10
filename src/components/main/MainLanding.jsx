@@ -802,9 +802,9 @@ export default function MainLanding() {
 
             <motion.form 
               onSubmit={handleSearchSubmit}
-              whileHover={{ scale: 1.005 }} 
-              className="relative flex flex-col bg-transparent border border-1 border-[#6c6c6c] rounded-3xl shadow-2xl px-0 py-6 sm:px-4 sm:py-10 min-h-[120px] backdrop-blur-xl" 
-              style={{ background: 'rgba(60, 60, 60, 0.15)' }}
+              whileHover={{ scale: 1.01 }} 
+              className="relative flex flex-col bg-transparent border border-gray-500/50 rounded-2xl shadow-2xl px-0 py-4 sm:px-6 sm:py-8 min-h-[100px] backdrop-blur-xl" 
+              style={{ background: 'rgba(45, 45, 45, 0.4)' }}
             >
               <div className="relative">
                 <div className="relative w-full flex items-center">
@@ -816,28 +816,36 @@ export default function MainLanding() {
                     onFocus={() => searchQuery.trim() && setShowSuggestions(true)}
                     onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                     placeholder="Search by location, type, or features..." 
-                    className="w-full bg-transparent text-white placeholder-[#737373] outline-none border-none h-14 sm:h-16 rounded-xl sm:rounded-2xl px-6 pr-16 pt-2 pb-1" 
+                    className="w-full bg-transparent text-white placeholder-gray-400 font-medium outline-none border-none h-14 sm:h-16 rounded-xl px-6 pr-16 pt-2 pb-1 text-base sm:text-lg" 
                     style={{ 
                       minWidth: 0, 
-                      fontSize: '1.1rem', 
-                      lineHeight: '1.2'
+                      fontFamily: 'Raleway, sans-serif',
+                      letterSpacing: '0.01em'
                     }}
                     autoComplete="off"
                     aria-label="Search properties"
                     disabled={isSearching}
                   />
                   {searchError && (
-                    <div className="absolute bottom-0 left-0 right-0 text-red-400 text-xs mt-1">
+                    <div className="absolute -bottom-6 left-0 text-red-400 text-sm font-medium mt-1">
                       {searchError}
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="flex items-center justify-between absolute bottom-4 left-4 right-4 sm:left-6 sm:right-6 w-auto">
+              <div className="flex items-center justify-between absolute bottom-3 left-4 right-4 sm:left-6 sm:right-6 w-auto">
                 <div className="flex items-center gap-2 sm:gap-3 relative">
-                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} type="button" className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full bg-gray-700/40 hover:bg-gray-600/50 text-gray-300 border border-gray-500" tabIndex={-1} onClick={() => setShowPlusDropdown((s) => !s)}>
-                    <Plus size={12} />
+                  <motion.button 
+                    whileHover={{ scale: 1.05 }} 
+                    whileTap={{ scale: 0.95 }} 
+                    type="button" 
+                    className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-700/60 hover:bg-gray-600/70 text-gray-200 border border-gray-500/50 shadow-md" 
+                    tabIndex={-1} 
+                    onClick={() => setShowPlusDropdown((s) => !s)}
+                    aria-label="More options"
+                  >
+                    <Plus size={16} className="text-gray-200" />
                   </motion.button>
 
                   <AnimatePresence>
@@ -860,8 +868,14 @@ export default function MainLanding() {
                     )}
                   </AnimatePresence>
 
-                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} type="button" onClick={handleSuggestionClick} className="flex items-center gap-1 sm:gap-1 px-1 py-1 sm:px-3 sm:py-1 rounded-full bg-transparent border border-gray-400/50 text-gray-300 font-small hover:bg-gray-700/30 text-xs sm:text-base">
-                    <Sparkles size={18} />
+                  <motion.button 
+                    whileHover={{ scale: 1.05 }} 
+                    whileTap={{ scale: 0.95 }} 
+                    type="button" 
+                    onClick={handleSuggestionClick} 
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-800/60 border border-gray-600/50 text-gray-200 hover:bg-gray-700/60 text-sm font-medium transition-colors duration-200"
+                  >
+                    <Sparkles size={16} className="text-yellow-400" />
                     <span>Suggestions</span>
                   </motion.button>
                 </div>
@@ -870,11 +884,12 @@ export default function MainLanding() {
                   whileHover={{ scale: 1.05 }} 
                   whileTap={{ scale: 0.95 }} 
                   type="submit" 
-                  className={`w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full text-white shadow-lg border border-gray-400/50 ${!searchQuery.trim() ? 'opacity-50 cursor-not-allowed' : ''}`} 
-                  style={{ background: 'linear-gradient(180deg, #3a3d42 0%, #23262b 100%)', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }} 
+                  className={`w-10 h-10 flex items-center justify-center rounded-full text-white shadow-lg border border-blue-400/50 ${!searchQuery.trim() ? 'opacity-50 cursor-not-allowed' : 'bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'}`} 
+                  style={{ boxShadow: '0 4px 12px rgba(59, 130, 246, 0.25)' }} 
                   disabled={!searchQuery.trim() || isSearching}
+                  aria-label="Search"
                 >
-                  <ArrowUp size={18} />
+                  <ArrowUp size={20} className="text-white" />
                 </motion.button>
               </div>
             </motion.form>
@@ -882,18 +897,29 @@ export default function MainLanding() {
             {/* Suggestions */}
             <AnimatePresence>
               {showSuggestions && (
-                <motion.div initial={{ opacity: 0, y: -10, height: 0 }} animate={{ opacity: 1, y: 0, height: 'auto' }} exit={{ opacity: 0, y: -10, height: 0 }} transition={{ duration: 0.2 }} className="absolute top-full left-0 right-0 mt-2 sm:mt-4 border border-gray-400/50 rounded-2xl shadow-2xl z-20 overflow-hidden" style={{ backgroundImage: 'url("/Rectangle 135.png")', backgroundSize: 'cover', backgroundPosition: 'center', backdropFilter: 'blur(12px)' }}>
-                  <div className="p-4" style={{ background: 'transparent' }}>
-                    <h3 className="text-white font-semibold mb-3 sm:mb-4 text-lg sm:text-xl">Popular Searches</h3>
-                    <div className="space-y-1">
+                <motion.div 
+                  initial={{ opacity: 0, y: -10, height: 0 }} 
+                  animate={{ opacity: 1, y: 0, height: 'auto' }} 
+                  exit={{ opacity: 0, y: -10, height: 0 }} 
+                  transition={{ duration: 0.2 }} 
+                  className="absolute top-full left-0 right-0 mt-2 sm:mt-3 border border-gray-600/50 rounded-xl shadow-2xl z-20 overflow-hidden backdrop-blur-xl"
+                  style={{ background: 'rgba(35, 35, 40, 0.95)' }}
+                >
+                  <div className="p-4">
+                    <h3 className="text-white font-semibold mb-3 text-base sm:text-lg">Popular Searches</h3>
+                    <div className="space-y-1.5">
                       {suggestions.map((sug, idx) => (
                         <motion.button 
                           key={idx} 
                           whileHover={{ scale: 1.01 }}
                           whileTap={{ scale: 0.99 }}
                           onClick={() => handleSuggestionSelect(sug)} 
-                          className="w-full text-left text-gray-300 hover:text-white hover:bg-gray-700/50 px-4 py-2.5 rounded-lg leading-normal transition-all duration-150"
-                          style={{ fontSize: '15px' }}
+                          className="w-full text-left px-4 py-2.5 rounded-lg transition-all duration-150 text-gray-200 hover:text-white hover:bg-gray-700/60"
+                          style={{ 
+                            fontSize: '0.9375rem',
+                            fontFamily: 'Raleway, sans-serif',
+                            fontWeight: 400
+                          }}
                         >
                           {sug}
                         </motion.button>
