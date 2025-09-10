@@ -58,6 +58,15 @@ const corsOptions = {
   optionsSuccessStatus: 204
 };
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    nodeEnv: process.env.NODE_ENV,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Apply CORS middleware
 app.use(cors(corsOptions));
 

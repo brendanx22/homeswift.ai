@@ -1,6 +1,7 @@
 {
   "name": "homeswift-server",
   "version": "1.0.0",
+  "type": "module",
   "description": "HomeSwift server application",
   "main": "server.js",
   "scripts": {
