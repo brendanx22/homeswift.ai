@@ -35,6 +35,53 @@ export default function MainLanding() {
   const navigate = useNavigate();
   const { user, logout: contextLogout, isAuthenticated } = useContext(AppContext);
   
+  // Side panel state
+  const [showSidePanel, setShowSidePanel] = useState(() => {
+    // Initialize from localStorage if available, or default to true for desktop, false for mobile
+    const saved = localStorage.getItem('sidebarOpen');
+    if (saved !== null) return JSON.parse(saved);
+    return window.innerWidth >= 768; // Default to true for desktop, false for mobile
+  });
+  
+  // Track window size for responsive behavior
+  const [isDesktop, setIsDesktop] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth >= 1024; // Desktop breakpoint at 1024px
+  });
+
+  // Update isDesktop state on window resize with debounce
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    let resizeTimer;
+    const handleResize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        const desktop = window.innerWidth >= 1024;
+        setIsDesktop(desktop);
+        
+        // Auto-show/hide sidebar based on screen size if no preference is set
+        if (localStorage.getItem('sidebarOpen') === null) {
+          setShowSidePanel(desktop);
+        }
+      }, 100);
+    };
+
+    // Initial check
+    handleResize();
+    
+    window.addEventListener('resize', handleResize);
+    return () => {
+      clearTimeout(resizeTimer);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
+  // Save sidebar state to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('sidebarOpen', JSON.stringify(showSidePanel));
+  }, [showSidePanel]);
+
   // Redirect if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
@@ -116,44 +163,15 @@ export default function MainLanding() {
     };
   }, []);
   
-  // --- sidebar and layout state ---
-  const [isDesktop, setIsDesktop] = useState(false);
+  // Mobile sidebar state
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   
-  // Initialize sidebar visibility based on screen size
+  // Close mobile sidebar when switching to desktop
   useEffect(() => {
-    // Check if we're in a browser environment
-    if (typeof window === 'undefined') return;
-    
-    const checkIfDesktop = () => {
-      const width = window.innerWidth;
-      const desktop = width >= 1024;
-      setIsDesktop(desktop);
-      
-      // Close mobile sidebar when switching to desktop
-      if (desktop) {
-        setShowMobileSidebar(false);
-      }
-      
-      console.log('Window width:', width, 'Desktop:', desktop);
-    };
-    
-    // Initial check
-    checkIfDesktop();
-    
-    // Handle window resize with debounce
-    let resizeTimer;
-    const handleResize = () => {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(checkIfDesktop, 100);
-    };
-    
-    window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      clearTimeout(resizeTimer);
-    };
-  }, []);
+    if (isDesktop) {
+      setShowMobileSidebar(false);
+    }
+  }, [isDesktop]);
   
   const [compactMode, setCompactMode] = useState(() => {
     // Initialize compact mode from localStorage if it exists
