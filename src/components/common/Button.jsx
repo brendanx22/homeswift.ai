@@ -1,7 +1,7 @@
 import React from 'react';
 import styled from '@emotion/styled';
 import { css } from '@emotion/react';
-import { theme } from '../../styles/theme';
+import theme from '../../styles/theme';
 
 const ButtonBase = styled.button`
   display: inline-flex;

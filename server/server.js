@@ -26,86 +26,54 @@ if (process.env.NODE_ENV === 'production') {
 const isProduction = process.env.NODE_ENV === 'production';
 
 // ------------------ CORS ------------------
+// Development CORS - allow all origins with credentials
 const corsOptions = {
   origin: function (origin, callback) {
-    if (!origin) {
-      console.log('CORS: No origin (non-browser request)');
+    // Allow all origins in development
+    if (process.env.NODE_ENV !== 'production') {
       return callback(null, true);
     }
-
-    const allowedOrigins = isProduction
-      ? [
-          'https://homeswift.ai',
-          'https://www.homeswift.ai',
-          'https://homeswift-ai.vercel.app',
-          'https://homeswift-ai-brendanx22s-projects.vercel.app',
-          /^https?:\/\/homeswift-.*\.vercel\.app$/
-        ]
-      : [
-          /^https?:\/\/localhost(:\d+)?$/,
-          'http://localhost:3000',
-          'http://localhost:3001',
-          /^https?:\/\/homeswift-.*\.vercel\.app$/
-        ];
-
-    console.log(`CORS: Checking origin ${origin}`);
-
-    const isAllowed = allowedOrigins.some((allowedOrigin) => {
-      if (typeof allowedOrigin === 'string') return origin === allowedOrigin;
-      if (allowedOrigin instanceof RegExp) return allowedOrigin.test(origin);
-      return false;
-    });
-
-    if (isAllowed) {
-      console.log(`CORS: Allowed ${origin}`);
-      return callback(null, true);
+    
+    // Production whitelist
+    const allowedOrigins = [
+      'https://homeswift.ai',
+      'https://www.homeswift.ai',
+      'https://homeswift-ai.vercel.app',
+      /^https?:\/\/homeswift-.*\.vercel\.app$/,
+      /^https?:\/\/homeswift-ai-[a-z0-9]+\-brendanx22s-projects\.vercel\.app$/
+    ];
+    
+    if (!origin || allowedOrigins.includes(origin) || allowedOrigins.some(o => o instanceof RegExp && o.test(origin))) {
+      callback(null, true);
+    } else {
+      console.warn(`Blocked request from origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
     }
-
-    const msg = `CORS policy: ${origin} not allowed`;
-    console.warn(msg);
-    return callback(new Error(msg), false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'X-Requested-With',
-    'Accept',
-    'Origin',
-    'X-Access-Token',
-    'X-Refresh-Token',
-    'X-XSRF-TOKEN'
-  ],
-  exposedHeaders: [
-    'Content-Range',
-    'X-Total-Count',
-    'X-Access-Token',
-    'X-Refresh-Token',
-    'Set-Cookie'
-  ],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Content-Range', 'X-Total-Count', 'X-Access-Token', 'X-Refresh-Token'],
   maxAge: 86400,
   optionsSuccessStatus: 204
 };
 
+// Apply CORS middleware
 app.use(cors(corsOptions));
+
+// Handle preflight requests
 app.options('*', cors(corsOptions));
 
-// Always send credentials header
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Credentials', 'true');
-  next();
-});
-
-// ------------------ Models ------------------
+// ------------------ Models and Routes ------------------
 import models from './models/index.js';
+import Database from './config/database.js';
 import { createClient } from './middleware/supabaseAuth.js';
+
+// Import route handlers
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import searchRoutes from './routes/search.js';
 import testRoutes from './routes/test.js';
-import { propertyRouter } from './routes/propertyRoutes.js';
-import Database from './config/database.js';
 
 const PORT = process.env.PORT || 5000;
 const db = new Database();
@@ -161,17 +129,13 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Public API routes
-app.use('/api/auth', authRoutes);
-
-// Public property routes (read-only)
-app.get('/api/properties', propertyRouter);
-app.get('/api/properties/featured', propertyRouter);
-app.get('/api/properties/:id', propertyRouter);
-
-// ================== PROTECTED ROUTES ==================
+// ================== ROUTES ==================
 import { requireAuth } from './middleware/supabaseAuth.js';
 
+// ------------------ Public Routes ------------------
+app.use('/api/auth', authRoutes);
+
+// ------------------ Protected Routes ------------------
 // Apply auth middleware to all routes below this point
 app.use((req, res, next) => {
   console.log(`Auth check for protected route: ${req.method} ${req.path}`);
@@ -182,11 +146,6 @@ app.use((req, res, next) => {
 app.use('/api/users', requireAuth, userRoutes);
 app.use('/api/search', requireAuth, searchRoutes);
 app.use('/api/test', requireAuth, testRoutes);
-
-// Protected property routes (write operations)
-app.post('/api/properties', requireAuth, propertyRouter);
-app.put('/api/properties/:id', requireAuth, propertyRouter);
-app.delete('/api/properties/:id', requireAuth, propertyRouter);
 
 // ------------------ Error Handling ------------------
 app.use('*', (req, res) => {

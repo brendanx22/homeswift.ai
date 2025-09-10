@@ -1,8 +1,9 @@
 import express from 'express';
 import { body, validationResult } from 'express-validator';
-import { Op } from 'sequelize';
+import { Op, Sequelize } from 'sequelize';
 import models from '../models/index.js';
 import { requireAuth } from '../middleware/jwtAuth.js';
+import Database from '../config/database.js';
 
 const router = express.Router();
 
@@ -101,48 +102,124 @@ const buildPropertyFilter = (query) => {
   return filter;
 };
 
+// Health check endpoint
+router.get('/health', async (req, res) => {
+  try {
+    // Test database connection
+    await models.sequelize.authenticate();
+    
+    // Test basic model operation
+    const propertyCount = await models.Property.count();
+    
+    res.json({
+      status: 'ok',
+      database: 'connected',
+      properties: propertyCount,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Health check failed:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Health check failed',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// Test database connection
+router.get('/test-db', async (req, res) => {
+  try {
+    const db = new Database();
+    const sequelize = await db.connect();
+    
+    // Test the connection
+    await sequelize.authenticate();
+    
+    // Test a simple query
+    const [results] = await sequelize.query('SELECT NOW()');
+    
+    res.json({
+      success: true,
+      message: 'Database connection successful',
+      timestamp: results[0].now
+    });
+  } catch (error) {
+    console.error('Database connection error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Database connection failed',
+      error: error.message
+    });
+  }
+});
+
 // GET /api/properties - Get all properties with filtering (public access)
 router.get('/', asyncHandler(async (req, res) => {
+  console.log('GET /api/properties - Request query:', req.query);
+  
   try {
-    const {
-      page = 1,
-      limit = 10,
-      sortBy = 'createdAt',
-      sortOrder = 'DESC',
-      ...query
-    } = req.query;
-
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-    const filter = buildPropertyFilter(query);
-
+    // Validate query parameters
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 10));
+    const sortBy = req.query.sortBy || 'created_at';
+    const sortOrder = (req.query.sortOrder || 'DESC').toUpperCase();
+    
+    // Log validated parameters
+    console.log('Validated parameters:', { page, limit, sortBy, sortOrder });
+    
+    // Build filter from query parameters
+    const filter = buildPropertyFilter(req.query);
+    console.log('Built filter:', JSON.stringify(filter, null, 2));
+    
+    // Execute query with error handling
     const { count, rows: properties } = await models.Property.findAndCountAll({
       where: filter,
       include: [
-        { model: models.User, as: 'agent', attributes: ['id', 'name', 'email', 'phone'] },
-        { model: models.PropertyImage, as: 'images' }
+        { 
+          model: models.User, 
+          as: 'agent', 
+          attributes: ['id', 'name', 'email', 'phone'] 
+        },
+        { 
+          model: models.PropertyImage, 
+          as: 'images' 
+        }
       ],
-      order: [[sortBy, sortOrder.toUpperCase()]],
-      limit: parseInt(limit),
-      offset: offset,
+      order: [[sortBy, sortOrder]],
+      limit: limit,
+      offset: (page - 1) * limit,
       distinct: true
     });
 
+    console.log(`Found ${count} properties matching query`);
+    
     res.json({
       success: true,
       data: properties,
       pagination: {
         total: count,
-        page: parseInt(page),
+        page: page,
         totalPages: Math.ceil(count / limit),
-        limit: parseInt(limit)
+        limit: limit
       }
     });
+    
   } catch (error) {
-    console.error('Error fetching properties:', error);
+    console.error('Error in GET /api/properties:', {
+      message: error.message,
+      stack: error.stack,
+      query: req.query,
+      timestamp: new Date().toISOString()
+    });
+    
     res.status(500).json({
       success: false,
       message: 'Failed to fetch properties',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: process.env.NODE_ENV === 'development' ? {
+        message: error.message,
+        stack: error.stack
+      } : undefined
     });
   }
 }));

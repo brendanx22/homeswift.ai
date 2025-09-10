@@ -55,7 +55,7 @@ export default function HeroSection() {
       >
         {/* Logo */}
         <div className="flex items-center space-x-3">
-          <img src="/Group 129.png" alt="HomeSwift Logo" className="w-6 h-6 rounded-lg object-cover" />
+          <img src="/images/logo.png" alt="HomeSwift Logo" className="w-6 h-6 rounded-lg object-cover" />
           <span className="text-white text-2xl tracking-tight">Home<span className="italic">Swift</span></span>
         </div>
 

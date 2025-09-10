@@ -1,11 +1,19 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import tailwindcss from 'tailwindcss';
+import autoprefixer from 'autoprefixer';
 
 // https://vite.dev/config/
 export default ({ mode }) => {
   // Load app-level env vars to node's process.env
-  process.env = { ...process.env, ...loadEnv(mode, process.cwd(), '') };
+  const env = loadEnv(mode, process.cwd(), '');
+  
+  // Set NODE_ENV based on Vite's mode
+  process.env.NODE_ENV = mode;
+  
+  // Merge other environment variables
+  process.env = { ...process.env, ...env };
 
   const isProduction = mode === 'production';
   
@@ -24,12 +32,20 @@ export default ({ mode }) => {
         },
       })
     ],
+    css: {
+      postcss: {
+        plugins: [
+          tailwindcss(),
+          autoprefixer(),
+        ],
+      },
+    },
     esbuild: {
       logOverride: { 'this-is-undefined-in-esm': 'silent' }
     },
     base: isProduction ? './' : '/',
     define: {
-      'process.env': {}
+      'process.env.NODE_ENV': JSON.stringify(mode)
     },
     resolve: {
       alias: [
@@ -40,14 +56,27 @@ export default ({ mode }) => {
       ]
     },
     server: {
-      port: 3000,
+      port: 5173,
       strictPort: true,
+      host: true, // Listen on all network interfaces
       proxy: {
+        // API routes
         '/api': {
           target: process.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5001',
           changeOrigin: true,
           secure: false,
-          rewrite: (path) => path.replace(/^\/api/, '')
+          rewrite: (path) => path.replace(/^\/api/, ''),
+          configure: (proxy, _options) => {
+            proxy.on('error', (err, _req, _res) => {
+              console.log('proxy error', err);
+            });
+            proxy.on('proxyReq', (proxyReq, req, _res) => {
+              console.log('Sending Request to the Target:', req.method, req.url);
+            });
+            proxy.on('proxyRes', (proxyRes, req, _res) => {
+              console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
+            });
+          }
         }
       }
     },

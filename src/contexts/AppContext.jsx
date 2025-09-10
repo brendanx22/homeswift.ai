@@ -1,35 +1,13 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
-import propertyService from '../services/propertyService';
 import authService from '../services/authService';
 
 const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
-  const [properties, setProperties] = useState([]);
-  const [featuredProperties, setFeaturedProperties] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  // Load properties
-  const loadProperties = async () => {
-    try {
-      setIsLoading(true);
-      const response = await propertyService.getProperties();
-      const data = response.data || response; // Handle both wrapped and unwrapped responses
-      setProperties(Array.isArray(data) ? data : []);
-      setFeaturedProperties(Array.isArray(data) ? data.slice(0, Math.min(3, data.length)) : []);
-      setError(null);
-    } catch (err) {
-      console.error('Failed to load properties:', err);
-      setError('Failed to load properties. Please try again later.');
-      setProperties([]);
-      setFeaturedProperties([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   // Check authentication status on mount
   useEffect(() => {
@@ -55,7 +33,6 @@ export const AppProvider = ({ children }) => {
     };
 
     checkAuth();
-    loadProperties();
   }, []);
 
   // Login function
@@ -116,22 +93,9 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  // Search properties
-  const searchProperties = async (query) => {
-    try {
-      const results = await propertyService.searchProperties(query);
-      return results;
-    } catch (error) {
-      console.error('Search failed:', error);
-      throw error;
-    }
-  };
-
   return (
     <AppContext.Provider
       value={{
-        properties,
-        featuredProperties,
         isLoading,
         error,
         user,
@@ -139,8 +103,7 @@ export const AppProvider = ({ children }) => {
         login,
         logout,
         register,
-        searchProperties,
-        refreshProperties: loadProperties,
+        setError // Allow child components to set error state
       }}
     >
       {children}

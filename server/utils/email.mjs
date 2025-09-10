@@ -287,7 +287,7 @@ export async function sendWelcomeEmail(to, name) {
           margin: 0; 
           padding: 0; 
           background-color: #1a1a1a;
-          background-image: url('https://homeswift-ai.vercel.app/Hero%20Section%20Image.png');
+          background-image: url('https://homeswift-ai.vercel.app/images/logo.png');
           background-size: cover;
           background-position: center;
           font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 

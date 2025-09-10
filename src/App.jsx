@@ -11,9 +11,10 @@ const LoginPage = React.lazy(() => import('./components/hero/LoginPage'));
 const SignupPage = React.lazy(() => import('./components/hero/SignupPage'));
 const EmailVerification = React.lazy(() => import('./components/hero/EmailVerification'));
 const MainLanding = React.lazy(() => import('./components/main/MainLanding'));
-const PropertyDetails = React.lazy(() => import('./components/main/PropertyDetails'));
 const Listings = React.lazy(() => import('./components/main/Listings'));
 const AuthCallback = React.lazy(() => import('./pages/AuthCallback'));
+const ResetPasswordPage = React.lazy(() => import('./pages/ResetPasswordPage'));
+// PropertyDetails has been removed as part of property features cleanup
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -74,11 +75,14 @@ function AppRoutes() {
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
-        <Route path="/" element={
-          <AnimatedPage>
-            <HeroSection />
-          </AnimatedPage>
-        } />
+        <Route
+          path="/"
+          element={
+            <AnimatedPage>
+              <HeroSection />
+            </AnimatedPage>
+          }
+        />
         
         <Route path="/login" element={
           <AnimatedPage>
@@ -135,12 +139,13 @@ function AppRoutes() {
           }
         />
         
+        {/* Property details route removed - feature not available */}
         <Route
           path="/property/:id"
           element={
             <ProtectedRoute>
               <AnimatedPage>
-                <PropertyDetails />
+                <Navigate to="/listings" replace />
               </AnimatedPage>
             </ProtectedRoute>
           }

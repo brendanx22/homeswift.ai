@@ -28,7 +28,6 @@ import {
   Trash2,
   Loader2
 } from "lucide-react";
-import propertyService from '../../services/propertyService';
 import { AppContext } from '../../contexts/AppContext';
 
 export default function MainLanding() {
@@ -234,22 +233,19 @@ export default function MainLanding() {
   const [showPlusDropdown, setShowPlusDropdown] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   
-  // --- property states ---
-  const [properties, setProperties] = useState([]);
-  const [filteredProperties, setFilteredProperties] = useState([]);
-  const [featuredProperties, setFeaturedProperties] = useState([]);
+  // Application state
 
   // --- chat data ---
   const [chatHistory, setChatHistory] = useState(() => {
     try {
       const raw = localStorage.getItem("hs_chat_history_v1");
       return raw ? JSON.parse(raw) : [
-        { id: 1, title: "Modern Downtown Apartment", date: "2 hours ago" },
-        { id: 2, title: "Family Home with Garden", date: "1 day ago" },
-        { id: 3, title: "Luxury Ocean View Condo", date: "3 days ago" },
-        { id: 4, title: "Cozy Studio Near Campus", date: "1 week ago" },
-        { id: 5, title: "Waterfront Property Search", date: "2 weeks ago" },
-        { id: 6, title: "Pet-friendly Apartments", date: "3 weeks ago" },
+        { id: 1, title: "Welcome to HomeSwift", date: "2 hours ago" },
+        { id: 2, title: "Getting Started Guide", date: "1 day ago" },
+        { id: 3, title: "Account Settings", date: "3 days ago" },
+        { id: 4, title: "Help & Support", date: "1 week ago" },
+        { id: 5, title: "Recent Activity", date: "2 weeks ago" },
+        { id: 6, title: "Notifications", date: "3 weeks ago" },
       ];
     } catch (e) {
       return [];
@@ -260,79 +256,12 @@ export default function MainLanding() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-
-  // Load properties on component mount
-  useEffect(() => {
-    const loadProperties = async () => {
-      try {
-        setError(null);
-        setIsLoading(true);
-        
-        // Log that we're starting to load properties
-        console.log('Loading properties...');
-        // Fetch properties from the backend
-        const response = await propertyService.getProperties();
-        // Ensure we have an array of properties
-        const properties = Array.isArray(response) ? response : (response.data || []);
-        setProperties(properties);
-        setFilteredProperties(properties);
-        // First 3 as featured, or all if less than 3
-        setFeaturedProperties(properties.slice(0, Math.min(3, properties.length)));
-        setError(null);
-      } catch (err) {
-        const errorMessage = err.response?.data?.message || err.message || 'Failed to load properties. Please try again later.';
-        console.error("Error fetching properties:", errorMessage, err);
-        
-        // Set error state with user-friendly message
-        setError(errorMessage);
-        
-        // Reset properties to empty arrays on error
-        setProperties([]);
-        setFilteredProperties([]);
-        setFeaturedProperties([]);
-        
-        // Log additional error details in development
-        if (process.env.NODE_ENV === 'development') {
-          console.error('Error details:', {
-            response: err.response?.data,
-            status: err.response?.status,
-            config: err.config
-          });
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadProperties();
-  }, []);
-
-  // Handle property search functionality
-  const searchProperties = (query) => {
+  // Handle search functionality
+  const search = (query) => {
     if (!query.trim()) return [];
-    const searchTerm = query.toLowerCase();
-    return properties.filter(property => 
-      property.title.toLowerCase().includes(searchTerm) ||
-      property.description?.toLowerCase().includes(searchTerm) ||
-      property.location?.toLowerCase().includes(searchTerm) ||
-      property.type?.toLowerCase().includes(searchTerm)
-    );
+    // Implement search logic here
+    return [];
   };
-
-
-  const handlePropertyClick = (propertyId) => {
-    navigate(`/property/${propertyId}`);
-  };
-
-  // --- chat data ---
-
-  const suggestions = [
-    "Modern 2-bedroom apartment downtown",
-    "Family home with garden and garage",
-    "Studio apartment near university",
-    "Luxury condo with ocean view",
-    "Cozy cottage in quiet neighborhood",
-  ];
 
   // --- responsive listener ---
   useEffect(() => {
