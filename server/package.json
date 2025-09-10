@@ -1,0 +1,26 @@
+{
+  "name": "homeswift-server",
+  "version": "1.0.0",
+  "description": "HomeSwift server application",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.39.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "helmet": "^7.0.0",
+    "morgan": "^1.10.0",
+    "node-fetch": "^2.6.7",
+    "jsonwebtoken": "^9.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.20"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
