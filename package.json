@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "build:hero": "vite build --outDir components/hero --config vite.hero.config.js",
-    "build:main": "rimraf dist && vite build --outDir dist --config vite.main.config.js && node scripts/after-main-build.mjs"
+    "build:main": "rimraf dist && vite build --outDir dist --config vite.main.config.js && node scripts/after-main-build.mjs",
+    "build:landing": "rimraf dist/landing && vite build --outDir dist/landing --config vite.landing.config.js"
   },
   "dependencies": {
     "@emotion/cache": "^11.11.0",
