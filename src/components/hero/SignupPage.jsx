@@ -241,7 +241,7 @@ export default function SignupPage() {
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  name="new-password"
+                  name="password"
                   autoComplete="new-password"
                   value={formData.password}
                   onChange={handleInputChange}
@@ -268,7 +268,7 @@ export default function SignupPage() {
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                 <input
                   type={showConfirmPassword ? 'text' : 'password'}
-                  name="confirm-password"
+                  name="confirmPassword"
                   autoComplete="new-password"
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
