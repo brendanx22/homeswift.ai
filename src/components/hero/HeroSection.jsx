@@ -217,14 +217,14 @@ export default function HeroSection() {
           <form onSubmit={handleSearchSubmit} className="relative">
             <div className="relative">
                              <input
-                                type="search"
-                                name="hero-search"
-                                autoComplete="off"
-                                aria-label="Search properties"
-                                value={searchText}
-                                onChange={(e) => setSearchText(e.target.value)}
+                 type="search"
+                 name="search"
+                 value={searchText}
+                 onChange={(e) => setSearchText(e.target.value)}
                  placeholder="Describe your ideal home"
                  className="w-full bg-transparent border border-[#262626] rounded-full px-6 py-6 text-white text-md placeholder-[#404040] focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
+                 autoComplete="on"
+                 aria-label="Search for your ideal home"
                />
                              <motion.button
                  type="submit"

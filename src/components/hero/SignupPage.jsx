@@ -183,11 +183,11 @@ export default function SignupPage() {
                   <input
                     type="text"
                     name="firstName"
-                    autoComplete="given-name"
                     value={formData.firstName}
                     onChange={handleInputChange}
                     className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-4 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                     placeholder="First name"
+                    autoComplete="given-name"
                     required
                   />
                 </div>
@@ -201,11 +201,11 @@ export default function SignupPage() {
                   <input
                     type="text"
                     name="lastName"
-                    autoComplete="family-name"
                     value={formData.lastName}
                     onChange={handleInputChange}
                     className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-4 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                     placeholder="Last name"
+                    autoComplete="family-name"
                     required
                   />
                 </div>
@@ -222,11 +222,11 @@ export default function SignupPage() {
                 <input
                   type="email"
                   name="email"
-                  autoComplete="email"
                   value={formData.email}
                   onChange={handleInputChange}
                   className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-4 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                   placeholder="Enter your email"
+                  autoComplete="email"
                   required
                 />
               </div>
@@ -242,11 +242,11 @@ export default function SignupPage() {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   name="password"
-                  autoComplete="new-password"
                   value={formData.password}
                   onChange={handleInputChange}
                   className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-12 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                   placeholder="Create a password"
+                  autoComplete="new-password"
                   required
                 />
                 <button
@@ -269,11 +269,11 @@ export default function SignupPage() {
                 <input
                   type={showConfirmPassword ? 'text' : 'password'}
                   name="confirmPassword"
-                  autoComplete="new-password"
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
                   className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-12 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                   placeholder="Confirm your password"
+                  autoComplete="new-password"
                   required
                 />
                 <button
@@ -292,6 +292,7 @@ export default function SignupPage() {
                 type="checkbox"
                 className="w-4 h-4 text-blue-600 bg-transparent border-gray-400 rounded focus:ring-blue-500 focus:ring-2 mt-1"
                 required
+                autoComplete="off"
               />
               <label className="ml-2 text-gray-300 text-sm">
                 I agree to the{' '}

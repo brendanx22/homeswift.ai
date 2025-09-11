@@ -193,13 +193,13 @@ const Listings = () => {
               </div>
               <input
                 type="search"
-                name="search-properties"
-                autoComplete="off"
-                aria-label="Search properties"
+                name="property-search"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 className="block w-full pl-10 pr-3 py-3 border border-gray-700 rounded-lg bg-gray-900 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Search by location, property type, or keywords..."
+                autoComplete="on"
+                aria-label="Search properties"
               />
             </div>
             <button

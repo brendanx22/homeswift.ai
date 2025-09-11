@@ -57,7 +57,7 @@ const pageVariants = {
 };
 
 // Wrapper component for animated pages
-const AnimatedPage = ({ children }) => (
+export const AnimatedPage = ({ children }) => (
   <motion.div
     initial="initial"
     animate="animate"
@@ -69,7 +69,8 @@ const AnimatedPage = ({ children }) => (
   </motion.div>
 );
 
-function AppRoutes() {
+// Main App Routes Component
+export const AppRoutes = () => {
   const location = useLocation();
   const { isAuthenticated } = useAuth();
   
@@ -170,9 +171,10 @@ function AppRoutes() {
       </Routes>
     </AnimatePresence>
   );
-}
+};
 
-export default function App() {
+// Main App Component (default export)
+const App = () => {
   // Loading component for Suspense fallback
   const LoadingSpinner = () => (
     <Box sx={{

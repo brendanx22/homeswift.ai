@@ -235,11 +235,11 @@ export default function LoginPage() {
                 <input
                   type="email"
                   name="email"
-                  autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-4 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                   placeholder="Enter your email"
+                  autoComplete="email"
                   disabled={loading}
                   required
                 />
@@ -249,7 +249,7 @@ export default function LoginPage() {
             {!showResetForm && (
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label htmlFor="password" className="block text-gray-300 text-sm font-medium">
+                  <label className="block text-gray-300 text-sm font-medium">
                     Password
                   </label>
                   <button
@@ -266,13 +266,12 @@ export default function LoginPage() {
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                   <input
-                    id="password"
-                    name="password"
                     type={showPassword ? 'text' : 'password'}
-                    autoComplete="current-password"
+                    name="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-12 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
+                    autoComplete={showResetForm ? 'new-password' : 'current-password'}
                     placeholder="Enter your password"
                     disabled={loading}
                     required
@@ -281,7 +280,6 @@ export default function LoginPage() {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
