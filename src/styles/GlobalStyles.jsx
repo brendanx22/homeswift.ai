@@ -18,12 +18,14 @@ const GlobalStyles = () => {
         }
 
         html {
+          font-family: 'Raleway', sans-serif;
           font-size: 16px;
           -webkit-font-smoothing: antialiased;
           -moz-osx-font-smoothing: grayscale;
         }
 
         body {
+          font-family: 'Raleway', sans-serif;
           font-family: ${theme.typography.fontFamily};
           color: ${theme.palette.text.primary};
           background-color: ${theme.palette.background.default};
