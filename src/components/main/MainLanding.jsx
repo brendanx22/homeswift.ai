@@ -63,17 +63,27 @@ export default function MainLanding() {
   const searchTimeoutRef = useRef(null);
   
   // Handle search submission
-  const handleSearchSubmit = async (e) => {
-    if (e) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     
     const query = searchQuery.trim();
     if (!query) {
       setSearchError('Please enter a search term');
       return;
     }
+    
+    // Navigate to HouseListing with search query
+    const searchParams = new URLSearchParams();
+    searchParams.set('search', query);
+    if (propertyType) searchParams.set('type', propertyType);
+    if (searchLocation) searchParams.set('location', searchLocation);
+    
+    // Use the navigate function for client-side routing
+    navigate({
+      pathname: '/main/properties',
+      search: searchParams.toString()
+    });
   };
   
   // Handle search input change
@@ -522,7 +532,8 @@ export default function MainLanding() {
                     { icon: Calculator, label: 'Mortgage Calculator' },
                     { icon: Camera, label: 'Virtual Tours' },
                     { icon: Filter, label: 'Advanced Filters' },
-                    { icon: Clock, label: 'Recent Searches' }
+                    { icon: Clock, label: 'Recent Searches' },
+                    { icon: Home, label: 'Properties', onClick: () => navigate('/main/properties') },
                   ].map((item, idx) => (
                     <motion.div
                       key={idx}

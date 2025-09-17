@@ -8,6 +8,7 @@ import LoginPage from './components/hero/LoginPage';
 import SignupPage from './components/hero/SignupPage';
 import EmailVerification from './components/hero/EmailVerification';
 import MainLanding from './components/main/MainLanding';
+import HouseListing from './components/main/HouseListing';
 import './index.css';
 
 // Protected Route Component
@@ -94,16 +95,21 @@ function AppRoutes() {
         } />
         
         {/* Protected Routes */}
-        <Route
-          path="/main"
-          element={
-            <ProtectedRoute>
-              <AnimatedPage>
-                <MainLanding />
-              </AnimatedPage>
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/main" element={
+          <ProtectedRoute>
+            <AnimatedPage>
+              <MainLanding />
+            </AnimatedPage>
+          </ProtectedRoute>
+        } />
+        
+        <Route path="/main/properties" element={
+          <ProtectedRoute>
+            <AnimatedPage>
+              <HouseListing />
+            </AnimatedPage>
+          </ProtectedRoute>
+        } />
         
         {/* Catch-all route */}
         <Route path="*" element={
