@@ -45,14 +45,35 @@ router.post('/logout', authController.logout);
 // Get current user
 router.get('/me', requireAuth, authController.getCurrentUser);
 
-// Email verification - This is handled client-side by Supabase
-// We keep this route for backward compatibility but it redirects to the frontend
-router.get('/verify-email', (req, res) => {
-  const { token, redirect = '/main' } = req.query;
-  const redirectUrl = new URL('/auth/verify', process.env.FRONTEND_URL);
-  if (token) redirectUrl.searchParams.set('token', token);
-  if (redirect) redirectUrl.searchParams.set('redirect_to', redirect);
-  return res.redirect(redirectUrl.toString());
+// Email verification
+router.get('/verify-email', async (req, res) => {
+  try {
+    const { token, redirect = '/main' } = req.query;
+    
+    if (!token) {
+      return res.status(400).json({ error: 'Verification token is required' });
+    }
+
+    // Verify the email using the token with Supabase
+    const { data, error } = await supabase.auth.verifyOtp({
+      token_hash: token,
+      type: 'signup'
+    });
+
+    if (error) {
+      console.error('Email verification error:', error);
+      return res.redirect(`${process.env.FRONTEND_URL}/auth/verify?error=invalid_token`);
+    }
+
+    // Success - redirect to the frontend with success status
+    const redirectUrl = new URL(redirect, process.env.FRONTEND_URL);
+    redirectUrl.searchParams.set('verified', 'true');
+    return res.redirect(redirectUrl.toString());
+    
+  } catch (error) {
+    console.error('Email verification error:', error);
+    return res.redirect(`${process.env.FRONTEND_URL}/auth/verify?error=verification_failed`);
+  }
 });
 
 // Resend verification email

@@ -2,7 +2,7 @@ import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
 import { AppContext } from '../../contexts/AppContext';
-import { supabase } from '../../lib/supabase';
+// import { supabase } from '../../lib/supabase'; // Removed - using custom auth
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -18,61 +18,44 @@ export default function SignupPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
-  const { isAuthenticated } = useContext(AppContext);
+  const { register, isAuthenticated, isLoading } = useContext(AppContext);
 
-  // Check authentication status
+  // Redirect if already authenticated
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          navigate('/main', { replace: true });
-        }
-      } catch (err) {
-        console.error('Auth check error:', err);
-      }
-    };
-
-    checkAuth();
-  }, [navigate]);
+    if (!isLoading && isAuthenticated) {
+      console.log('User already authenticated, redirecting to main');
+      navigate('/main', { replace: true });
+    }
+  }, [isAuthenticated, isLoading, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
-    setSuccess('');
 
     try {
-      // Validate passwords match
       if (formData.password !== formData.confirmPassword) {
-        throw new Error('Passwords do not match');
+        setError('Passwords do not match');
+        return;
       }
 
-      // Validate password strength
-      if (formData.password.length < 8) {
-        throw new Error('Password must be at least 8 characters long');
-      }
-
-      // Sign up with Supabase
-      const { data, error } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            full_name: `${formData.firstName} ${formData.lastName}`,
-            avatar_url: ''
-          },
-          emailRedirectTo: `${window.location.origin}/main`
-        }
+      console.log('Registration attempt with:', { 
+        email: formData.email, 
+        name: `${formData.firstName} ${formData.lastName}`,
+        password: '***'
       });
 
-      if (error) throw error;
-
-      // If we get here, signup was successful
-      setSuccess('Registration successful! Please check your email to confirm your account.');
+      // Use the register function from AppContext
+      const userData = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        password: formData.password
+      };
       
+      // Register the user
+      await register(userData);
+
       // Redirect to verification page
       navigate('/verify-email', { 
         state: { 
@@ -81,7 +64,6 @@ export default function SignupPage() {
           status: 'pending'
         } 
       });
-
     } catch (err) {
       console.error('Registration error:', err);
       setError(err.message || 'An unexpected error occurred. Please try again.');
@@ -90,29 +72,8 @@ export default function SignupPage() {
     }
   };
 
-  const handleGoogleSignup = async () => {
-    try {
-      setLoading(true);
-      setError('');
-      setSuccess('');
-      
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
-        },
-      });
-
-      if (error) throw error;
-    } catch (err) {
-      console.error('Google signup error:', err);
-      setError(err.message || 'Failed to sign up with Google. Please try again.');
-      setLoading(false);
-    }
+  const handleGoogleSignup = () => {
+    setError('Google Sign-Up is temporarily disabled. Please use email registration.');
   };
 
   const handleInputChange = (e) => {
@@ -187,7 +148,6 @@ export default function SignupPage() {
                     onChange={handleInputChange}
                     className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-4 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                     placeholder="First name"
-                    autoComplete="given-name"
                     required
                   />
                 </div>
@@ -205,7 +165,6 @@ export default function SignupPage() {
                     onChange={handleInputChange}
                     className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-4 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                     placeholder="Last name"
-                    autoComplete="family-name"
                     required
                   />
                 </div>
@@ -226,7 +185,6 @@ export default function SignupPage() {
                   onChange={handleInputChange}
                   className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-4 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                   placeholder="Enter your email"
-                  autoComplete="email"
                   required
                 />
               </div>
@@ -246,7 +204,6 @@ export default function SignupPage() {
                   onChange={handleInputChange}
                   className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-12 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                   placeholder="Create a password"
-                  autoComplete="new-password"
                   required
                 />
                 <button
@@ -273,7 +230,6 @@ export default function SignupPage() {
                   onChange={handleInputChange}
                   className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-12 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                   placeholder="Confirm your password"
-                  autoComplete="new-password"
                   required
                 />
                 <button
@@ -292,7 +248,6 @@ export default function SignupPage() {
                 type="checkbox"
                 className="w-4 h-4 text-blue-600 bg-transparent border-gray-400 rounded focus:ring-blue-500 focus:ring-2 mt-1"
                 required
-                autoComplete="off"
               />
               <label className="ml-2 text-gray-300 text-sm">
                 I agree to the{' '}

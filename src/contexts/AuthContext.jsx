@@ -1,7 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import authService from '../services/authService';
 import { supabase } from '../lib/supabase';
+import { useNavigate } from 'react-router-dom';
 
 const AuthContext = createContext();
 
@@ -10,209 +9,154 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
-  const location = useLocation();
 
-  // Handle auth state changes
-  const handleAuthChange = useCallback(async (event, session) => {
-    try {
-      if (session?.user) {
-        const user = await authService.getCurrentUser();
-        setCurrentUser(user);
-      } else {
-        setCurrentUser(null);
-      }
-    } catch (error) {
-      console.error('Auth state change error:', error);
-      setError(error.message);
-    } finally {
-      if (loading) setLoading(false);
-    }
-  }, [loading]);
-
-  // Set up auth state listener
+  // Check if user is logged in on initial load
   useEffect(() => {
-    // Check initial auth state
-    const checkAuth = async () => {
+    // Check active sessions and set the user
+    const checkSession = async () => {
       try {
-        const user = await authService.getCurrentUser();
-        if (user) {
-          setCurrentUser(user);
+        setLoading(true);
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (session?.user) {
+          setCurrentUser({
+            id: session.user.id,
+            email: session.user.email,
+            ...session.user.user_metadata
+          });
         }
       } catch (error) {
-        console.error('Auth check failed:', error);
+        console.error('Error checking session:', error);
         setError(error.message);
       } finally {
         setLoading(false);
       }
     };
 
-    checkAuth();
+    checkSession();
 
-    // Set up auth state change listener with proper destructuring
-    const { data: { subscription } = {} } = supabase.auth.onAuthStateChange(handleAuthChange) || {};
+    // Listen for authentication state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session?.user) {
+          setCurrentUser({
+            id: session.user.id,
+            email: session.user.email,
+            ...session.user.user_metadata
+          });
+          
+          // Store the session in localStorage
+          localStorage.setItem('supabase.auth.token', session.access_token);
+          localStorage.setItem('supabase.auth.refresh', session.refresh_token);
+          
+          // Redirect to main page after successful login
+          if (event === 'SIGNED_IN') {
+            navigate('/main');
+          }
+        } else {
+          setCurrentUser(null);
+          localStorage.removeItem('supabase.auth.token');
+          localStorage.removeItem('supabase.auth.refresh');
+          
+          // Redirect to login page if user signs out
+          if (event === 'SIGNED_OUT') {
+            navigate('/login');
+          }
+        }
+      }
+    );
 
-    // Clean up subscription on unmount
+    // Cleanup subscription on unmount
     return () => {
       if (subscription?.unsubscribe) {
         subscription.unsubscribe();
       }
     };
-  }, [handleAuthChange]);
-
-  // Handle OAuth callback
-  useEffect(() => {
-    const handleOAuthCallback = async () => {
-      try {
-        const { data, error } = await supabase.auth.getSession();
-        
-        if (error) throw error;
-        
-        if (data?.session) {
-          const user = await authService.getCurrentUser();
-          setCurrentUser(user);
-          
-          // Redirect to intended URL or home
-          const from = location.state?.from?.pathname || '/';
-          navigate(from, { replace: true });
-        }
-      } catch (error) {
-        console.error('OAuth callback error:', error);
-        setError(error.message);
-        navigate('/login', { state: { error: error.message } });
-      }
-    };
-
-    // Check if this is an OAuth callback
-    if (window.location.pathname === '/auth/callback') {
-      handleOAuthCallback();
-    }
-  }, [navigate, location]);
+  }, [navigate]);
 
   // Login function
-  const login = async (credentials) => {
+  const login = useCallback(async (credentials) => {
     try {
       setLoading(true);
       setError(null);
-      const user = await authService.login(credentials);
-      setCurrentUser(user);
-      return user;
-    } catch (error) {
-      setError(error.message);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Register function
-  const register = async (userData) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const user = await authService.register(userData);
-      return user;
-    } catch (error) {
-      setError(error.message);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Logout function
-  const logout = async () => {
-    try {
-      setLoading(true);
-      await authService.logout();
-      setCurrentUser(null);
-      // Clear any cached data
-      localStorage.removeItem('supabase.auth.token');
-      return true;
-    } catch (error) {
-      console.error('Logout failed:', error);
-      setError(error.message);
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Update user function
-  const updateUser = async (userData) => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase.auth.updateUser({
-        data: {
-          ...currentUser,
-          ...userData
-        }
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: credentials.email,
+        password: credentials.password,
       });
-
+      
       if (error) throw error;
       
-      const updatedUser = {
-        ...currentUser,
-        ...userData,
-        ...data.user.user_metadata
-      };
+      return data.user;
+    } catch (error) {
+      console.error('Login error:', error);
+      setError(error.message);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Register function
+  const register = useCallback(async (userData) => {
+    try {
+      setLoading(true);
+      setError(null);
       
-      setCurrentUser(updatedUser);
-      return updatedUser;
+      const { data, error } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password,
+        options: {
+          data: {
+            first_name: userData.firstName,
+            last_name: userData.lastName,
+          },
+        },
+      });
+      
+      if (error) throw error;
+      
+      // Auto-login after registration
+      if (data.user) {
+        await login({ email: userData.email, password: userData.password });
+      }
+      
+      return data.user;
     } catch (error) {
-      console.error('Update user failed:', error);
+      console.error('Registration error:', error);
       setError(error.message);
       throw error;
     } finally {
       setLoading(false);
     }
-  };
+  }, [login]);
 
-  // Reset password
-  const resetPassword = async (email) => {
+  // Logout function
+  const logout = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
-      await authService.resetPassword(email);
-      return true;
+      // Clear local state first
+      setCurrentUser(null);
+      localStorage.removeItem('supabase.auth.token');
+      localStorage.removeItem('supabase.auth.refresh');
+      
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      // Force a full page reload to ensure all state is cleared
+      window.location.href = '/login';
+      
     } catch (error) {
-      console.error('Password reset failed:', error);
+      console.error('Logout error:', error);
       setError(error.message);
+      // Still redirect to login on error
+      window.location.href = '/login';
       throw error;
     } finally {
       setLoading(false);
     }
-  };
-
-  // Update password
-  const updatePassword = async (newPassword) => {
-    try {
-      setLoading(true);
-      setError(null);
-      await authService.updatePassword(newPassword);
-      return true;
-    } catch (error) {
-      console.error('Password update failed:', error);
-      setError(error.message);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Sign in with Google
-  const signInWithGoogle = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      await authService.signInWithGoogle();
-    } catch (error) {
-      console.error('Google sign in failed:', error);
-      setError(error.message);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [navigate]);
 
   const value = {
     currentUser,
@@ -222,23 +166,18 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
-    updateUser,
-    resetPassword,
-    updatePassword,
-    signInWithGoogle,
-    setError
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }
 
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;

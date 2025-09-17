@@ -1,28 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
-import {
-  ArrowLeft,
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  Loader2,
-  AlertCircle,
-} from 'lucide-react';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { Alert, AlertDescription } from '../ui/alert';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '../ui/card';
+import { AppContext } from '../../contexts/AppContext';
+import { ArrowLeft, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import api from '../../lib/api';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -30,147 +10,125 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState({ message: '', needsVerification: false });
-  const [isPasswordResetSent, setIsPasswordResetSent] = useState(false);
-  const [showResetForm, setShowResetForm] = useState(false);
-
+  const [isVerified, setIsVerified] = useState(false);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { login, isAuthenticated, loading: authLoading, resetPassword, signInWithGoogle } = useAuth();
+  const { login, isAuthenticated, isLoading } = useContext(AppContext);
 
-  // Redirect if already authenticated
+  // Check for verification status and redirect if authenticated
   useEffect(() => {
-    const errorParam = searchParams.get('error');
+    console.log('LoginPage - isAuthenticated:', isAuthenticated, 'isLoading:', isLoading);
+    
+    // Only proceed if we're done loading
+    if (isLoading) return;
+    
+    // Check for verification success in URL params
+    const verified = searchParams.get('verified') === 'true';
     const redirectPath = searchParams.get('redirect') || '/main';
-
-    if (isAuthenticated) {
-      navigate(redirectPath, { replace: true });
-      return;
-    }
-
-    if (errorParam) {
-      setError({ message: errorParam });
+    
+    if (verified) {
+      setIsVerified(true);
+      // Clear the URL params
       const cleanUrl = window.location.pathname;
       window.history.replaceState({}, document.title, cleanUrl);
     }
-  }, [isAuthenticated, navigate, searchParams]);
-
-  // Handle login with Supabase
-  const handleLogin = async () => {
-    if (!email || !password) {
-      setError({ message: 'Please enter both email and password' });
-      return;
+    
+    // If already authenticated, redirect to main or the specified path
+    if (isAuthenticated) {
+      console.log('Already authenticated, redirecting to', redirectPath);
+      navigate(redirectPath, { replace: true });
     }
+  }, [isAuthenticated, isLoading, navigate, searchParams]);
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setLoading(true);
     setError({ message: '', needsVerification: false });
 
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+    // Basic validation
+    if (!email || !password) {
+      setError({
+        message: 'Please enter both email and password.',
+        needsVerification: false
       });
-
-      if (error) {
-        if (error.message.includes('Email not confirmed')) {
-          throw { message: 'Please verify your email before logging in.', needsVerification: true };
-        }
-        throw error;
-      }
-
-      // Update the auth context
-      await login({ email, password });
-      
-      // Redirect to main page or the intended destination
-      const redirectPath = searchParams.get('redirect') || '/main';
-      navigate(redirectPath, { replace: true });
-    } catch (err) {
-      console.error('Login error:', err);
-      let errorMessage = 'Login failed. Please check your credentials and try again.';
-
-      if (err.status === 400) errorMessage = 'Invalid email or password.';
-      else if (err.status === 429) errorMessage = 'Too many login attempts. Please try again later.';
-      else if (err.needsVerification) {
-        setError({ message: err.message, needsVerification: true });
-        return;
-      } else if (err.message) errorMessage = err.message;
-
-      setError({ message: errorMessage });
-    } finally {
       setLoading(false);
-    }
-  };
-
-  // Handle password reset with Supabase
-  const handlePasswordReset = async () => {
-    if (!email) {
-      setError({ message: 'Please enter your email address' });
       return;
     }
 
-    setLoading(true);
-    setError({ message: '' });
-
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      });
-
-      if (error) throw error;
+      console.log('Login attempt with:', { email, password: '***' });
       
-      setIsPasswordResetSent(true);
+      // Use the login function from AppContext
+      const userData = await login({ email, password });
+      
+      console.log('Login successful:', userData);
+      
+      // Get redirect path from URL or default to '/main'
+      const redirectPath = searchParams.get('redirect') || '/main';
+      console.log('Redirecting to:', redirectPath);
+      
+      // Redirect to the specified path or main page
+      navigate(redirectPath);
+      
     } catch (err) {
-      console.error('Password reset error:', err);
-      setError({ message: err.message || 'Failed to send password reset email.' });
+      console.error('Login error:', err);
+      
+      // Handle email verification required case
+      if (err.needsVerification) {
+        setError({
+          message: 'Please verify your email before logging in.',
+          needsVerification: true,
+          email: err.email || email
+        });
+      } else {
+        // Handle other login errors
+        let errorMessage = 'Login failed. Please check your credentials and try again.';
+        
+        // More specific error messages based on status code
+        if (err.response?.status === 401) {
+          errorMessage = 'Invalid email or password. Please try again.';
+        } else if (err.response?.status === 429) {
+          errorMessage = 'Too many login attempts. Please try again later.';
+        } else if (err.message) {
+          errorMessage = err.message;
+        }
+        
+        setError({
+          message: errorMessage,
+          needsVerification: false
+        });
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // Form submit
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (showResetForm) {
-      await handlePasswordReset();
-    } else {
-      await handleLogin();
-    }
-  };
-
-  // Google login with Supabase
-  const handleGoogleLogin = async () => {
+  const handleResendVerification = async (emailToVerify) => {
     try {
       setLoading(true);
-      setError({ message: '' });
-      
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          },
-        },
+      await api.post('/auth/resend-verification', { email: emailToVerify });
+      setError({
+        message: `Verification email sent to ${emailToVerify}! Please check your inbox.`,
+        needsVerification: false
       });
-
-      if (error) throw error;
     } catch (err) {
-      console.error('Google login error:', err);
-      setError({ 
-        message: err.message || 'Failed to sign in with Google. Please try again.',
-        needsVerification: false 
+      console.error('Failed to resend verification email:', err);
+      setError({
+        message: 'Failed to resend verification email. Please try again later.',
+        needsVerification: true,
+        email: emailToVerify
       });
+    } finally {
       setLoading(false);
     }
   };
 
-  if (authLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
+  const handleGoogleLogin = () => {
+    setError({
+      message: 'Google Sign-In is temporarily disabled. Please use email login.',
+      needsVerification: false
+    });
+  };
 
   const handleBackToHome = () => {
     navigate('/');
@@ -197,35 +155,51 @@ export default function LoginPage() {
         <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform duration-300" />
         <span className="font-medium text-sm">Back to Home</span>
       </button>
+
+
       
       <div className="w-full max-w-md relative z-10">
+
         {/* Login Form */}
-        <div className="bg-transparent border border-gray-400/50 rounded-[2rem] p-6">
-          <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-white mb-1">
-              {showResetForm ? 'Reset Password' : 'Welcome Back'}
+        <div className="bg-transparent border border-gray-400/50 rounded-[2rem] p-8">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-white mb-2">
+              {isVerified ? 'Email Verified!' : 'Welcome Back'}
             </h1>
-            <p className="text-gray-300 text-sm">
-              {showResetForm 
-                ? 'Enter your email to receive a password reset link'
-                : 'Sign in to your account to continue'}
+            <p className="text-gray-300">
+              {isVerified 
+                ? 'Your email has been successfully verified. You can now sign in to your account.' 
+                : 'Sign in to your HomeSwift account'}
             </p>
+            {isVerified && (
+              <div className="mt-4 p-3 bg-green-50 text-green-700 rounded-md text-sm">
+                Email verification successful! You can now log in to your account.
+              </div>
+            )}
           </div>
 
-          {isPasswordResetSent && (
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
-              Password reset link sent to {email}. Check your email.
-            </div>
-          )}
-
           {error.message && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-              {error.message}
+            <div className={`mt-4 p-3 rounded-md text-sm ${
+              error.needsVerification ? 'bg-yellow-50 text-yellow-700' : 'bg-red-50 text-red-700'
+            }`}>
+              {error.needsVerification ? (
+                <div>
+                  <p>{error.message}</p>
+                  <button 
+                    onClick={() => handleResendVerification(error.email)}
+                    className="mt-2 text-sm font-medium text-yellow-700 hover:text-yellow-800 focus:outline-none"
+                    disabled={loading}
+                  >
+                    {loading ? 'Sending...' : 'Resend verification email'}
+                  </button>
+                </div>
+              ) : (
+                error.message
+              )}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email */}
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="block text-gray-300 text-sm font-medium mb-2">
                 Email Address
@@ -234,123 +208,102 @@ export default function LoginPage() {
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                 <input
                   type="email"
-                  name="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-4 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                   placeholder="Enter your email"
-                  autoComplete="email"
-                  disabled={loading}
                   required
                 />
               </div>
             </div>
 
-            {!showResetForm && (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-gray-300 text-sm font-medium">
-                    Password
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowResetForm(true);
-                      setError({ ...error, message: '' });
-                    }}
-                    className="text-sm text-gray-300 hover:text-white transition-colors"
-                  >
-                    Forgot password?
-                  </button>
-                </div>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    name="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-12 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
-                    autoComplete={showResetForm ? 'new-password' : 'current-password'}
-                    placeholder="Enter your password"
-                    disabled={loading}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
-                  >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                  </button>
-                </div>
+            <div>
+              <label className="block text-gray-300 text-sm font-medium mb-2">
+                Password
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-12 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
+                  placeholder="Enter your password"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
               </div>
-            )}
+            </div>
+
+            <div className="flex items-center justify-between">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 text-blue-600 bg-gray-800 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+                />
+                <span className="ml-2 text-gray-300 text-sm">Remember me</span>
+              </label>
+              <a href="#" className="text-blue-400 hover:text-blue-300 text-sm transition-colors">
+                Forgot password?
+              </a>
+            </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-white text-gray-900 font-medium rounded-[2rem] py-4 px-6 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white/20 transition-colors duration-300 flex items-center justify-center"
+              className="w-full bg-white text-black py-4 rounded-[2rem] font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
-                <>
-                  <Loader2 className="animate-spin -ml-1 mr-2 h-5 w-5" />
-                  {showResetForm ? 'Sending...' : 'Signing in...'}
-                </>
-              ) : showResetForm ? (
-                'Send Reset Link'
+                <div className="flex items-center justify-center">
+                  <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin mr-2"></div>
+                  Signing In...
+                </div>
               ) : (
                 'Sign In'
               )}
             </button>
           </form>
 
+          {/* Divider */}
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-gray-400/30"></div>
             </div>
-            <div className="relative flex justify-center">
-              <span className="px-3 bg-transparent text-sm text-gray-300">Or continue with</span>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-transparent text-gray-400">Or continue with</span>
             </div>
           </div>
 
+          {/* Google Login */}
           <button
-            type="button"
             onClick={handleGoogleLogin}
-            disabled={loading}
-            className="w-full flex items-center justify-center space-x-2 bg-transparent border border-gray-400/50 text-white rounded-[2rem] py-4 px-6 hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white/20 transition-colors duration-300"
+            className="w-full flex items-center justify-center space-x-3 bg-transparent border border-gray-400/50 text-white py-4 rounded-[2rem] font-medium hover:bg-white/5 transition-colors"
           >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            <svg className="w-5 h-5" viewBox="0 0 24 24">
+              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
             </svg>
             <span>Continue with Google</span>
           </button>
 
           <div className="mt-6 text-center">
-            {showResetForm ? (
-              <button
-                onClick={() => {
-                  setShowResetForm(false);
-                  setError({ ...error, message: '' });
-                }}
-                className="text-sm text-gray-300 hover:text-white transition-colors"
+            <p className="text-gray-400">
+              Don't have an account?{' '}
+              <button 
+                onClick={() => navigate('/signup')} 
+                className="text-blue-400 hover:text-blue-300 transition-colors underline"
               >
-                Back to sign in
+                Sign up
               </button>
-            ) : (
-              <p className="text-sm text-gray-300">
-                Don't have an account?{' '}
-                <button
-                  onClick={() => navigate('/signup')}
-                  className="text-white font-medium hover:underline focus:outline-none"
-                >
-                  Sign up
-                </button>
-              </p>
-            )}
+            </p>
           </div>
         </div>
       </div>

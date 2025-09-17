@@ -1,44 +1,78 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import authService from '../services/authService';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  getCurrentUser, 
+  login as authLogin, 
+  logout as authLogout, 
+  register as authRegister,
+  isAuthenticated as checkAuthStatus
+} from '../services/authService';
 
 const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
-  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   // Check authentication status on mount
   useEffect(() => {
+    let isMounted = true;
+    
     const checkAuth = async () => {
       try {
-        // Get user data first
-        const userData = await authService.getCurrentUser();
-        if (userData) {
+        const isAuth = await checkAuthStatus();
+        if (!isMounted) return;
+        
+        if (isAuth) {
+          const userData = await getCurrentUser();
+          if (!isMounted) return;
+          
           setUser(userData);
           setIsAuthenticated(true);
         } else {
-          // If no user data, explicitly set unauthenticated
+          // If not authenticated, ensure we clear any existing user data
           setUser(null);
           setIsAuthenticated(false);
         }
       } catch (error) {
         console.error('Auth check failed:', error);
+        if (!isMounted) return;
+        
+        // On any error, clear auth state
         setUser(null);
         setIsAuthenticated(false);
+        
+        // If we're not on the login page, redirect there
+        if (!window.location.pathname.includes('/login') && !window.location.pathname.includes('/signup')) {
+          window.location.href = '/login';
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
-    checkAuth();
+    // Add a small delay to prevent race conditions with Supabase initialization
+    const timer = setTimeout(() => {
+      checkAuth();
+    }, 100);
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
   }, []);
 
   // Login function
-  const login = async (credentials) => {
+  const login = useCallback(async (credentials) => {
     try {
-      const userData = await authService.login(credentials);
+      setIsLoading(true);
+      const userData = await authLogin(credentials);
       setUser(userData);
       setIsAuthenticated(true);
       setError(null); // Clear any previous errors
@@ -64,34 +98,26 @@ export const AppProvider = ({ children }) => {
       
       // Re-throw the error so the login form can handle it
       throw error;
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, []);
 
-  // Logout function
-  const logout = async () => {
-    try {
-      await authService.logout();
-      setUser(null);
-      setIsAuthenticated(false);
-    } catch (error) {
-      console.error('Logout failed:', error);
-      // Still clear local state even if server logout fails
-      setUser(null);
-      setIsAuthenticated(false);
-    }
-  };
 
   // Register function
-  const register = async (userData) => {
+  const register = useCallback(async (userData) => {
     try {
-      const newUser = await authService.register(userData);
+      setIsLoading(true);
+      const newUser = await authRegister(userData);
       // Don't set authenticated state - user needs to verify email first
       return newUser;
     } catch (error) {
       console.error('Registration failed:', error);
       throw error;
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, []);
 
   return (
     <AppContext.Provider
@@ -101,9 +127,7 @@ export const AppProvider = ({ children }) => {
         user,
         isAuthenticated,
         login,
-        logout,
         register,
-        setError // Allow child components to set error state
       }}
     >
       {children}

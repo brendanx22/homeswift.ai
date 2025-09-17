@@ -1,74 +1,36 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
-import tailwindcss from 'tailwindcss';
-import autoprefixer from 'autoprefixer';
 
+// https://vite.dev/config/
 export default ({ mode }) => {
   // Load app-level env vars to node's process.env
-  const env = loadEnv(mode, process.cwd(), '');
-  
-  // Set NODE_ENV based on Vite's mode
-  process.env.NODE_ENV = mode;
-  
-  // Merge other environment variables
-  process.env = { ...process.env, ...env };
+  process.env = { ...process.env, ...loadEnv(mode, process.cwd(), '') };
 
   const isProduction = mode === 'production';
   
-  // Expose environment variables to the client
-  const envWithProcessPrefix = {
-    'process.env': Object.entries(env).reduce(
-      (prev, [key, val]) => {
-        if (key.startsWith('VITE_')) {
-          prev[key] = JSON.stringify(val);
-        }
-        return prev;
-      },
-      {}
-    ),
-  };
-
   return defineConfig({
-    define: {
-      ...envWithProcessPrefix,
-      // Ensure these are always available
-      'process.env.NODE_ENV': JSON.stringify(mode),
-      'process.env.VITE_APP_URL': JSON.stringify(env.VITE_APP_URL || 'http://localhost:5173'),
-      'process.env.VITE_SUPABASE_URL': JSON.stringify(env.VITE_SUPABASE_URL || ''),
-      'process.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(env.VITE_SUPABASE_ANON_KEY || '')
-    },
     plugins: [
       react({
-        jsxRuntime: 'automatic',
         jsxImportSource: '@emotion/react',
         babel: {
           plugins: [
-            ['@babel/plugin-transform-react-jsx', {
-              runtime: 'automatic',
-              importSource: '@emotion/react'
-            }],
             ['@emotion/babel-plugin', {
               autoLabel: 'dev-only',
               labelFormat: '[local]',
-              cssPropOptimization: true
-            }]
-          ]
+              cssPropOptimization: true,
+            }],
+          ],
         },
       })
     ],
-    css: {
-      postcss: {
-        plugins: [
-          tailwindcss(),
-          autoprefixer(),
-        ],
-      },
-    },
     esbuild: {
       logOverride: { 'this-is-undefined-in-esm': 'silent' }
     },
     base: isProduction ? './' : '/',
+    define: {
+      'process.env': {}
+    },
     resolve: {
       alias: [
         {
@@ -78,27 +40,14 @@ export default ({ mode }) => {
       ]
     },
     server: {
-      port: 5173,
+      port: 3000,
       strictPort: true,
-      host: true, // Listen on all network interfaces
       proxy: {
-        // API routes
         '/api': {
           target: process.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5001',
           changeOrigin: true,
           secure: false,
-          rewrite: (path) => path.replace(/^\/api/, ''),
-          configure: (proxy, _options) => {
-            proxy.on('error', (err, _req, _res) => {
-              console.log('proxy error', err);
-            });
-            proxy.on('proxyReq', (proxyReq, req, _res) => {
-              console.log('Sending Request to the Target:', req.method, req.url);
-            });
-            proxy.on('proxyRes', (proxyRes, req, _res) => {
-              console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
-            });
-          }
+          rewrite: (path) => path.replace(/^\/api/, '')
         }
       }
     },

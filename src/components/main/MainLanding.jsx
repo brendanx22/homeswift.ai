@@ -1,87 +1,41 @@
-import React, { useEffect, useRef, useState, useContext, useCallback } from "react";
+import React, { useEffect, useState, useContext, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
   Menu,
   Plus,
   Sparkles,
-  ArrowUp,
-  FileUp,
-  Image as ImageUp,
+  User,
+  LogOut,
+  Home,
   MessageSquare,
   HelpCircle,
   Settings,
-  LogOut,
-  User,
   Bell,
-  Heart,
-  Home,
-  Calculator,
+  X,
+  Trash2,
+  ArrowUp,
   MapPin,
+  Heart,
+  Calculator,
   Camera,
   Filter,
   Clock,
-  Star,
-  ChevronLeft,
   ChevronRight,
-  X,
-  Trash2,
-  Loader2
+  ChevronLeft,
+  FileUp,
+  Image
 } from "lucide-react";
 import { AppContext } from '../../contexts/AppContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function MainLanding() {
   // --- authentication state ---
   const navigate = useNavigate();
-  const { user, logout: contextLogout, isAuthenticated } = useContext(AppContext);
+  const { user: appUser } = useContext(AppContext);
+  const { user: authUser, logout: contextLogout, isAuthenticated } = useAuth();
+  const user = authUser || appUser;
   
-  // Side panel state
-  const [showSidePanel, setShowSidePanel] = useState(() => {
-    // Initialize from localStorage if available, or default to true for desktop, false for mobile
-    const saved = localStorage.getItem('sidebarOpen');
-    if (saved !== null) return JSON.parse(saved);
-    return window.innerWidth >= 768; // Default to true for desktop, false for mobile
-  });
-  
-  // Track window size for responsive behavior
-  const [isDesktop, setIsDesktop] = useState(() => {
-    if (typeof window === 'undefined') return false;
-    return window.innerWidth >= 1024; // Desktop breakpoint at 1024px
-  });
-
-  // Update isDesktop state on window resize with debounce
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    let resizeTimer;
-    const handleResize = () => {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => {
-        const desktop = window.innerWidth >= 1024;
-        setIsDesktop(desktop);
-        
-        // Auto-show/hide sidebar based on screen size if no preference is set
-        if (localStorage.getItem('sidebarOpen') === null) {
-          setShowSidePanel(desktop);
-        }
-      }, 100);
-    };
-
-    // Initial check
-    handleResize();
-    
-    window.addEventListener('resize', handleResize);
-    return () => {
-      clearTimeout(resizeTimer);
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []);
-
-  // Save sidebar state to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem('sidebarOpen', JSON.stringify(showSidePanel));
-  }, [showSidePanel]);
-
   // Redirect if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
@@ -89,16 +43,18 @@ export default function MainLanding() {
     }
   }, [isAuthenticated, navigate]);
 
-  const logout = async () => {
+  // Handle logout
+  const handleLogout = async () => {
     try {
       await contextLogout();
-      navigate('/login');
+      // No need to navigate here as it's handled in the AuthContext
     } catch (error) {
       console.error('Logout error:', error);
+      // Force navigation to login on error
       navigate('/login');
     }
   };
-  
+
   // --- search state ---
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -106,8 +62,8 @@ export default function MainLanding() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchTimeoutRef = useRef(null);
   
-  // Handle search submission with debounce
-  const handleSearchSubmit = useCallback(async (e) => {
+  // Handle search submission
+  const handleSearchSubmit = async (e) => {
     if (e) {
       e.preventDefault();
       e.stopPropagation();
@@ -118,30 +74,10 @@ export default function MainLanding() {
       setSearchError('Please enter a search term');
       return;
     }
-    
-    try {
-      setIsSearching(true);
-      setSearchError(null);
-      setShowSuggestions(false);
-      
-      // Navigate to listings page with search query
-      navigate('/listings', { 
-        state: { 
-          searchQuery: query,
-          timestamp: Date.now() // Ensure component re-renders with new search
-        },
-        replace: true
-      });
-    } catch (error) {
-      console.error('Search error:', error);
-      setSearchError('Failed to perform search. Please try again.');
-    } finally {
-      setIsSearching(false);
-    }
-  }, [searchQuery, navigate]);
+  };
   
   // Handle search input change
-  const handleSearchChange = useCallback((e) => {
+  const handleSearchChange = (e) => {
     const value = e.target.value;
     setSearchQuery(value);
     setSearchError(null);
@@ -152,26 +88,47 @@ export default function MainLanding() {
     } else {
       setShowSuggestions(false);
     }
-  }, [handleSearchSubmit]);
+  };
   
-  // Clean up on unmount
-  useEffect(() => {
-    return () => {
-      if (searchTimeoutRef.current) {
-        clearTimeout(searchTimeoutRef.current);
-      }
-    };
-  }, []);
-  
-  // Mobile sidebar state
+  // --- responsive sidebar state ---
+  const [isDesktop, setIsDesktop] = useState(false);
+  const [showSidePanel, setShowSidePanel] = useState(false);
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   
-  // Close mobile sidebar when switching to desktop
+  // Initialize sidebar visibility based on screen size
   useEffect(() => {
-    if (isDesktop) {
-      setShowMobileSidebar(false);
-    }
-  }, [isDesktop]);
+    // Check if we're in a browser environment
+    if (typeof window === 'undefined') return;
+    
+    const checkIfDesktop = () => {
+      const width = window.innerWidth;
+      const desktop = width >= 1024;
+      setIsDesktop(desktop);
+      
+      // Close mobile sidebar when switching to desktop
+      if (desktop) {
+        setShowMobileSidebar(false);
+      }
+      
+      console.log('Window width:', width, 'Desktop:', desktop);
+    };
+    
+    // Initial check
+    checkIfDesktop();
+    
+    // Handle window resize with debounce
+    let resizeTimer;
+    const handleResize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(checkIfDesktop, 100);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(resizeTimer);
+    };
+  }, []);
   
   const [compactMode, setCompactMode] = useState(() => {
     // Initialize compact mode from localStorage if it exists
@@ -198,6 +155,9 @@ export default function MainLanding() {
       } else if (!isDesktop && localStorage.getItem('sidebarOpen') === null) {
         setShowSidePanel(false);
       }
+      
+      // Update isDesktop state
+      setIsDesktop(isDesktop);
     };
 
     // Set initial state
@@ -251,35 +211,26 @@ export default function MainLanding() {
   const [showPlusDropdown, setShowPlusDropdown] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   
-  // Application state
-
   // --- chat data ---
   const [chatHistory, setChatHistory] = useState(() => {
     try {
       const raw = localStorage.getItem("hs_chat_history_v1");
-      return raw ? JSON.parse(raw) : [
-        { id: 1, title: "Welcome to HomeSwift", date: "2 hours ago" },
-        { id: 2, title: "Getting Started Guide", date: "1 day ago" },
-        { id: 3, title: "Account Settings", date: "3 days ago" },
-        { id: 4, title: "Help & Support", date: "1 week ago" },
-        { id: 5, title: "Recent Activity", date: "2 weeks ago" },
-        { id: 6, title: "Notifications", date: "3 weeks ago" },
-      ];
+      return raw ? JSON.parse(raw) : [];
     } catch (e) {
       return [];
     }
   });
+  
   const [activeChat, setActiveChat] = useState(null);
   const [hoveredChat, setHoveredChat] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Handle search functionality
-  const search = (query) => {
-    if (!query.trim()) return [];
-    // Implement search logic here
-    return [];
-  };
+  const suggestions = [
+    "How can I help you today?",
+    "What would you like to know?",
+    "Ask me anything!"
+  ];
 
   // --- responsive listener ---
   useEffect(() => {
@@ -350,22 +301,24 @@ export default function MainLanding() {
     };
   }, [previewItem]);
 
-  // --- uploads ---
-  const handleFileUploadClick = () => fileInputRef.current?.click();
-  const handleImageUploadClick = () => imageInputRef.current?.click();
-
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) setUploadedFiles((p) => [...p, file]);
-    e.target.value = null;
+  // Property search state and handlers
+  const [searchLocation, setSearchLocation] = useState('');
+  const [propertyType, setPropertyType] = useState('');
+  
+  const handleSearch = () => {
+    // Handle property search logic here
+    console.log('Searching for:', { location: searchLocation, type: propertyType });
+    setShowPlusDropdown(false);
   };
 
+  // Image upload handler
   const handleImageChange = (e) => {
     const file = e.target.files?.[0];
     if (file) setUploadedImages((p) => [...p, file]);
     e.target.value = null;
   };
-
+  
+  // Cleanup functions
   const handleRemoveFile = (index) => setUploadedFiles((p) => p.filter((_, i) => i !== index));
   const handleRemoveImage = (index) => setUploadedImages((p) => p.filter((_, i) => i !== index));
 
@@ -435,11 +388,6 @@ export default function MainLanding() {
     };
   }, []);
 
-  // Handle logout
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
 
   return (
     <motion.div
@@ -650,12 +598,12 @@ export default function MainLanding() {
                         <>
                           <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
                             <span className="text-white text-sm font-bold">
-                              {user?.firstName?.charAt(0) || user?.email?.charAt(0).toUpperCase() || 'U'}
+                              {user?.first_name?.charAt(0) || user?.user_metadata?.first_name?.charAt(0) || user?.email?.charAt(0).toUpperCase() || 'U'}
                             </span>
                           </div>
                           <div className="flex flex-col min-w-0">
                             <span className="text-gray-100 text-sm font-medium truncate">
-                              {user?.firstName || user?.email?.split('@')[0]}
+                              {user?.first_name || user?.user_metadata?.first_name || user?.name?.split(' ')[0] || ''}
                             </span>
                             <span className="text-gray-400 text-xs truncate">
                               {user?.email}
@@ -759,7 +707,7 @@ export default function MainLanding() {
           {/* hero text */}
           <div className="text-center mb-8 sm:mb-10 max-w-4xl px-2 sm:px-0">
             <h1 className="flex items-center justify-center flex-wrap text-3xl sm:text-4xl font-bold text-white mb-4 sm:mb-5 leading-tight gap-2 sm:gap-3">
-              <span>Welcome back, {user?.firstName || user?.first_name || (user?.name ? user.name.split(' ')[0] : 'User')}!</span>
+              <span>Welcome back{user?.first_name || user?.user_metadata?.first_name ? `, ${user.first_name || user.user_metadata.first_name}` : ''}!</span>
               <span className="inline-flex items-center"><img src="/images/logo.png" alt="logo" className="w-8 h-8 sm:w-8 sm:h-8 rounded-lg object-cover" /></span>
             </h1>
             <p className="text-gray-300 text-md md:text-lg font-light max-w-2xl mx-auto">Find your dream home with HomeSwift's AI-powered search</p>
@@ -802,9 +750,9 @@ export default function MainLanding() {
 
             <motion.form 
               onSubmit={handleSearchSubmit}
-              whileHover={{ scale: 1.01 }} 
-              className="relative flex flex-col bg-transparent border border-gray-500/50 rounded-2xl shadow-2xl px-0 py-4 sm:px-6 sm:py-8 min-h-[100px] backdrop-blur-xl" 
-              style={{ background: 'rgba(45, 45, 45, 0.4)' }}
+              whileHover={{ scale: 1.005 }} 
+              className="relative flex flex-col bg-transparent border border-1 border-[#6c6c6c] rounded-3xl shadow-2xl px-0 py-6 sm:px-4 sm:py-10 min-h-[120px] backdrop-blur-xl" 
+              style={{ background: 'rgba(60, 60, 60, 0.15)' }}
             >
               <div className="relative">
                 <div className="relative w-full flex items-center">
@@ -816,66 +764,105 @@ export default function MainLanding() {
                     onFocus={() => searchQuery.trim() && setShowSuggestions(true)}
                     onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                     placeholder="Search by location, type, or features..." 
-                    className="w-full bg-transparent text-white placeholder-gray-400 font-medium outline-none border-none h-14 sm:h-16 rounded-xl px-6 pr-16 pt-2 pb-1 text-base sm:text-lg" 
+                    className={`w-full bg-transparent text-white placeholder-[#737373] outline-none border-none h-14 sm:h-16 ${showPlusDropdown ? 'rounded-t-2xl' : 'rounded-2xl'} px-6 pr-16 pt-2 pb-1 transition-all duration-200`} 
                     style={{ 
                       minWidth: 0, 
-                      fontFamily: 'Raleway, sans-serif',
-                      letterSpacing: '0.01em'
+                      fontSize: '1.1rem', 
+                      lineHeight: '1.2',
+                      background: showPlusDropdown ? 'rgba(60, 60, 60, 0.95)' : 'transparent',
+                      border: showPlusDropdown ? '1px solid rgba(255, 255, 255, 0.1)' : 'none',
+                      borderBottom: showPlusDropdown ? '1px solid rgba(255, 255, 255, 0.05)' : 'none',
+                      boxShadow: showPlusDropdown ? '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' : 'none'
                     }}
                     autoComplete="off"
                     aria-label="Search properties"
                     disabled={isSearching}
                   />
                   {searchError && (
-                    <div className="absolute -bottom-6 left-0 text-red-400 text-sm font-medium mt-1">
+                    <div className="absolute bottom-0 left-0 right-0 text-red-400 text-xs mt-1">
                       {searchError}
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="flex items-center justify-between absolute bottom-3 left-4 right-4 sm:left-6 sm:right-6 w-auto">
-                <div className="flex items-center gap-2 sm:gap-3 relative">
+              {/* Dropdown Menu */}
+              <AnimatePresence>
+                {showPlusDropdown && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -10, height: 0 }}
+                    animate={{ opacity: 1, y: 0, height: 'auto' }}
+                    exit={{ opacity: 0, y: -10, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute left-0 right-0 top-[calc(100%+8px)] z-40 px-6 py-4 rounded-2xl overflow-hidden"
+                    style={{
+                      background: 'rgba(60, 60, 60, 0.95)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.2)',
+                      backdropFilter: 'blur(12px)'
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="space-y-4">
+                      <h3 className="text-sm font-medium text-white/80 mb-2">Refine Your Search</h3>
+                      <div className="space-y-4">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2 text-gray-300 text-xs">
+                            <MapPin size={14} className="text-blue-400" />
+                            <span>Location</span>
+                          </div>
+                          <input 
+                            type="text" 
+                            value={searchLocation}
+                            onChange={(e) => setSearchLocation(e.target.value)}
+                            placeholder="Enter location..."
+                            className="bg-gray-700/70 text-white text-sm rounded-xl px-4 py-2.5 w-full focus:outline-none focus:ring-2 focus:ring-blue-500/50 border border-gray-600/50"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2 text-gray-300 text-xs">
+                          <Home size={14} className="text-blue-400" />
+                          <span>Property Type</span>
+                        </div>
+                        <select 
+                          value={propertyType}
+                          onChange={(e) => setPropertyType(e.target.value)}
+                          className="bg-gray-700/70 text-white text-sm rounded-xl px-4 py-2.5 w-full focus:outline-none focus:ring-2 focus:ring-blue-500/50 border border-gray-600/50 appearance-none"
+                        >
+                          <option value="">Any Type</option>
+                          <option value="house">House</option>
+                          <option value="apartment">Apartment</option>
+                          <option value="condo">Condo</option>
+                          <option value="townhouse">Townhouse</option>
+                        </select>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-2 sm:gap-3">
                   <motion.button 
                     whileHover={{ scale: 1.05 }} 
                     whileTap={{ scale: 0.95 }} 
                     type="button" 
-                    className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-700/60 hover:bg-gray-600/70 text-gray-200 border border-gray-500/50 shadow-md" 
+                    className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full bg-gray-700/40 hover:bg-gray-600/50 text-gray-300 border border-gray-500" 
                     tabIndex={-1} 
-                    onClick={() => setShowPlusDropdown((s) => !s)}
-                    aria-label="More options"
+                    onClick={() => setShowPlusDropdown(!showPlusDropdown)}
                   >
-                    <Plus size={16} className="text-gray-200" />
+                    <Plus size={12} />
                   </motion.button>
-
-                  <AnimatePresence>
-                    {showPlusDropdown && (
-                      <motion.div initial={{ opacity: 0, y: 10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.95 }} transition={{ duration: 0.18 }} className="absolute bottom-14 left-0 border border-gray-400/50 rounded-lg shadow-2xl z-50 px-1 py-0.5 min-w-[180px] w-[180px] h-[60px] backdrop-blur-xl" style={{ background: 'rgba(60, 60, 60, 0.9)' }}>
-                        <div className="space-y-0">
-                          <button onClick={() => { handleFileUploadClick(); setShowPlusDropdown(false); }} className="w-full flex items-center gap-0.5 text-left text-gray-300 hover:text-white hover:bg-gray-700/50 px-1.5 py-0.5 rounded text-[10px] leading-tight">
-                            <FileUp size={8} className="flex-shrink-0" />
-                            <span className="truncate">Upload File</span>
-                          </button>
-                          <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleFileChange} />
-
-                          <button onClick={() => { handleImageUploadClick(); setShowPlusDropdown(false); }} className="w-full flex items-center gap-0.5 text-left text-gray-300 hover:text-white hover:bg-gray-700/50 px-1.5 py-0.5 rounded text-[10px] leading-tight">
-                            <ImageUp size={8} className="flex-shrink-0" />
-                            <span className="truncate">Upload Image</span>
-                          </button>
-                          <input type="file" accept="image/*" ref={imageInputRef} style={{ display: 'none' }} onChange={handleImageChange} />
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
 
                   <motion.button 
                     whileHover={{ scale: 1.05 }} 
                     whileTap={{ scale: 0.95 }} 
                     type="button" 
                     onClick={handleSuggestionClick} 
-                    className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-800/60 border border-gray-600/50 text-gray-200 hover:bg-gray-700/60 text-sm font-medium transition-colors duration-200"
+                    className="flex items-center gap-1 sm:gap-1 px-1 py-1 sm:px-3 sm:py-1 rounded-full bg-transparent border border-gray-400/50 text-gray-300 font-small hover:bg-gray-700/30 text-xs sm:text-base"
                   >
-                    <Sparkles size={16} className="text-yellow-400" />
+                    <Sparkles size={18} />
                     <span>Suggestions</span>
                   </motion.button>
                 </div>
@@ -884,12 +871,11 @@ export default function MainLanding() {
                   whileHover={{ scale: 1.05 }} 
                   whileTap={{ scale: 0.95 }} 
                   type="submit" 
-                  className={`w-10 h-10 flex items-center justify-center rounded-full text-white shadow-lg border border-blue-400/50 ${!searchQuery.trim() ? 'opacity-50 cursor-not-allowed' : 'bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'}`} 
-                  style={{ boxShadow: '0 4px 12px rgba(59, 130, 246, 0.25)' }} 
+                  className={`w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full text-white shadow-lg border border-gray-400/50 ${!searchQuery.trim() ? 'opacity-50 cursor-not-allowed' : ''}`} 
+                  style={{ background: 'linear-gradient(180deg, #3a3d42 0%, #23262b 100%)', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }} 
                   disabled={!searchQuery.trim() || isSearching}
-                  aria-label="Search"
                 >
-                  <ArrowUp size={20} className="text-white" />
+                  <ArrowUp size={18} />
                 </motion.button>
               </div>
             </motion.form>
@@ -897,29 +883,18 @@ export default function MainLanding() {
             {/* Suggestions */}
             <AnimatePresence>
               {showSuggestions && (
-                <motion.div 
-                  initial={{ opacity: 0, y: -10, height: 0 }} 
-                  animate={{ opacity: 1, y: 0, height: 'auto' }} 
-                  exit={{ opacity: 0, y: -10, height: 0 }} 
-                  transition={{ duration: 0.2 }} 
-                  className="absolute top-full left-0 right-0 mt-2 sm:mt-3 border border-gray-600/50 rounded-xl shadow-2xl z-20 overflow-hidden backdrop-blur-xl"
-                  style={{ background: 'rgba(35, 35, 40, 0.95)' }}
-                >
-                  <div className="p-4">
-                    <h3 className="text-white font-semibold mb-3 text-base sm:text-lg">Popular Searches</h3>
-                    <div className="space-y-1.5">
+                <motion.div initial={{ opacity: 0, y: -10, height: 0 }} animate={{ opacity: 1, y: 0, height: 'auto' }} exit={{ opacity: 0, y: -10, height: 0 }} transition={{ duration: 0.2 }} className="absolute top-full left-0 right-0 mt-2 sm:mt-4 border border-gray-400/50 rounded-2xl shadow-2xl z-20 overflow-hidden" style={{ backgroundImage: 'url("/Rectangle 135.png")', backgroundSize: 'cover', backgroundPosition: 'center', backdropFilter: 'blur(12px)' }}>
+                  <div className="p-4" style={{ background: 'transparent' }}>
+                    <h3 className="text-white font-semibold mb-3 sm:mb-4 text-lg sm:text-xl">Popular Searches</h3>
+                    <div className="space-y-1">
                       {suggestions.map((sug, idx) => (
                         <motion.button 
                           key={idx} 
                           whileHover={{ scale: 1.01 }}
                           whileTap={{ scale: 0.99 }}
                           onClick={() => handleSuggestionSelect(sug)} 
-                          className="w-full text-left px-4 py-2.5 rounded-lg transition-all duration-150 text-gray-200 hover:text-white hover:bg-gray-700/60"
-                          style={{ 
-                            fontSize: '0.9375rem',
-                            fontFamily: 'Raleway, sans-serif',
-                            fontWeight: 400
-                          }}
+                          className="w-full text-left text-gray-300 hover:text-white hover:bg-gray-700/50 px-4 py-2.5 rounded-lg leading-normal transition-all duration-150"
+                          style={{ fontSize: '15px' }}
                         >
                           {sug}
                         </motion.button>

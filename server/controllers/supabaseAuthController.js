@@ -25,45 +25,25 @@ export const register = async (req, res) => {
   const { email, password, firstName, lastName } = req.body;
   
   try {
-    // First, check if user already exists
-    const { data: existingUser, error: userError } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', email.toLowerCase())
-      .single();
-
-    if (existingUser && !userError) {
-      return res.status(400).json({
-        success: false,
-        error: 'User with this email already exists',
-        code: 'auth/email-already-in-use'
-      });
-    }
-
-    // Create the user with Supabase Auth
     const { data, error } = await supabase.auth.signUp({
-      email: email.toLowerCase(),
+      email,
       password,
       options: {
-        emailRedirectTo: `${process.env.FRONTEND_URL}/auth/callback`,
         data: {
           first_name: firstName,
           last_name: lastName,
-          full_name: `${firstName} ${lastName}`.trim(),
-          avatar_url: '',
           role: 'user' // Default role
-        }
+        },
+        emailRedirectTo: `${process.env.FRONTEND_URL}/auth/confirm`
       }
     });
 
     if (error) throw error;
 
-    // If email confirmation is enabled in Supabase, the user will receive a confirmation email
     res.status(201).json({
       success: true,
       message: 'Registration successful! Please check your email to confirm your account.',
-      user: data.user,
-      session: data.session
+      user: data.user
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -77,84 +57,38 @@ export const register = async (req, res) => {
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
-
+  
   try {
-    // First try to sign in
     const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.toLowerCase(),
-      password,
+      email,
+      password
     });
 
-    if (error) {
-      // Check if the error is due to email not verified
-      if (error.message === 'Email not confirmed') {
-        // Resend verification email
-        const { error: resendError } = await supabase.auth.resend({
-          type: 'signup',
-          email: email.toLowerCase(),
-        });
+    if (error) throw error;
 
-        if (resendError) {
-          console.error('Error resending verification email:', resendError);
-          throw new Error('Email not verified. Failed to resend verification email.');
-        }
-
-        return res.status(401).json({
-          success: false,
-          message: 'Please verify your email address. A new verification email has been sent.',
-          code: 'auth/email-not-verified',
-          requiresVerification: true
-        });
-      }
-      throw error;
-    }
-
-    // Check if email is verified
-    if (!data.user?.email_confirmed_at) {
-      return res.status(401).json({
-        success: false,
-        message: 'Please verify your email address before logging in.',
-        code: 'auth/email-not-verified',
-        requiresVerification: true
-      });
-    }
-
-    // Get the user's role from the database
-    const { data: userData, error: userError } = await supabase
-      .from('profiles')
-      .select('role, email_verified')
-      .eq('id', data.user.id)
-      .single();
-
-    if (userError) throw userError;
-
-    // Create a JWT token with user info and role
-    const token = jwt.sign(
-      {
-        id: data.user.id,
-        email: data.user.email,
-        role: userData?.role || 'user',
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    // Set the JWT in an HTTP-only cookie
-    res.cookie('token', token, {
+    // Get the session
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    // Set the auth cookie
+    res.cookie('sb-access-token', session.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: session.expires_in * 1000
+    });
+    
+    res.cookie('sb-refresh-token', session.refresh_token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7 * 1000 // 7 days
     });
 
     res.json({
       success: true,
-      user: {
-        id: data.user.id,
-        email: data.user.email,
-        role: userData?.role || 'user',
-        email_verified: userData?.email_verified || false,
-      },
+      message: 'Login successful',
+      user: data.user,
+      session
     });
   } catch (error) {
     console.error('Login error:', error);

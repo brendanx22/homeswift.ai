@@ -1,20 +1,14 @@
-import React, { Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import React from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AppProvider, useAppContext } from './contexts/AppContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { CircularProgress, Box } from '@mui/material';
-
-// Lazy load components for better performance
-const HeroSection = React.lazy(() => import('./components/hero/HeroSection'));
-const LoginPage = React.lazy(() => import('./components/hero/LoginPage'));
-const SignupPage = React.lazy(() => import('./components/hero/SignupPage'));
-const EmailVerification = React.lazy(() => import('./components/hero/EmailVerification'));
-const MainLanding = React.lazy(() => import('./components/main/MainLanding'));
-const Listings = React.lazy(() => import('./components/main/Listings'));
-const AuthCallback = React.lazy(() => import('./pages/AuthCallback'));
-const ResetPasswordPage = React.lazy(() => import('./pages/ResetPasswordPage'));
-// PropertyDetails has been removed as part of property features cleanup
+import HeroSection from './components/hero/HeroSection';
+import LoginPage from './components/hero/LoginPage';
+import SignupPage from './components/hero/SignupPage';
+import EmailVerification from './components/hero/EmailVerification';
+import MainLanding from './components/main/MainLanding';
+import './index.css';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -57,7 +51,7 @@ const pageVariants = {
 };
 
 // Wrapper component for animated pages
-export const AnimatedPage = ({ children }) => (
+const AnimatedPage = ({ children }) => (
   <motion.div
     initial="initial"
     animate="animate"
@@ -69,31 +63,17 @@ export const AnimatedPage = ({ children }) => (
   </motion.div>
 );
 
-// Main App Routes Component
-export const AppRoutes = () => {
+function AppRoutes() {
   const location = useLocation();
-  const { isAuthenticated } = useAuth();
   
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
-        {/* Root route - shows MainLanding when authenticated, HeroSection when not */}
-        <Route
-          path="/"
-          element={
-            isAuthenticated ? (
-              <ProtectedRoute>
-                <AnimatedPage>
-                  <MainLanding />
-                </AnimatedPage>
-              </ProtectedRoute>
-            ) : (
-              <AnimatedPage>
-                <HeroSection />
-              </AnimatedPage>
-            )
-          }
-        />
+        <Route path="/" element={
+          <AnimatedPage>
+            <HeroSection />
+          </AnimatedPage>
+        } />
         
         <Route path="/login" element={
           <AnimatedPage>
@@ -113,20 +93,6 @@ export const AppRoutes = () => {
           </AnimatedPage>
         } />
         
-        {/* OAuth Callback Route */}
-        <Route path="/auth/callback" element={
-          <Suspense fallback={<div>Loading...</div>}>
-            <AuthCallback />
-          </Suspense>
-        } />
-        
-        {/* Password Reset Callback */}
-        <Route path="/reset-password" element={
-          <AnimatedPage>
-            <ResetPasswordPage />
-          </AnimatedPage>
-        } />
-        
         {/* Protected Routes */}
         <Route
           path="/main"
@@ -139,64 +105,17 @@ export const AppRoutes = () => {
           }
         />
         
-        <Route
-          path="/listings"
-          element={
-            <ProtectedRoute>
-              <AnimatedPage>
-                <Listings />
-              </AnimatedPage>
-            </ProtectedRoute>
-          }
-        />
-        
-        {/* Property details route removed - feature not available */}
-        <Route
-          path="/property/:id"
-          element={
-            <ProtectedRoute>
-              <AnimatedPage>
-                <Navigate to="/listings" replace />
-              </AnimatedPage>
-            </ProtectedRoute>
-          }
-        />
-        
         {/* Catch-all route */}
         <Route path="*" element={
           <AnimatedPage>
-            <Navigate to="/welcome" replace />
+            <Navigate to="/" replace />
           </AnimatedPage>
         } />
       </Routes>
     </AnimatePresence>
   );
-};
+}
 
-// Main App Component (default export)
-const App = () => {
-  // Loading component for Suspense fallback
-  const LoadingSpinner = () => (
-    <Box sx={{
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      minHeight: '100vh',
-      backgroundColor: 'background.default'
-    }}>
-      <CircularProgress />
-    </Box>
-  );
-
-  return (
-    <Router>
-      <Suspense fallback={<LoadingSpinner />}>
-        <AppProvider>
-          <AuthProvider>
-            <AppRoutes />
-          </AuthProvider>
-        </AppProvider>
-      </Suspense>
-    </Router>
-  );
+export default function App() {
+  return <AppRoutes />;
 }

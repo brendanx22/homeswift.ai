@@ -217,14 +217,11 @@ export default function HeroSection() {
           <form onSubmit={handleSearchSubmit} className="relative">
             <div className="relative">
                              <input
-                 type="search"
-                 name="search"
+                 type="text"
                  value={searchText}
                  onChange={(e) => setSearchText(e.target.value)}
                  placeholder="Describe your ideal home"
                  className="w-full bg-transparent border border-[#262626] rounded-full px-6 py-6 text-white text-md placeholder-[#404040] focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
-                 autoComplete="on"
-                 aria-label="Search for your ideal home"
                />
                              <motion.button
                  type="submit"
@@ -235,8 +232,7 @@ export default function HeroSection() {
                    rotate: 45,
                    boxShadow: "0 8px 25px rgba(255, 255, 255, 0.3)"
                  }}
-                 whileTap={{ scale: 0.9 }}
-                 transition={{ type: "spring", stiffness: 400, damping: 17 }}
+               
                >
                  <motion.div
                    animate={{ y: [-2, 2, -2] }}

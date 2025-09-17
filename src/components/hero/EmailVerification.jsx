@@ -72,17 +72,23 @@ const EmailVerification = () => {
       const response = await api.get(`/auth/verify-email?token=${verificationToken}`);
       if (response.data.success) {
         setStatus('success');
-        setMessage('Your email has been verified successfully! Redirecting to the main page...');
-        
-        // Redirect to main page after a short delay
+        setMessage('Your email has been successfully verified! You can now log in to your account.');
+        // Auto-redirect to login after 3 seconds
         setTimeout(() => {
-          navigate('/main', { replace: true });
-        }, 2000);
+          navigate('/login', { 
+            state: { 
+              message: 'Email verified successfully! Please log in to continue.',
+              status: 'success'
+            } 
+          });
+        }, 3000);
+      } else {
+        throw new Error(response.data.error || 'Verification failed. The link may be invalid or expired.');
       }
     } catch (error) {
-      console.error('Verification error:', error);
+      console.error('Email verification error:', error);
       setStatus('error');
-      setMessage(error.response?.data?.message || 'Failed to verify email. The link may have expired or is invalid.');
+      setMessage(error.response?.data?.error || error.message || 'Failed to verify email. Please try again later.');
     }
   };
 
