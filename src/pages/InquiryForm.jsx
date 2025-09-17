@@ -1,20 +1,61 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ChevronLeft, ChevronRight, Edit } from "lucide-react";
-import { Header } from "@/components/Header";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { ConfirmationModal } from "@/components/ConfirmationModal";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { ChevronLeft, ChevronRight, Edit, Calculator, Home, DollarSign, Percent, Calendar } from "lucide-react";
+import { Header } from "../components/Header";
+import { Button } from "../components/ui/button";
+import { Card } from "../components/ui/card";
+import { Input } from "../components/ui/input";
+import { Textarea } from "../components/ui/textarea";
+import { Switch } from "../components/ui/switch";
+import { Slider } from "../components/ui/slider";
+import { ConfirmationModal } from "../components/ConfirmationModal";
 
-const InquiryForm = () => {
+const InquiryForm = ({ type = 'inquiry' }) => {
+  const isCalculator = type === 'calculator';
+  const location = useLocation();
+  
+  // Check URL for calculator mode
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('type') === 'calculator') {
+      setIsCalculatorMode(true);
+    }
+  }, [location]);
   const navigate = useNavigate();
+  // Form state
   const [inquiry, setInquiry] = useState("");
   const [selectedDate, setSelectedDate] = useState("Thur, Aug 07");
   const [movemateEnabled, setMovemateEnabled] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [currentMonth, setCurrentMonth] = useState("August 2025");
+  
+  // Calculator state
+  const [isCalculatorMode, setIsCalculatorMode] = useState(isCalculator);
+  const [homePrice, setHomePrice] = useState(500000);
+  const [downPayment, setDownPayment] = useState(100000);
+  const [interestRate, setInterestRate] = useState(4.5);
+  const [loanTerm, setLoanTerm] = useState(30);
+  const [monthlyPayment, setMonthlyPayment] = useState(0);
+  
+  // Calculate monthly payment
+  useEffect(() => {
+    if (isCalculatorMode) {
+      const principal = homePrice - downPayment;
+      const monthlyRate = interestRate / 100 / 12;
+      const numPayments = loanTerm * 12;
+      
+      if (principal > 0 && monthlyRate > 0) {
+        const payment = principal * 
+          (monthlyRate * Math.pow(1 + monthlyRate, numPayments)) / 
+          (Math.pow(1 + monthlyRate, numPayments) - 1);
+        setMonthlyPayment(payment);
+      } else if (principal > 0) {
+        setMonthlyPayment(principal / numPayments);
+      } else {
+        setMonthlyPayment(0);
+      }
+    }
+  }, [homePrice, downPayment, interestRate, loanTerm, isCalculatorMode]);
 
   const calendar = [
     [null, null, null, null, 1, 2, 3],
@@ -35,12 +76,133 @@ const InquiryForm = () => {
     navigate("/");
   };
 
+  if (isCalculatorMode) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header 
+          showBack 
+          onBack={() => navigate(-1)} 
+          title="Mortgage Calculator" 
+        />
+        
+        <div className="px-6 pb-6">
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-foreground mb-2">Mortgage Calculator</h1>
+            <p className="text-muted-foreground">
+              Estimate your monthly mortgage payments
+            </p>
+            
+            <Card className="p-6 mb-6">
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-muted-foreground flex items-center">
+                    <Home className="w-4 h-4 mr-2" /> Home Price
+                  </label>
+                  <span className="text-lg font-semibold">
+                    ${homePrice.toLocaleString()}
+                  </span>
+                </div>
+                <Slider
+                  value={[homePrice]}
+                  onValueChange={(value) => setHomePrice(value[0])}
+                  min={100000}
+                  max={2000000}
+                  step={10000}
+                  className="w-full"
+                />
+              </div>
+              
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-muted-foreground flex items-center">
+                    <DollarSign className="w-4 h-4 mr-2" /> Down Payment
+                  </label>
+                  <span className="text-lg font-semibold">
+                    ${downPayment.toLocaleString()}
+                  </span>
+                </div>
+                <Slider
+                  value={[downPayment]}
+                  onValueChange={(value) => setDownPayment(value[0])}
+                  min={0}
+                  max={homePrice}
+                  step={5000}
+                  className="w-full"
+                />
+              </div>
+              
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-muted-foreground flex items-center">
+                    <Percent className="w-4 h-4 mr-2" /> Interest Rate
+                  </label>
+                  <span className="text-lg font-semibold">
+                    {interestRate}%
+                  </span>
+                </div>
+                <Slider
+                  value={[interestRate]}
+                  onValueChange={(value) => setInterestRate(value[0])}
+                  min={2}
+                  max={10}
+                  step={0.1}
+                  className="w-full"
+                />
+              </div>
+              
+              <div className="mb-8">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-muted-foreground flex items-center">
+                    <Calendar className="w-4 h-4 mr-2" /> Loan Term
+                  </label>
+                  <span className="text-lg font-semibold">
+                    {loanTerm} years
+                  </span>
+                </div>
+                <Slider
+                  value={[loanTerm]}
+                  onValueChange={(value) => setLoanTerm(value[0])}
+                  min={10}
+                  max={30}
+                  step={5}
+                  className="w-full"
+                />
+              </div>
+              
+              <div className="bg-muted p-6 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Estimated Monthly Payment</p>
+                    <p className="text-3xl font-bold">
+                      ${monthlyPayment.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    </p>
+                  </div>
+                  <Calculator className="w-8 h-8 text-primary" />
+                </div>
+              </div>
+            </Card>
+            
+            <div className="flex flex-col space-y-4">
+              <Button size="lg" className="w-full">
+                Get Pre-Approved
+              </Button>
+              <Button size="lg" variant="outline" className="w-full" onClick={() => navigate('/app/inquiry')}>
+                Contact a Loan Officer
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Original inquiry form
   return (
     <div className="min-h-screen bg-background">
       <Header 
         showBack 
-        onBack={() => navigate("/property/1")} 
-        title="Make Your Inquiry" 
+        onBack={() => navigate(-1)} 
+        title={isCalculatorMode ? 'Mortgage Calculator' : 'Make Your Inquiry'} 
       />
       
       <div className="px-6 pb-6">

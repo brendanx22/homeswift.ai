@@ -5,69 +5,90 @@ import { AppProvider, useAppContext } from './contexts/AppContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
 
 // Pages
-import HeroSection from './components/hero/HeroSection';
+import Index from './pages/Index';
 import LoginPage from './components/hero/LoginPage';
 import SignupPage from './components/hero/SignupPage';
 import EmailVerification from './components/hero/EmailVerification';
 import MainLanding from './components/main/MainLanding';
-import HouseListing from './components/main/HouseListing';
+import HouseListings from './pages/HouseListings';
 import PropertyDetails from './pages/PropertyDetails';
 import Gallery from './pages/Gallery';
 import InquiryForm from './pages/InquiryForm';
 import NotFound from './pages/NotFound';
+
+// Styles
 import './index.css';
 
 // Create a client
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   const { isLoading } = useAppContext();
+  const location = useLocation();
 
   if (loading || isLoading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: window.location.pathname }} replace />;
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
   return children;
 };
 
 // Animation variants for page transitions
-const pageVariants = {
-  initial: { opacity: 0, y: 20 },
-  animate: { 
+const variants = {
+  hidden: { opacity: 0, y: 20 },
+  enter: { 
     opacity: 1, 
     y: 0,
-    transition: { duration: 0.4, ease: [0.2, 0, 0, 1] }
+    transition: {
+      duration: 0.3,
+      ease: [0.4, 0, 0.2, 1]
+    }
   },
-  exit: {
-    opacity: 0,
+  exit: { 
+    opacity: 0, 
     y: -20,
-    transition: { duration: 0.3, ease: [0.4, 0, 0.2, 1] }
+    transition: {
+      duration: 0.2,
+      ease: [0.4, 0, 0.2, 1]
+    }
   }
 };
 
 // Wrapper component for animated pages
 const AnimatedPage = ({ children }) => (
   <motion.div
-    initial="initial"
-    animate="animate"
+    initial="hidden"
+    animate="enter"
     exit="exit"
-    variants={pageVariants}
+    variants={variants}
     className="min-h-screen w-full"
+    style={{ position: 'relative' }}
   >
     {children}
   </motion.div>
 );
 
-const AppRoutes = () => {
+const AnimatedRoutes = () => {
   const location = useLocation();
   
   return (
@@ -76,7 +97,7 @@ const AppRoutes = () => {
         {/* Public Routes */}
         <Route path="/" element={
           <AnimatedPage>
-            <HeroSection />
+            <Index />
           </AnimatedPage>
         } />
         
@@ -98,24 +119,54 @@ const AppRoutes = () => {
           </AnimatedPage>
         } />
         
-        {/* Protected Routes */}
+        {/* Public Properties Route for Search */}
+        <Route path="/properties" element={
+          <AnimatedPage>
+            <HouseListings />
+          </AnimatedPage>
+        } />
+        
+        {/* Property Details Route */}
+        <Route path="/properties/:id" element={
+          <AnimatedPage>
+            <PropertyDetails />
+          </AnimatedPage>
+        } />
+        
+        {/* Main App Routes - Protected */}
         <Route path="/app" element={
           <ProtectedRoute>
-            <MainLanding />
+            <AnimatedPage>
+              <MainLanding />
+            </AnimatedPage>
           </ProtectedRoute>
         }>
-          <Route index element={<Navigate to="properties" replace />} />
-          <Route path="properties" element={<HouseListing />} />
-          <Route path="properties/:id" element={<PropertyDetails />} />
+          <Route index element={null} />
+          <Route path="search" element={<HouseListings isSearchResult={true} />} />
+          <Route path="saved" element={<HouseListings showSaved={true} />} />
+          <Route path="neighborhoods" element={<HouseListings showNeighborhoods={true} />} />
           <Route path="gallery" element={<Gallery />} />
+          <Route path="calculator" element={<InquiryForm type="calculator" />} />
+          <Route path="tours" element={<Gallery showTours={true} />} />
+          <Route path="filters" element={<HouseListings showFilters={true} />} />
+          <Route path="recent" element={<HouseListings showRecent={true} />} />
           <Route path="inquiry" element={<InquiryForm />} />
+          <Route path="profile" element={<div>Profile Page - Coming Soon</div>} />
         </Route>
         
         {/* 404 Route */}
-        <Route path="*" element={<NotFound />} />
+        <Route path="*" element={
+          <AnimatedPage>
+            <NotFound />
+          </AnimatedPage>
+        } />
       </Routes>
     </AnimatePresence>
   );
+};
+
+const AppRoutes = () => {
+  return <AnimatedRoutes />;
 };
 
 const App = () => {
@@ -123,10 +174,8 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <AppProvider>
-          <TooltipProvider>
-            <Toaster position="top-right" richColors />
-            <AppRoutes />
-          </TooltipProvider>
+          <Toaster position="top-right" richColors />
+          <AppRoutes />
         </AppProvider>
       </AuthProvider>
     </QueryClientProvider>

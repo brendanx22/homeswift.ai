@@ -4,11 +4,8 @@ import { Card } from "./ui/card";
 
 export const PropertyCard = ({ image, location, price, duration, type, onClick }) => {
   return (
-    <Card 
-      className="relative overflow-hidden rounded-3xl cursor-pointer hover:scale-105 transition-transform duration-300"
-      onClick={onClick}
-    >
-      <div className="aspect-[4/3] relative">
+    <div className="relative overflow-hidden cursor-pointer hover:scale-105 transition-transform duration-300" onClick={onClick}>
+      <div className="aspect-[4/3] relative rounded-3xl overflow-hidden">
         <img
           src={image}
           alt={`Property in ${location}`}
@@ -20,22 +17,28 @@ export const PropertyCard = ({ image, location, price, duration, type, onClick }
           </Button>
         </div>
         <div className="absolute top-3 right-3">
-          <div className="bg-black/70 text-white text-xs px-3 py-1.5 rounded-full font-medium">
+          <div 
+            className={`text-white text-xs px-3 py-1.5 rounded-full font-medium ${
+              type.toLowerCase() === 'for sale' 
+                ? 'bg-green-600/90' 
+                : 'bg-blue-600/90'
+            }`}
+          >
             {type}
           </div>
         </div>
       </div>
       
-      <div className="p-4 space-y-2">
-        <div className="flex items-center gap-1 text-muted-foreground text-sm">
-          <MapPin className="h-3 w-3" />
-          <span>{location}</span>
+      <div className="px-1 py-3 space-y-1">
+        <div className="flex items-center gap-2 text-gray-300 text-sm">
+          <MapPin className="h-4 w-4 text-primary" />
+          <span className="truncate">{location}</span>
         </div>
-        <div className="flex items-baseline gap-1">
-          <span className="text-lg font-bold text-foreground">₦ {price.toLocaleString()}</span>
-          <span className="text-sm text-muted-foreground">/{duration}</span>
+        <div className="flex items-baseline gap-2">
+          <span className="text-lg font-bold text-white">₦{price.toLocaleString()}</span>
+          <span className="text-sm text-gray-400">/{duration}</span>
         </div>
       </div>
-    </Card>
+    </div>
   );
 };

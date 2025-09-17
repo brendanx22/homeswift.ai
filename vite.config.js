@@ -36,10 +36,19 @@ export default ({ mode }) => {
         {
           find: /^hoist-non-react-statics(\/.*)?$/,
           replacement: 'hoist-non-react-statics/dist/hoist-non-react-statics.cjs.js'
+        },
+        {
+          find: '@',
+          replacement: path.resolve(__dirname, './src')
+        },
+        {
+          find: '@/',
+          replacement: path.resolve(__dirname, './src/') // Add this for @/ imports
         }
       ]
     },
     server: {
+      host: true,  // Listen on all network interfaces
       port: 3000,
       strictPort: true,
       proxy: {

@@ -16,7 +16,11 @@ export default function HeroSection() {
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    navigate('/login');
+    if (searchText.trim()) {
+      navigate(`/properties?search=${encodeURIComponent(searchText)}`);
+    } else {
+      navigate('/properties');
+    }
   };
 
 

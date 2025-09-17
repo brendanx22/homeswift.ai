@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useContext, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Outlet, useLocation } from "react-router-dom";
 import {
   Menu,
   Plus,
@@ -24,7 +24,8 @@ import {
   ChevronRight,
   ChevronLeft,
   FileUp,
-  Image
+  Image,
+  Search as SearchIcon
 } from "lucide-react";
 import { AppContext } from '../../contexts/AppContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -32,9 +33,13 @@ import { useAuth } from '../../contexts/AuthContext';
 export default function MainLanding() {
   // --- authentication state ---
   const navigate = useNavigate();
+  const location = useLocation();
   const { user: appUser } = useContext(AppContext);
   const { user: authUser, logout: contextLogout, isAuthenticated } = useAuth();
   const user = authUser || appUser;
+  
+  // Only show search interface on the exact /app path
+  const isMainLandingPage = location.pathname === '/app';
   
   // Redirect if not authenticated
   useEffect(() => {
@@ -55,6 +60,61 @@ export default function MainLanding() {
     }
   };
 
+  // --- navigation state ---
+  const [activeTab, setActiveTab] = useState("browse");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  
+  // Navigation items with their respective routes
+  const navItems = [
+    { id: 'properties', label: 'Browse Homes', icon: <Home className="w-5 h-5" /> },
+    { id: 'search', label: 'Property Search', icon: <SearchIcon className="w-5 h-5" /> },
+    { id: 'saved', label: 'Saved Properties', icon: <Heart className="w-5 h-5" /> },
+    { id: 'neighborhoods', label: 'Neighborhood Guide', icon: <MapPin className="w-5 h-5" /> },
+    { id: 'calculator', label: 'Mortgage Calculator', icon: <Calculator className="w-5 h-5" /> },
+    { id: 'tours', label: 'Virtual Tours', icon: <Camera className="w-5 h-5" /> },
+    { id: 'filters', label: 'Advanced Filters', icon: <Filter className="w-5 h-5" /> },
+    { id: 'recent', label: 'Recent Searches', icon: <Clock className="w-5 h-5" /> },
+  ];
+
+  // Handle navigation to different sections
+  const handleNavigation = (id) => {
+    setActiveTab(id);
+    setIsMobileMenuOpen(false);
+    
+    // Handle navigation based on the selected item
+    switch(id) {
+      case 'search':
+        navigate('/properties');
+        break;
+      case 'properties':
+        navigate('/properties');
+        break;
+      case 'saved':
+        navigate('/app/saved');
+        break;
+      case 'neighborhoods':
+        navigate('/app/neighborhoods');
+        break;
+      case 'calculator':
+        navigate('/app/calculator');
+        break;
+      case 'tours':
+        navigate('/app/tours');
+        break;
+      case 'filters':
+        navigate('/app/filters');
+        break;
+      case 'recent':
+        navigate('/app/recent');
+        break;
+      default:
+        // For other items, just update the active tab
+        break;
+    }
+  };
+
   // --- search state ---
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -65,27 +125,18 @@ export default function MainLanding() {
   // Handle search submission
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    e.stopPropagation();
     
     const query = searchQuery.trim();
+    
     if (!query) {
       setSearchError('Please enter a search term');
       return;
     }
     
-    // Navigate to HouseListing with search query
-    const searchParams = new URLSearchParams();
-    searchParams.set('search', query);
-    if (propertyType) searchParams.set('type', propertyType);
-    if (searchLocation) searchParams.set('location', searchLocation);
-    
-    // Use the navigate function for client-side routing
-    navigate({
-      pathname: '/main/properties',
-      search: searchParams.toString()
-    });
+    // Navigate to search results page
+    navigate(`/properties?search=${encodeURIComponent(query)}`);
   };
-  
+
   // Handle search input change
   const handleSearchChange = (e) => {
     const value = e.target.value;
@@ -491,7 +542,7 @@ export default function MainLanding() {
                       {!isDesktop ? (
                         <button 
                           onClick={() => setShowMobileSidebar(false)} 
-                          className="p-2 rounded-lg hover:bg-white/10 text-white/70 hover:text-white transition-all duration-200"
+                          className="p-2 rounded-lg text-gray-400 hover:bg-gray-800/50 hover:text-gray-300 transition-all duration-200"
                         >
                           <X size={18} />
                         </button>
@@ -524,29 +575,20 @@ export default function MainLanding() {
               {/* HomeSwift sidebar navigation */}
               <div className="flex-1 overflow-y-auto px-2 pb-2 mt-8 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                 <div className="space-y-1">
-                  {[
-                    { icon: Home, label: 'Home', active: true },
-                    { icon: MapPin, label: 'Find Properties' },
-                    { icon: Heart, label: 'Saved Properties' },
-                    { icon: MapPin, label: 'Neighborhood Guide' },
-                    { icon: Calculator, label: 'Mortgage Calculator' },
-                    { icon: Camera, label: 'Virtual Tours' },
-                    { icon: Filter, label: 'Advanced Filters' },
-                    { icon: Clock, label: 'Recent Searches' },
-                    { icon: Home, label: 'Properties', onClick: () => navigate('/main/properties') },
-                  ].map((item, idx) => (
+                  {navItems.map((item, idx) => (
                     <motion.div
-                      key={idx}
+                      key={item.id}
                       initial={{ opacity: 0, x: -12 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.18, delay: idx * 0.05 }}
+                      onClick={() => handleNavigation(item.id)}
                       className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all duration-200 ${
-                        item.active 
+                        activeTab === item.id 
                           ? 'bg-gray-800/80 text-white' 
                           : 'text-gray-400 hover:bg-gray-800/50 hover:text-white'
                       }`}
                     >
-                      <item.icon size={18} className="flex-shrink-0" />
+                      <span className="flex-shrink-0">{item.icon}</span>
                       {!compactMode && (
                         <span className="text-sm font-medium">{item.label}</span>
                       )}
@@ -669,10 +711,13 @@ export default function MainLanding() {
                 {user ? (
                   // Logged in menu items
                   [
-                    { label: 'Dashboard', action: () => navigate('/main') },
-                    { label: 'Browse Properties', action: () => navigate('/listings') },
-                    { label: 'Saved Properties', action: () => navigate('/saved') },
-                    { label: 'Profile', action: () => navigate('/profile') },
+                    { label: 'Dashboard', action: () => navigate('/app') },
+                    { label: 'Browse Properties', action: () => navigate('/properties') },
+                    { label: 'Saved Properties', action: () => navigate('/app/saved') },
+                    { label: 'Neighborhoods', action: () => navigate('/app/neighborhoods') },
+                    { label: 'Gallery', action: () => navigate('/app/gallery') },
+                    { label: 'Mortgage Calculator', action: () => navigate('/app/calculator') },
+                    { label: 'Profile', action: () => navigate('/app/profile') },
                     { label: 'Logout', action: handleLogout, className: 'text-red-400 hover:text-red-300' }
                   ].map((item, idx) => (
                     <motion.button 
@@ -689,7 +734,7 @@ export default function MainLanding() {
                   // Not logged in menu items
                   [
                     { label: 'Home', action: () => navigate('/') },
-                    { label: 'Browse Properties', action: () => navigate('/listings') },
+                    { label: 'Browse Properties', action: () => navigate('/properties') },
                     { label: 'About', action: () => navigate('/about') },
                     { label: 'Contact', action: () => navigate('/contact') },
                     { label: 'Login', action: () => navigate('/login') },
@@ -775,7 +820,7 @@ export default function MainLanding() {
                     onFocus={() => searchQuery.trim() && setShowSuggestions(true)}
                     onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                     placeholder="Search by location, type, or features..." 
-                    className={`w-full bg-transparent text-white placeholder-[#737373] outline-none border-none h-14 sm:h-16 ${showPlusDropdown ? 'rounded-t-2xl' : 'rounded-2xl'} px-6 pr-16 pt-2 pb-1 transition-all duration-200`} 
+                    className={`w-full bg-transparent text-white placeholder-[#737373] outline-none border-none h-14 sm:h-16 ${showPlusDropdown ? 'rounded-t-2xl' : 'rounded-2xl'} px-6 pr-6 pt-2 pb-1 transition-all duration-200`} 
                     style={{ 
                       minWidth: 0, 
                       fontSize: '1.1rem', 
@@ -917,32 +962,83 @@ export default function MainLanding() {
             </AnimatePresence>
           </div>
         </div>
-        {/* preview modal */}
+        {/* Main content area with Outlet for nested routes */}
+        <div className="flex-1 w-full">
+          <Outlet />
+        </div>
+
+        {/* Preview modal */}
         <AnimatePresence>
           {previewItem && (
-            <motion.div ref={previewDropdownRef} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} transition={{ duration: 0.18 }} className="fixed left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 border border-gray-400/50 rounded-2xl shadow-2xl z-50 flex flex-col items-center justify-center backdrop-blur-xl" style={{ background: 'rgba(60, 60, 60, 0.95)', width: '70vw', height: '70vh', maxWidth: '900px', maxHeight: '900px', overflow: 'hidden', boxSizing: 'border-box' }}>
+            <motion.div 
+              ref={previewDropdownRef} 
+              initial={{ opacity: 0, scale: 0.95 }} 
+              animate={{ opacity: 1, scale: 1 }} 
+              exit={{ opacity: 0, scale: 0.95 }} 
+              transition={{ duration: 0.18 }} 
+              className="fixed left-1/2 top-1/2 transform -translate-x-1/2 -translate-y-1/2 border border-gray-400/50 rounded-2xl shadow-2xl z-50 flex flex-col items-center justify-center backdrop-blur-xl" 
+              style={{ 
+                background: 'rgba(60, 60, 60, 0.95)', 
+                width: '70vw', 
+                height: '70vh', 
+                maxWidth: '900px', 
+                maxHeight: '900px', 
+                overflow: 'hidden', 
+                boxSizing: 'border-box' 
+              }}
+            >
               <div className="flex items-center justify-between w-full px-6 pt-4">
                 <div className="text-gray-200 font-bold text-lg truncate">{previewItem.file?.name}</div>
                 <div className="flex items-center gap-2">
-                  <button onClick={closePreview} className="p-1 rounded hover:bg-gray-700/50"><X size={18} className="text-gray-300" /></button>
+                  <button 
+                    onClick={closePreview} 
+                    className="p-1 rounded hover:bg-gray-700/50"
+                  >
+                    <X size={18} className="text-gray-300" />
+                  </button>
                 </div>
               </div>
 
-              <div className="flex-1 w-full px-6 py-4 overflow-auto flex items-start justify-center">
+              <div className="flex-1 w-full px-6 py-4 overflow-auto">
                 {previewItem.type === 'image' ? (
-                  <img src={previewURL} alt={previewItem.file.name} className="max-w-full max-h-[60vh] rounded-lg shadow-lg object-contain" />
+                  <img 
+                    src={previewURL} 
+                    alt={previewItem.file.name} 
+                    className="max-w-full max-h-[80vh] rounded-lg shadow-lg object-contain" 
+                  />
                 ) : previewItem.file?.type === 'application/pdf' ? (
-                  <object data={previewURL} type="application/pdf" className="w-full h-[60vh] rounded-lg shadow-lg bg-white">
+                  <object 
+                    data={previewURL} 
+                    type="application/pdf" 
+                    className="w-full h-[60vh] rounded-lg shadow-lg bg-white"
+                  >
                     <div className="text-gray-400 text-lg mb-4">PDF preview not available in this browser.</div>
-                    <a href={previewURL} download={previewItem.file?.name} className="px-4 py-2 bg-gray-700 text-white rounded-lg shadow hover:bg-gray-800">Download PDF</a>
+                    <a 
+                      href={previewURL} 
+                      download={previewItem.file?.name} 
+                      className="px-4 py-2 bg-gray-700 text-white rounded-lg shadow hover:bg-gray-800"
+                    >
+                      Download PDF
+                    </a>
                   </object>
                 ) : previewItem.isDocxType ? (
                   <div className="text-center">
                     <div className="text-gray-400 text-lg mb-4">DOCX preview not supported. You can download the file below.</div>
-                    <a href={previewURL} download={previewItem.file?.name} className="px-4 py-2 bg-gray-700 text-white rounded-lg shadow hover:bg-gray-800">Download DOCX</a>
+                    <a 
+                      href={previewURL} 
+                      download={previewItem.file?.name} 
+                      className="px-4 py-2 bg-gray-700 text-white rounded-lg shadow hover:bg-gray-800"
+                    >
+                      Download DOCX
+                    </a>
                   </div>
                 ) : previewItem.fileText ? (
-                  <div className="w-full h-[60vh] overflow-auto bg-gray-900 text-gray-100 p-4 rounded-lg shadow-lg" style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{previewItem.fileText}</div>
+                  <div 
+                    className="w-full h-[60vh] overflow-auto bg-gray-900 text-gray-100 p-4 rounded-lg shadow-lg" 
+                    style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                  >
+                    {previewItem.fileText}
+                  </div>
                 ) : (
                   <div className="text-gray-400 text-lg">File preview not available for this type.</div>
                 )}

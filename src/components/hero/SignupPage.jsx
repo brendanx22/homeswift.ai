@@ -1,8 +1,7 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
-import { AppContext } from '../../contexts/AppContext';
-// import { supabase } from '../../lib/supabase'; // Removed - using custom auth
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -18,15 +17,17 @@ export default function SignupPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
-  const { register, isAuthenticated, isLoading } = useContext(AppContext);
+  const { signUp, isAuthenticated, loading: authLoading } = useAuth();
 
-  // Redirect if already authenticated
+  // Log auth state for debugging
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
+    console.log('Auth state changed:', { isAuthenticated, authLoading });
+    
+    if (!authLoading && isAuthenticated) {
       console.log('User already authenticated, redirecting to main');
       navigate('/main', { replace: true });
     }
-  }, [isAuthenticated, isLoading, navigate]);
+  }, [isAuthenticated, authLoading, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -41,11 +42,10 @@ export default function SignupPage() {
 
       console.log('Registration attempt with:', { 
         email: formData.email, 
-        name: `${formData.firstName} ${formData.lastName}`,
-        password: '***'
+        name: `${formData.firstName} ${formData.lastName}`
       });
 
-      // Use the register function from AppContext
+      // Use the signUp function from AuthContext
       const userData = {
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -54,16 +54,27 @@ export default function SignupPage() {
       };
       
       // Register the user
-      await register(userData);
-
-      // Redirect to verification page
-      navigate('/verify-email', { 
-        state: { 
-          email: formData.email,
-          message: `We've sent a verification link to ${formData.email}. Please check your email to verify your account.`,
-          status: 'pending'
-        } 
+      const user = await signUp({
+        ...userData,
+        email: formData.email,
+        password: formData.password
       });
+
+      console.log('User registered successfully:', user);
+      
+      // Show success message
+      setSuccess(`Registration successful! Please check your email (${formData.email}) to verify your account.`);
+      
+      // Auto-redirect to login after a delay
+      setTimeout(() => {
+        navigate('/login', { 
+          state: { 
+            email: formData.email,
+            message: 'Registration successful! Please check your email to verify your account.',
+            status: 'success'
+          } 
+        });
+      }, 3000);
     } catch (err) {
       console.error('Registration error:', err);
       setError(err.message || 'An unexpected error occurred. Please try again.');

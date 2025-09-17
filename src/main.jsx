@@ -28,20 +28,31 @@ const queryClient = new QueryClient({
   },
 });
 
+// Create a custom history object to access the history API
+import { createBrowserHistory } from 'history';
+
+// Create a browser history object
+const history = createBrowserHistory();
+
 // Wrap the app with all necessary providers
 const Root = () => (
   <React.StrictMode>
-    <CacheProvider value={emotionCache}>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <AppProvider>
-            <BrowserRouter>
+    <BrowserRouter
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
+      <CacheProvider value={emotionCache}>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <AppProvider>
               <App />
-            </BrowserRouter>
-          </AppProvider>
-        </AuthProvider>
-      </QueryClientProvider>
-    </CacheProvider>
+            </AppProvider>
+          </AuthProvider>
+        </QueryClientProvider>
+      </CacheProvider>
+    </BrowserRouter>
   </React.StrictMode>
 );
 

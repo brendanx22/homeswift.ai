@@ -66,8 +66,7 @@ export async function sendEmailVerification(to, token) {
     ? (process.env.API_URL || 'https://homeswift-ai.vercel.app/api')
     : 'http://localhost:5001/api';
   // Use frontend URL for the verification link
-  // Generate the OTP verification link for Supabase
-  const verificationUrl = `${frontendUrl}/auth/verify?token=${token}&type=signup&redirect_to=${encodeURIComponent('/main')}`;
+  const verificationUrl = `${frontendUrl}/api/verify-email?token=${token}&redirect=${encodeURIComponent('/main')}`;
   const subject = 'Verify Your HomeSwift Email Address';
   const htmlContent = `
     <!DOCTYPE html>
@@ -288,7 +287,7 @@ export async function sendWelcomeEmail(to, name) {
           margin: 0; 
           padding: 0; 
           background-color: #1a1a1a;
-          background-image: url('https://homeswift-ai.vercel.app/images/logo.png');
+          background-image: url('https://homeswift-ai.vercel.app/Hero%20Section%20Image.png');
           background-size: cover;
           background-position: center;
           font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 

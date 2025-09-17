@@ -1,8 +1,8 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { body } from 'express-validator';
-import * as authController from '../controllers/supabaseAuthController.js';
-import { requireAuth } from '../middleware/supabaseAuth.js';
+import { requireGuest, checkRememberToken, loadUser } from '../middleware/auth.js';
+import authController from '../controllers/authController.js';
 
 const router = express.Router();
 
@@ -13,8 +13,12 @@ const authLimiter = rateLimit({
   message: { error: 'Too many authentication attempts, please try again later.' }
 });
 
+// Apply remember token check to all auth routes
+router.use(checkRememberToken);
+
 // Register
 router.post('/register', 
+  requireGuest,
   authLimiter,
   [
     body('firstName').trim().isLength({ min: 2 }).withMessage('First name is required'),
@@ -29,8 +33,9 @@ router.post('/register',
   authController.register
 );
 
-// Login
+// POST /api/auth/login - User login
 router.post('/login', 
+  requireGuest,
   authLimiter,
   [
     body('email').isEmail().withMessage('Valid email is required'),
@@ -42,62 +47,21 @@ router.post('/login',
 // Logout
 router.post('/logout', authController.logout);
 
-// Get current user
-router.get('/me', requireAuth, authController.getCurrentUser);
-
-// Email verification
-router.get('/verify-email', async (req, res) => {
-  try {
-    const { token, redirect = '/main' } = req.query;
-    
-    if (!token) {
-      return res.status(400).json({ error: 'Verification token is required' });
-    }
-
-    // Verify the email using the token with Supabase
-    const { data, error } = await supabase.auth.verifyOtp({
-      token_hash: token,
-      type: 'signup'
-    });
-
-    if (error) {
-      console.error('Email verification error:', error);
-      return res.redirect(`${process.env.FRONTEND_URL}/auth/verify?error=invalid_token`);
-    }
-
-    // Success - redirect to the frontend with success status
-    const redirectUrl = new URL(redirect, process.env.FRONTEND_URL);
-    redirectUrl.searchParams.set('verified', 'true');
-    return res.redirect(redirectUrl.toString());
-    
-  } catch (error) {
-    console.error('Email verification error:', error);
-    return res.redirect(`${process.env.FRONTEND_URL}/auth/verify?error=verification_failed`);
+// Get current user - requires authentication
+router.get('/me', loadUser, (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Not authenticated' });
   }
+  // Return user data without sensitive information
+  const userData = req.user.toJSON();
+  delete userData.password_hash;
+  res.json({ success: true, user: userData });
 });
+
+// Email verification endpoint
+router.get('/verify-email', authController.verifyEmail);
 
 // Resend verification email
-router.post('/resend-verification', requireAuth, async (req, res) => {
-  try {
-    const { data, error } = await supabase.auth.resend({
-      type: 'signup',
-      email: req.user.email
-    });
-
-    if (error) throw error;
-
-    res.json({
-      success: true,
-      message: 'Verification email resent successfully'
-    });
-  } catch (error) {
-    console.error('Resend verification error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to resend verification email',
-      error: error.message
-    });
-  }
-});
+router.post('/resend-verification', authController.resendVerification);
 
 export default router;

@@ -9,24 +9,22 @@ const __dirname = path.dirname(__filename);
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 
-// Initialize Supabase client with service role for admin operations
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// Initialize Supabase client
+const supabaseUrl = process.env.VITE_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; // Using service role key for server-side operations
 
 if (!supabaseUrl || !supabaseKey) {
-  console.error('❌ Supabase Configuration Error:', {
-    SUPABASE_URL: supabaseUrl ? '***.supabase.co' : 'MISSING',
+  console.error('Supabase Configuration Error:', {
+    VITE_SUPABASE_URL: supabaseUrl ? '***' : 'MISSING',
     SUPABASE_SERVICE_ROLE_KEY: supabaseKey ? '***' : 'MISSING'
   });
   throw new Error('Missing Supabase configuration. Please check your .env file.');
 }
 
-console.log('🔐 Initializing Supabase client in production mode');
-
-// Create Supabase client with optimized settings for production
+console.log('Initializing Supabase client with URL:', supabaseUrl);
 const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
-    autoRefreshToken: false,
+    autoRefreshToken: true,
     persistSession: false, // We'll handle sessions with JWT
     detectSessionInUrl: false
   }

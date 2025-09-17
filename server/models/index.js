@@ -1,10 +1,14 @@
 import Database from '../config/database.js';
 import initUserModel from './User.js';
+import initPropertyModel from './Property.js';
+import initPropertyImageModel from './PropertyImage.js';
 
 class Models {
   constructor() {
     this.sequelize = null;
     this.User = null;
+    this.Property = null;
+    this.PropertyImage = null;
   }
 
   async initialize() {
@@ -13,15 +17,27 @@ class Models {
     
     // Initialize models
     this.User = initUserModel(this.sequelize);
+    this.Property = initPropertyModel(this.sequelize);
+    this.PropertyImage = initPropertyImageModel(this.sequelize);
     
-    // Set up any associations
+    // Set up associations
     this.setupAssociations();
     
     return this;
   }
 
   setupAssociations() {
-    // Add any user-related associations here
+    // Property has many Images
+    this.Property.hasMany(this.PropertyImage, {
+      foreignKey: 'property_id',
+      as: 'propertyImages'
+    });
+
+    // Image belongs to Property
+    this.PropertyImage.belongsTo(this.Property, {
+      foreignKey: 'property_id',
+      as: 'property'
+    });
   }
 
   getSequelize() {

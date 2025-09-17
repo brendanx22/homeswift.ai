@@ -17,42 +17,72 @@ class Database {
   _initSequelize() {
     const isProduction = process.env.NODE_ENV === 'production';
     
-    // Use Supabase for both development and production
-    console.log(`🚀 Initializing Sequelize in ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'} mode (Supabase)`);
-    
-    return new Sequelize(
-      process.env.SUPABASE_DB_NAME,
-      process.env.SUPABASE_DB_USER,
-      process.env.SUPABASE_DB_PASSWORD,
-      {
-        host: process.env.SUPABASE_DB_HOST,
-        port: process.env.SUPABASE_DB_PORT || 6543,
-        dialect: 'postgres',
-        logging: process.env.NODE_ENV === 'development' ? console.log : false,
-        dialectOptions: {
-          ssl: {
-            require: true,
-            rejectUnauthorized: false // For self-signed certificates
+    if (isProduction) {
+      console.log('🚀 Initializing Sequelize in PRODUCTION mode (Supabase)');
+      return new Sequelize(
+        process.env.SUPABASE_DB_NAME,
+        process.env.SUPABASE_DB_USER,
+        process.env.SUPABASE_DB_PASSWORD,
+        {
+          host: process.env.SUPABASE_DB_HOST,
+          port: process.env.SUPABASE_DB_PORT || 6543,
+          dialect: 'postgres',
+          logging: process.env.NODE_ENV === 'development' ? console.log : false,
+          dialectOptions: {
+            ssl: {
+              require: true,
+              rejectUnauthorized: false
+            },
+            statement_timeout: 10000,
+            idle_in_transaction_session_timeout: 10000,
+            application_name: 'homeswift-production',
+            options: '-c search_path=public'
           },
-          statement_timeout: 10000,
-          idle_in_transaction_session_timeout: 10000,
-          application_name: `homeswift-${isProduction ? 'production' : 'development'}`,
-          options: '-c search_path=public'
-        },
-        pool: {
-          max: 10,
-          min: 0,
-          acquire: 30000,
-          idle: 10000
-        },
-        define: {
-          timestamps: true,
-          underscored: true,
-          createdAt: 'created_at',
-          updatedAt: 'updated_at'
+          pool: {
+            max: 10,
+            min: 0,
+            acquire: 30000,
+            idle: 10000
+          },
+          define: {
+            timestamps: true,
+            underscored: true,
+            createdAt: 'created_at',
+            updatedAt: 'updated_at'
+          }
         }
-      }
-    );
+      );
+    } else {
+      console.log('💻 Initializing Sequelize in DEVELOPMENT mode (Local DB)');
+      return new Sequelize(
+        process.env.DB_NAME,
+        process.env.DB_USER,
+        process.env.DB_PASSWORD,
+        {
+          host: process.env.DB_HOST,
+          port: process.env.DB_PORT || 5432,
+          dialect: 'postgres',
+          logging: console.log,
+          dialectOptions: {
+            statement_timeout: 10000,
+            idle_in_transaction_session_timeout: 10000,
+            application_name: 'homeswift-development'
+          },
+          pool: {
+            max: 5,
+            min: 0,
+            acquire: 30000,
+            idle: 10000
+          },
+          define: {
+            timestamps: true,
+            underscored: true,
+            createdAt: 'created_at',
+            updatedAt: 'updated_at'
+          }
+        }
+      );
+    }
   }
 
   async connect() {
