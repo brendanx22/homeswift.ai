@@ -14,7 +14,7 @@ const properties = [
     location: "GRA Phase 1",
     price: 1100000,
     duration: "year",
-    type: "For Rent" as const,
+    type: "For Rent",
   },
   {
     id: "2",
@@ -22,7 +22,7 @@ const properties = [
     location: "GRA Phase 1",
     price: 1100000,
     duration: "year",
-    type: "For Sale" as const,
+    type: "For Sale",
   },
   {
     id: "3",
@@ -30,7 +30,7 @@ const properties = [
     location: "GRA Phase 1",
     price: 1100000,
     duration: "year",
-    type: "For Rent" as const,
+    type: "For Rent",
   },
   {
     id: "4",
@@ -38,14 +38,14 @@ const properties = [
     location: "GRA Phase 1",
     price: 1100000,
     duration: "year",
-    type: "For Sale" as const,
+    type: "For Sale",
   },
 ];
 
 const HouseListings = () => {
   const navigate = useNavigate();
 
-  const handlePropertyClick = (propertyId: string) => {
+  const handlePropertyClick = (propertyId) => {
     navigate(`/property/${propertyId}`);
   };
 

@@ -2,12 +2,7 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "./ui/button";
 
-interface PropertyImageCarouselProps {
-  images: string[];
-  onViewAll?: () => void;
-}
-
-export const PropertyImageCarousel = ({ images, onViewAll }: PropertyImageCarouselProps) => {
+export const PropertyImageCarousel = ({ images, onViewAll }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
 
   const nextImage = () => {

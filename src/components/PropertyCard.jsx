@@ -2,17 +2,7 @@ import { Bookmark, MapPin } from "lucide-react";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 
-interface PropertyCardProps {
-  id: string;
-  image: string;
-  location: string;
-  price: number;
-  duration: string;
-  type: "For Rent" | "For Sale";
-  onClick?: () => void;
-}
-
-export const PropertyCard = ({ image, location, price, duration, type, onClick }: PropertyCardProps) => {
+export const PropertyCard = ({ image, location, price, duration, type, onClick }) => {
   return (
     <Card 
       className="relative overflow-hidden rounded-3xl cursor-pointer hover:scale-105 transition-transform duration-300"

@@ -2,22 +2,6 @@ import { Dialog, DialogContent } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { X, AlertTriangle, CheckCircle } from "lucide-react";
 
-interface ConfirmationModalProps {
-  open: boolean;
-  onClose: () => void;
-  type: "warning" | "success";
-  title: string;
-  message: string;
-  onConfirm?: () => void;
-  onCancel?: () => void;
-  confirmText?: string;
-  cancelText?: string;
-  showBackHome?: boolean;
-  onBackHome?: () => void;
-  showEdit?: boolean;
-  onEdit?: () => void;
-}
-
 export const ConfirmationModal = ({
   open,
   onClose,
@@ -32,7 +16,7 @@ export const ConfirmationModal = ({
   onBackHome,
   showEdit,
   onEdit
-}: ConfirmationModalProps) => {
+}) => {
   const IconComponent = type === "warning" ? AlertTriangle : CheckCircle;
   const iconColor = type === "warning" ? "text-warning" : "text-success";
   const bgColor = type === "warning" ? "bg-warning/20" : "bg-success/20";

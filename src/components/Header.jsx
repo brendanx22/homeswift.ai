@@ -1,13 +1,7 @@
 import { Menu, ArrowLeft } from "lucide-react";
 import { Button } from "./ui/button";
 
-interface HeaderProps {
-  showBack?: boolean;
-  onBack?: () => void;
-  title?: string;
-}
-
-export const Header = ({ showBack, onBack, title }: HeaderProps) => {
+export const Header = ({ showBack, onBack, title }) => {
   return (
     <header className="flex items-center justify-between p-6 bg-background">
       <div className="flex items-center gap-4">
