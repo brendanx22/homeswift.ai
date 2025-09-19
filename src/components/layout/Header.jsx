@@ -23,7 +23,7 @@ const Header = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link to="/main" className="flex-shrink-0 flex items-center">
+            <Link to="/app" className="flex-shrink-0 flex items-center">
               <img
                 className="h-8 w-auto"
                 src="/images/logo.png"
@@ -36,13 +36,13 @@ const Header = () => {
           {/* Desktop Navigation */}
           <nav className="hidden md:ml-6 md:flex md:items-center md:space-x-4">
             <Link
-              to="/main"
+              to="/app"
               className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
             >
               Home
             </Link>
             <Link
-              to="/main/properties"
+              to="/app/properties"
               className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
             >
               Properties
@@ -125,14 +125,14 @@ const Header = () => {
         <div className="md:hidden">
           <div className="pt-2 pb-3 space-y-1">
             <Link
-              to="/main"
+              to="/app"
               className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50"
               onClick={() => setIsMenuOpen(false)}
             >
               Home
             </Link>
             <Link
-              to="/main/properties"
+              to="/app/properties"
               className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50"
               onClick={() => setIsMenuOpen(false)}
             >

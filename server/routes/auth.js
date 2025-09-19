@@ -1,8 +1,7 @@
 import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { body } from 'express-validator';
-import { requireGuest, checkRememberToken, loadUser } from '../middleware/auth.js';
-import authController from '../controllers/authController.js';
+import * as authController from '../controllers/supabaseAuthController.js';
 
 const router = express.Router();
 
@@ -13,12 +12,16 @@ const authLimiter = rateLimit({
   message: { error: 'Too many authentication attempts, please try again later.' }
 });
 
-// Apply remember token check to all auth routes
-router.use(checkRememberToken);
+// Check if email already exists
+router.post('/check-email', 
+  [
+    body('email').isEmail().normalizeEmail().withMessage('Please enter a valid email address')
+  ],
+  authController.checkEmailExists
+);
 
 // Register
 router.post('/register', 
-  requireGuest,
   authLimiter,
   [
     body('firstName').trim().isLength({ min: 2 }).withMessage('First name is required'),
@@ -35,7 +38,6 @@ router.post('/register',
 
 // POST /api/auth/login - User login
 router.post('/login', 
-  requireGuest,
   authLimiter,
   [
     body('email').isEmail().withMessage('Valid email is required'),
@@ -48,15 +50,7 @@ router.post('/login',
 router.post('/logout', authController.logout);
 
 // Get current user - requires authentication
-router.get('/me', loadUser, (req, res) => {
-  if (!req.user) {
-    return res.status(401).json({ error: 'Not authenticated' });
-  }
-  // Return user data without sensitive information
-  const userData = req.user.toJSON();
-  delete userData.password_hash;
-  res.json({ success: true, user: userData });
-});
+router.get('/me', authController.getCurrentUser);
 
 // Email verification endpoint
 router.get('/verify-email', authController.verifyEmail);

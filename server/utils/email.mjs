@@ -417,7 +417,7 @@ export async function sendWelcomeEmail(to, name) {
             </div>
           </div>
           
-          <a href="${process.env.CLIENT_URL || 'http://localhost:3000'}/dashboard" class="button">
+          <a href="${process.env.CLIENT_URL || 'http://localhost:3000'}/app" class="button">
             Go to Dashboard
           </a>
           

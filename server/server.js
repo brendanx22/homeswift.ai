@@ -4,239 +4,242 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
-import session from 'express-session';
-import SequelizeStoreModule from 'connect-session-sequelize';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import models from './models/index.js';
+import supabase, { testConnection, dbUtils } from './config/supabase-db.js';
+
+// Import routes
+import authRoutes from './routes/auth.js';
+// import propertiesRoutes from './routes/properties.js';
+// import propertyRoutes from './routes/propertyRoutes.js';
+// import searchRoutes from './routes/search.js';
+// import usersRoutes from './routes/users.js';
+// import testRoutes from './routes/test.js';
 
 // ES Modules fix for __dirname
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Initialize express app
+const app = express();
+const PORT = process.env.PORT || 5001;
+
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '.env') });
 
-// Import middleware
-import { checkRememberToken, loadUser } from './middleware/auth.js';
-import jwtAuth from './middleware/jwtAuth.js';
-
-// Import routes
-import authRoutes from './routes/auth.js';
-import userRoutes from './routes/users.js';
-import searchRoutes from './routes/search.js';
-import testRoutes from './routes/test.js';
-import { propertyRouter } from './routes/propertyRoutes.js';
-
-const app = express();
-const PORT = process.env.PORT || 5000;
-
-// Initialize models and database connection
-console.log('Initializing database connection...');
-try {
-  await models.initialize();
-  console.log('✅ Database connection established');
-} catch (error) {
-  console.error('❌ Database connection failed:', error);
-  process.exit(1);
+// Trust proxy in production (needed for Vercel, Heroku, etc.)
+if (process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
 }
 
-// Create session store with Sequelize
+const isProduction = process.env.NODE_ENV === 'production';
 
-// Security middleware
-app.use(helmet({
-  crossOriginEmbedderPolicy: false
-}));
-
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // limit each IP to 100 requests per windowMs
-  message: { error: 'Too many requests, please try again later.' }
-});
-app.use(limiter);
-
-// Development CORS configuration - permissive for local development
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow all origins in development
-    if (process.env.NODE_ENV !== 'production') {
-      return callback(null, true);
-    }
-    
-    // In production, only allow specific origins
-    const allowedOrigins = [
-      'https://homeswift-ai.vercel.app',
-      'https://homeswift-ai.vercel.app',
-      'http://localhost:3000',  // For local development
-      'http://localhost:5173'   // Vite default dev server port
-    ];
-    
-    // Allow requests with no origin (like mobile apps, curl, etc.)
-    if (!origin) return callback(null, true);
-    
-    // Check if the origin is allowed
-    if (allowedOrigins.some(allowedOrigin => 
-      origin === allowedOrigin || 
-      origin.startsWith(allowedOrigin.replace('https://', 'http://'))
-    )) {
-      return callback(null, true);
-    }
-    
-    callback(new Error(`Not allowed by CORS. Origin: ${origin}`));
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'X-Requested-With',
-    'Accept',
-    'Origin',
-    'Access-Control-Allow-Headers',
-    'X-Requested-With'
-  ],
-  exposedHeaders: [
-    'Content-Length',
-    'X-Foo',
-    'X-Bar'
-  ],
-  optionsSuccessStatus: 200, // Some legacy browsers choke on 204
-  preflightContinue: false,
-  maxAge: 86400 // 24 hours
-};
-
-// Apply CORS middleware with the configured options
-app.use(cors(corsOptions));
-// Enable preflight for all routes
-app.options('*', cors(corsOptions));
-
-// Cookie parser middleware
+// ------------------ Middleware ------------------
+app.use(helmet({ crossOriginEmbedderPolicy: false }));
 app.use(cookieParser());
-
-// Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Determine if we're in production
-const isProduction = process.env.NODE_ENV === 'production';
-
-// Simple in-memory session configuration
-const sessionConfig = {
-  secret: process.env.SESSION_SECRET || 'dev-secret-key',
-  resave: false,
-  saveUninitialized: false,
-  proxy: isProduction,
-  cookie: {
-    secure: isProduction ? true : 'auto',
-    httpOnly: true,
-    sameSite: isProduction ? 'none' : 'lax',
-    maxAge: 1000 * 60 * 60 * 2, // 2 hours
-    domain: isProduction ? '.homeswift-ai.vercel.app' : 'localhost'
+// CORS Configuration
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow all origins in development
+    if (!isProduction) {
+      return callback(null, true);
+    }
+    
+    // Production whitelist
+    const allowedOrigins = [
+      'https://homeswift.ai',
+      'https://www.homeswift.ai',
+      'https://homeswift-ai.vercel.app',
+      /^https?:\/\/homeswift-.*\.vercel\.app$/,
+      /^https?:\/\/homeswift-ai-[a-z0-9]+\-brendanx22s-projects\.vercel\.app$/
+    ];
+    
+    if (!origin || allowedOrigins.includes(origin) || 
+        allowedOrigins.some(o => o instanceof RegExp && o.test(origin))) {
+      callback(null, true);
+    } else {
+      console.warn(`Blocked request from origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
   },
-  store: new session.MemoryStore({
-    checkPeriod: 15 * 60 * 1000 // Check for expired sessions every 15 minutes
-  })
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Content-Range', 'X-Total-Count', 'X-Access-Token', 'X-Refresh-Token'],
+  maxAge: 86400,
 };
 
-console.log(isProduction ? '🚀 Production mode: Using in-memory session store' : '💻 Development mode: Using in-memory session store');
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
-// Initialize session
-const sessionMiddleware = session(sessionConfig);
-app.use(sessionMiddleware);
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
+  message: { error: 'Too many requests, try again later.' }
+});
+app.use(limiter);
 
-// Logging middleware
-if (process.env.NODE_ENV !== 'production') {
+// Logging
+if (!isProduction) {
   app.use(morgan('dev'));
 }
 
-// Test session endpoint
-app.get('/api/session-test', (req, res) => {
-  // Initialize view count if it doesn't exist
-  if (!req.session.views) {
-    req.session.views = 0;
-  }
-  
-  // Increment view count
-  req.session.views++;
-  
-  res.status(200).json({
-    message: 'Session test successful',
-    views: req.session.views,
-    sessionId: req.sessionID,
-    session: req.session
-  });
-});
+// Register API routes
+app.use('/api/auth', authRoutes);
+// app.use('/api', propertiesRoutes);
+// app.use('/api', propertyRoutes);
+// app.use('/api', searchRoutes);
+// app.use('/api', usersRoutes);
+// app.use('/api', testRoutes);
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    database: models.getSequelize() ? 'connected' : 'disconnected'
-  });
+app.get('/health', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .limit(1);
+    
+    if (error) throw error;
+    
+    res.status(200).json({
+      status: 'ok',
+      database: 'connected',
+      users: data ? data.length : 0,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Health check failed:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Database connection failed',
+      error: isProduction ? 'Internal Server Error' : error.message
+    });
+  }
 });
 
-// Apply authentication middleware
-app.use(jwtAuth);
-app.use(checkRememberToken);
-app.use(loadUser);
+// API Routes
+app.get('/api/properties', async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const filters = {
+      listing_type: req.query.listing_type,
+      property_type: req.query.property_type,
+      min_price: req.query.min_price,
+      max_price: req.query.max_price,
+      bedrooms: req.query.bedrooms,
+      bathrooms: req.query.bathrooms,
+      city: req.query.city,
+      state: req.query.state
+    };
 
-// API routes
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/search', searchRoutes);
-app.use('/api/test', testRoutes);
-app.use('/api/properties', propertyRouter);
+    const result = await dbUtils.getProperties(page, limit, filters);
+    
+    res.json({
+      success: true,
+      data: result.properties,
+      pagination: {
+        currentPage: result.currentPage,
+        totalPages: result.totalPages,
+        totalCount: result.totalCount,
+        limit: limit
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching properties:', error);
+    res.status(500).json({
+      success: false,
+      error: isProduction ? 'Internal Server Error' : error.message
+    });
+  }
+});
+
+// Get property by ID
+app.get('/api/properties/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const property = await dbUtils.getPropertyById(id);
+    
+    res.json({
+      success: true,
+      data: property
+    });
+  } catch (error) {
+    console.error('Error fetching property:', error);
+    res.status(500).json({
+      success: false,
+      error: isProduction ? 'Internal Server Error' : error.message
+    });
+  }
+});
+
+// Search properties
+app.get('/api/properties/search', async (req, res) => {
+  try {
+    const { q, ...filters } = req.query;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+
+    if (!q) {
+      return res.status(400).json({
+        success: false,
+        error: 'Search query is required'
+      });
+    }
+
+    const properties = await dbUtils.searchProperties(q, filters, page, limit);
+    
+    res.json({
+      success: true,
+      data: properties,
+      query: q
+    });
+  } catch (error) {
+    console.error('Error searching properties:', error);
+    res.status(500).json({
+      success: false,
+      error: isProduction ? 'Internal Server Error' : error.message
+    });
+  }
+});
+
+// Error handling
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({
+    error: isProduction ? 'Internal Server Error' : err.message,
+    ...(!isProduction && { stack: err.stack })
+  });
+});
 
 // 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({
-    success: false,
-    error: 'Route not found'
-  });
-});
-
-// Global error handler
-app.use((err, req, res, next) => {
-  console.error('Global error handler:', err.stack);
-  
-  res.status(err.status || 500).json({
-    success: false,
-    error: process.env.NODE_ENV === 'production' ? 'Something went wrong!' : err.message
-  });
-});
-
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('\n🛑 Shutting down gracefully...');
-  await models.getSequelize().close();
-  process.exit(0);
-});
-
-process.on('SIGTERM', async () => {
-  console.log('\n🛑 Shutting down gracefully...');
-  await models.getSequelize().close();
-  process.exit(0);
-});
-
-// Error handling middleware (must be last)
-app.use((err, req, res, next) => {
-  console.error('Server Error:', err.stack || err);
-  res.status(err.status || 500).json({ 
-    error: err.message || 'Internal Server Error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-  });
+app.use((req, res) => {
+  res.status(404).json({ error: 'Not Found' });
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🌐 CORS enabled for multiple origins`);
-  console.log(`🗄️  Database: ${models.getSequelize() ? 'Connected' : 'Disconnected'}`);
-});
+async function startServer() {
+  try {
+    // Test database connection
+    await testConnection();
+    
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+    });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+startServer();
 
 export default app;

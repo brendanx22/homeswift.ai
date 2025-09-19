@@ -16,7 +16,7 @@ export const login = async (credentials) => {
   }
 };
 
-// Register a new user
+// Register a new user (deprecated - use AuthContext.signUp instead)
 export const register = async (userData) => {
   try {
     const { data, error } = await supabase.auth.signUp({
@@ -27,6 +27,7 @@ export const register = async (userData) => {
           first_name: userData.firstName,
           last_name: userData.lastName,
         },
+        emailRedirectTo: `http://localhost:3000/verify-email`,
       },
     });
     

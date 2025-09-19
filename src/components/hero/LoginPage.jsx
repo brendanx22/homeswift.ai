@@ -1,7 +1,7 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AppContext } from '../../contexts/AppContext';
-import { ArrowLeft, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import api from '../../lib/api';
 
 export default function LoginPage() {
@@ -24,7 +24,7 @@ export default function LoginPage() {
     
     // Check for verification success in URL params
     const verified = searchParams.get('verified') === 'true';
-    const redirectPath = searchParams.get('redirect') || '/main';
+    const redirectPath = searchParams.get('redirect') || '/app';
     
     if (verified) {
       setIsVerified(true);
@@ -63,8 +63,8 @@ export default function LoginPage() {
       
       console.log('Login successful:', userData);
       
-      // Get redirect path from URL or default to '/main'
-      const redirectPath = searchParams.get('redirect') || '/main';
+      // Get redirect path from URL or default to '/app'
+      const redirectPath = searchParams.get('redirect') || '/app';
       console.log('Redirecting to:', redirectPath);
       
       // Redirect to the specified path or main page
@@ -150,10 +150,10 @@ export default function LoginPage() {
       {/* Back Button - Top Left Corner */}
       <button
         onClick={handleBackToHome}
-        className="absolute top-6 left-6 z-20 flex items-center space-x-3 bg-black/20 backdrop-blur-sm border border-gray-400/30 rounded-full px-4 py-2 text-gray-300 hover:text-white hover:bg-black/40 hover:border-gray-300/50 transition-all duration-300 group"
+        className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20 flex items-center space-x-2 bg-black/20 backdrop-blur-sm border border-gray-400/30 rounded-full px-3 py-2 sm:px-3 sm:py-2 text-gray-300 hover:text-white hover:bg-black/40 hover:border-gray-300/50 transition-all duration-300 min-w-[44px] min-h-[44px] sm:min-w-auto sm:min-h-auto"
       >
-        <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform duration-300" />
-        <span className="font-medium text-sm">Back to Home</span>
+        <span className="text-lg font-bold">&lt;</span>
+        <img src="/images/logo.png" alt="HomeSwift Logo" className="w-4 h-4 rounded" />
       </button>
 
 

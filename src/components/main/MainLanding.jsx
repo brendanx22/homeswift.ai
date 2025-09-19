@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { AppContext } from '../../contexts/AppContext';
 import { useAuth } from '../../contexts/AuthContext';
+import searchService from '../../services/searchService';
 
 export default function MainLanding() {
   // --- authentication state ---
@@ -120,10 +121,31 @@ export default function MainLanding() {
   const [isSearching, setIsSearching] = useState(false);
   const [searchError, setSearchError] = useState(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestions, setSuggestions] = useState([]);
+  const [featuredProperties, setFeaturedProperties] = useState([]);
+  const [recentProperties, setRecentProperties] = useState([]);
   const searchTimeoutRef = useRef(null);
   
+  // Load featured and recent properties on component mount
+  useEffect(() => {
+    const loadProperties = async () => {
+      try {
+        const [featured, recent] = await Promise.all([
+          searchService.getFeaturedProperties(6),
+          searchService.getRecentProperties(8)
+        ]);
+        setFeaturedProperties(featured);
+        setRecentProperties(recent);
+      } catch (error) {
+        console.error('Failed to load properties:', error);
+      }
+    };
+
+    loadProperties();
+  }, []);
+
   // Handle search submission
-  const handleSearchSubmit = (e) => {
+  const handleSearchSubmit = async (e) => {
     e.preventDefault();
     
     const query = searchQuery.trim();
@@ -132,22 +154,62 @@ export default function MainLanding() {
       setSearchError('Please enter a search term');
       return;
     }
-    
-    // Navigate to search results page
-    navigate(`/properties?search=${encodeURIComponent(query)}`);
+
+    setIsSearching(true);
+    setSearchError(null);
+
+    try {
+      // Save search history if user is authenticated
+      if (user?.id) {
+        await searchService.saveSearchHistory(user.id, query, {
+          location: searchLocation,
+          propertyType: propertyType
+        });
+      }
+
+      // Navigate to search results page with query parameters
+      const searchParams = new URLSearchParams({
+        search: query,
+        ...(searchLocation && { location: searchLocation }),
+        ...(propertyType && { type: propertyType })
+      });
+      
+      navigate(`/properties?${searchParams.toString()}`);
+    } catch (error) {
+      console.error('Search error:', error);
+      setSearchError('Search failed. Please try again.');
+    } finally {
+      setIsSearching(false);
+    }
   };
 
-  // Handle search input change
-  const handleSearchChange = (e) => {
+  // Handle search input change with debounced suggestions
+  const handleSearchChange = async (e) => {
     const value = e.target.value;
     setSearchQuery(value);
     setSearchError(null);
     
-    // Show suggestions when typing
+    // Clear existing timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
     if (value.trim()) {
       setShowSuggestions(true);
+      
+      // Debounce suggestions loading
+      searchTimeoutRef.current = setTimeout(async () => {
+        try {
+          const searchSuggestions = await searchService.getSearchSuggestions(value);
+          setSuggestions(searchSuggestions);
+        } catch (error) {
+          console.error('Failed to load suggestions:', error);
+          setSuggestions([]);
+        }
+      }, 300);
     } else {
       setShowSuggestions(false);
+      setSuggestions([]);
     }
   };
   
@@ -287,11 +349,6 @@ export default function MainLanding() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const suggestions = [
-    "How can I help you today?",
-    "What would you like to know?",
-    "Ask me anything!"
-  ];
 
   // --- responsive listener ---
   useEffect(() => {
@@ -408,9 +465,12 @@ export default function MainLanding() {
   };
 
   const handleSuggestionSelect = (suggestion) => {
-    setSearchQuery(suggestion);
+    setSearchQuery(suggestion.value || suggestion.text);
     setShowSuggestions(false);
-    handleSearchSubmit({ preventDefault: () => {} }, suggestion);
+    // Trigger search with the selected suggestion
+    setTimeout(() => {
+      handleSearchSubmit({ preventDefault: () => {} });
+    }, 100);
   };
 
   const deleteChat = (id, e) => {
@@ -941,26 +1001,135 @@ export default function MainLanding() {
               {showSuggestions && (
                 <motion.div initial={{ opacity: 0, y: -10, height: 0 }} animate={{ opacity: 1, y: 0, height: 'auto' }} exit={{ opacity: 0, y: -10, height: 0 }} transition={{ duration: 0.2 }} className="absolute top-full left-0 right-0 mt-2 sm:mt-4 border border-gray-400/50 rounded-2xl shadow-2xl z-20 overflow-hidden" style={{ backgroundImage: 'url("/Rectangle 135.png")', backgroundSize: 'cover', backgroundPosition: 'center', backdropFilter: 'blur(12px)' }}>
                   <div className="p-4" style={{ background: 'transparent' }}>
-                    <h3 className="text-white font-semibold mb-3 sm:mb-4 text-lg sm:text-xl">Popular Searches</h3>
+                    <h3 className="text-white font-semibold mb-3 sm:mb-4 text-lg sm:text-xl">
+                      {suggestions.length > 0 ? 'Search Suggestions' : 'Popular Searches'}
+                    </h3>
                     <div className="space-y-1">
-                      {suggestions.map((sug, idx) => (
-                        <motion.button 
-                          key={idx} 
-                          whileHover={{ scale: 1.01 }}
-                          whileTap={{ scale: 0.99 }}
-                          onClick={() => handleSuggestionSelect(sug)} 
-                          className="w-full text-left text-gray-300 hover:text-white hover:bg-gray-700/50 px-4 py-2.5 rounded-lg leading-normal transition-all duration-150"
-                          style={{ fontSize: '15px' }}
-                        >
-                          {sug}
-                        </motion.button>
-                      ))}
+                      {suggestions.length > 0 ? (
+                        suggestions.map((sug, idx) => (
+                          <motion.button 
+                            key={idx} 
+                            whileHover={{ scale: 1.01 }}
+                            whileTap={{ scale: 0.99 }}
+                            onClick={() => handleSuggestionSelect(sug)} 
+                            className="w-full text-left text-gray-300 hover:text-white hover:bg-gray-700/50 px-4 py-2.5 rounded-lg leading-normal transition-all duration-150 flex items-center gap-2"
+                            style={{ fontSize: '15px' }}
+                          >
+                            <span className={`px-2 py-1 rounded-full text-xs ${
+                              sug.type === 'location' ? 'bg-blue-500/20 text-blue-300' : 'bg-green-500/20 text-green-300'
+                            }`}>
+                              {sug.type === 'location' ? '📍' : '🏠'}
+                            </span>
+                            {sug.text}
+                          </motion.button>
+                        ))
+                      ) : (
+                        // Fallback popular searches
+                        [
+                          'Lagos apartments',
+                          'Ikoyi houses',
+                          'Victoria Island luxury',
+                          'Lekki Phase 1',
+                          'Surulere family homes'
+                        ].map((sug, idx) => (
+                          <motion.button 
+                            key={idx} 
+                            whileHover={{ scale: 1.01 }}
+                            whileTap={{ scale: 0.99 }}
+                            onClick={() => {
+                              setSearchQuery(sug);
+                              handleSearchSubmit({ preventDefault: () => {} });
+                            }} 
+                            className="w-full text-left text-gray-300 hover:text-white hover:bg-gray-700/50 px-4 py-2.5 rounded-lg leading-normal transition-all duration-150"
+                            style={{ fontSize: '15px' }}
+                          >
+                            {sug}
+                          </motion.button>
+                        ))
+                      )}
                     </div>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
+
+          {/* Featured Properties Section */}
+          {featuredProperties.length > 0 && (
+            <div className="w-full max-w-6xl mt-16 px-6">
+              <div className="text-center mb-8">
+                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">Featured Properties</h2>
+                <p className="text-gray-300">Discover our handpicked selection of premium homes</p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {featuredProperties.map((property) => (
+                  <motion.div
+                    key={property.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                    whileHover={{ scale: 1.02 }}
+                    className="bg-gray-800/50 backdrop-blur-sm rounded-2xl overflow-hidden border border-gray-700/50 cursor-pointer"
+                    onClick={() => navigate(`/properties/${property.id}`)}
+                  >
+                    <div className="relative h-48">
+                      {property.property_images && property.property_images.length > 0 ? (
+                        <img
+                          src={property.property_images[0].url}
+                          alt={property.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-gray-700 flex items-center justify-center">
+                          <Image className="w-12 h-12 text-gray-500" />
+                        </div>
+                      )}
+                      <div className="absolute top-4 left-4 bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">
+                        {property.listing_type}
+                      </div>
+                    </div>
+                    
+                    <div className="p-4">
+                      <h3 className="text-white font-semibold text-lg mb-2 line-clamp-2">
+                        {property.title}
+                      </h3>
+                      <p className="text-gray-300 text-sm mb-3 line-clamp-2">
+                        {property.description}
+                      </p>
+                      
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center text-gray-400 text-sm">
+                          <MapPin className="w-4 h-4 mr-1" />
+                          {property.city}, {property.state}
+                        </div>
+                        <div className="text-white font-bold text-lg">
+                          ₦{property.price?.toLocaleString()}
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between text-sm text-gray-400">
+                        <span>{property.bedrooms} bed</span>
+                        <span>{property.bathrooms} bath</span>
+                        {property.square_feet && <span>{property.square_feet} sq ft</span>}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+              
+              <div className="text-center mt-8">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => navigate('/properties')}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-medium transition-colors duration-200"
+                >
+                  View All Properties
+                </motion.button>
+              </div>
+            </div>
+          )}
         </div>
         {/* Main content area with Outlet for nested routes */}
         <div className="flex-1 w-full">

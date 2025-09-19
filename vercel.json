@@ -13,9 +13,22 @@
       }
     }
   ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/server/server.js"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ],
   "env": {
-    "NODE_ENV": "production"
+    "NODE_ENV": "production",
+    "FRONTEND_URL": "https://homeswift.co",
+    "NEXT_TELEMETRY_DISABLED": "1"
   },
+  "regions": ["iad1"],
   "github": {
     "enabled": true,
     "autoAlias": true,

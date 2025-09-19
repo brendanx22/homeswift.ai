@@ -24,11 +24,50 @@ export const AuthProvider = ({ children }) => {
       
       if (currentSession?.user) {
         // Fetch additional user data if needed
-        const { data: userData } = await supabase
+        let { data: userData, error: profileError } = await supabase
           .from('user_profiles')
           .select('*')
           .eq('id', currentSession.user.id)
           .single();
+          
+        // If no profile exists, try to create one using the secure function
+        if (!userData && !profileError) {
+          console.log('No user profile found, creating one...');
+          
+          // Try to create profile using RPC function
+          const { data: newProfile, error: rpcError } = await supabase
+            .rpc('create_user_profile', {
+              user_id: currentSession.user.id,
+              user_email: currentSession.user.email,
+              first_name: currentSession.user.user_metadata?.first_name || '',
+              last_name: currentSession.user.user_metadata?.last_name || ''
+            });
+            
+          if (rpcError) {
+            console.warn('RPC profile creation failed, trying direct insert:', rpcError);
+            
+            // Fallback: try direct insert
+            const { data: directProfile, error: directError } = await supabase
+              .from('user_profiles')
+              .insert({
+                id: currentSession.user.id,
+                email: currentSession.user.email,
+                first_name: currentSession.user.user_metadata?.first_name || '',
+                last_name: currentSession.user.user_metadata?.last_name || ''
+              })
+              .select()
+              .single();
+              
+            if (directError) {
+              console.warn('Direct profile creation also failed:', directError);
+              // Continue without profile data - user can still use the app
+            } else {
+              userData = directProfile;
+            }
+          } else {
+            userData = newProfile;
+          }
+        }
           
         setUser({
           ...currentSession.user,
@@ -59,11 +98,50 @@ export const AuthProvider = ({ children }) => {
         
         if (currentSession?.user) {
           // Fetch additional user data if needed
-          const { data: userData } = await supabase
+          let { data: userData, error: profileError } = await supabase
             .from('user_profiles')
             .select('*')
             .eq('id', currentSession.user.id)
             .single();
+            
+          // If no profile exists, try to create one using the secure function
+          if (!userData && !profileError) {
+            console.log('No user profile found, creating one...');
+            
+            // Try to create profile using RPC function
+            const { data: newProfile, error: rpcError } = await supabase
+              .rpc('create_user_profile', {
+                user_id: currentSession.user.id,
+                user_email: currentSession.user.email,
+                first_name: currentSession.user.user_metadata?.first_name || '',
+                last_name: currentSession.user.user_metadata?.last_name || ''
+              });
+              
+            if (rpcError) {
+              console.warn('RPC profile creation failed, trying direct insert:', rpcError);
+              
+              // Fallback: try direct insert
+              const { data: directProfile, error: directError } = await supabase
+                .from('user_profiles')
+                .insert({
+                  id: currentSession.user.id,
+                  email: currentSession.user.email,
+                  first_name: currentSession.user.user_metadata?.first_name || '',
+                  last_name: currentSession.user.user_metadata?.last_name || ''
+                })
+                .select()
+                .single();
+                
+              if (directError) {
+                console.warn('Direct profile creation also failed:', directError);
+                // Continue without profile data - user can still use the app
+              } else {
+                userData = directProfile;
+              }
+            } else {
+              userData = newProfile;
+            }
+          }
             
           setUser({
             ...currentSession.user,
@@ -71,12 +149,12 @@ export const AuthProvider = ({ children }) => {
           });
           
           // Redirect to main page if not already there
-          if (window.location.pathname === '/login' || window.location.pathname === '/signup') {
-            navigate('/main');
+          if (window.location.pathname === '/login' || window.location.pathname === '/signup' || window.location.pathname === '/verify-email') {
+            navigate('/app');
           }
         } else {
-          // Don't redirect if on root, login, or signup pages
-          const publicPaths = ['/', '/login', '/signup'];
+          // Don't redirect if on root, login, signup, or verify-email pages
+          const publicPaths = ['/', '/login', '/signup', '/verify-email'];
           if (!publicPaths.includes(window.location.pathname)) {
             navigate('/login');
           }
@@ -88,13 +166,38 @@ export const AuthProvider = ({ children }) => {
       subscription?.unsubscribe();
     };
   }, [checkSession, navigate]);
-  
+
+  // Check if email already exists
+  const checkEmailExists = useCallback(async (email) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/check-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to check email');
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Check email exists error:', error);
+      throw error;
+    }
+  }, []);
+
   // Sign up with email and password
   const signUp = useCallback(async (userData) => {
     try {
       setLoading(true);
       setError(null);
       
+      // Remove the redundant email check - Supabase will handle duplicate email validation
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: userData.email,
         password: userData.password,
@@ -104,28 +207,21 @@ export const AuthProvider = ({ children }) => {
             last_name: userData.lastName,
             full_name: `${userData.firstName} ${userData.lastName}`,
           },
-          emailRedirectTo: `${window.location.origin}/main`,
+          emailRedirectTo: `${window.location.origin}/verify-email`,
         },
       });
       
-      if (signUpError) throw signUpError;
+      console.log('Signup response:', { data, error: signUpError });
       
-      // Create user profile in the database
-      if (data?.user) {
-        const { error: profileError } = await supabase
-          .from('user_profiles')
-          .upsert({
-            id: data.user.id,
-            email: userData.email,
-            first_name: userData.firstName,
-            last_name: userData.lastName,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          });
-          
-        if (profileError) throw profileError;
+      if (signUpError) {
+        // Handle specific error cases
+        if (signUpError.message.includes('already registered')) {
+          throw new Error('An account with this email already exists. Please try logging in instead.');
+        }
+        throw signUpError;
       }
       
+      console.log('User account created successfully. Please check your email to verify your account.');
       return data.user;
     } catch (error) {
       console.error('Sign up error:', error);
@@ -196,6 +292,32 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     }
   }, []);
+
+  // Resend email verification
+  const resendVerification = useCallback(async (email) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/verify-email`
+        }
+      });
+      
+      if (error) throw error;
+      
+      return true;
+    } catch (error) {
+      console.error('Resend verification error:', error);
+      setError(error.message);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
   
   // Update user profile
   const updateProfile = useCallback(async (updates) => {
@@ -250,6 +372,8 @@ export const AuthProvider = ({ children }) => {
     signIn,
     signOut,
     resetPassword,
+    resendVerification,
+    checkEmailExists,
     updateProfile,
     checkSession,
   };
@@ -270,4 +394,5 @@ export const useAuth = () => {
   return context;
 };
 
-export default AuthContext;
+// Export the context for direct use
+export { AuthContext };
