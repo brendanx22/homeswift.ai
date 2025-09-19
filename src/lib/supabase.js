@@ -17,6 +17,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
+    flowType: 'pkce',
+    redirectTo: 'https://chat.homeswift.co/auth/callback'
   },
 });
 
@@ -45,8 +47,13 @@ export const authHelpers = {
 
   // Sign out
   signOut: async () => {
-    const { error } = await supabase.auth.signOut()
-    return { error }
+    const { error } = await supabase.auth.signOut();
+    if (!error) {
+      // Redirect to main domain after sign out
+      window.location.href = 'https://homeswift.co';
+    } else {
+      throw error;
+    }
   },
 
   // Get current user
@@ -70,10 +77,18 @@ export const authHelpers = {
 
 // Sign in with Google OAuth
 export const signInWithGoogle = async () => {
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "google"
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: 'https://chat.homeswift.co/dashboard',
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'consent',
+      },
+    },
   });
-  
-  if (error) throw error;
-  return data;
+  if (error) {
+    console.error('Error signing in with Google:', error.message);
+    throw error;
+  }
 };

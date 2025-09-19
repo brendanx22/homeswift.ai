@@ -15,12 +15,16 @@
   ],
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "/server/server.js"
+      "src": "/auth/callback",
+      "dest": "/index.html"
     },
     {
-      "src": "/(.*)",
+      "src": "/dashboard(.*)",
       "dest": "/index.html"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/server/server.js"
     }
   ],
   "env": {
@@ -51,12 +55,25 @@
   ],
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/server/server.js"
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "https://chat.homeswift.co",
+      "permanent": true
+    },
+    {
+      "source": "/login",
+      "destination": "https://chat.homeswift.co/login",
+      "permanent": true
+    },
+    {
+      "source": "/signup",
+      "destination": "https://chat.homeswift.co/signup",
+      "permanent": true
     }
   ]
 }
