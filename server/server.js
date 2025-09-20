@@ -99,6 +99,44 @@ app.use('/api/auth', authRoutes);
 // app.use('/api', usersRoutes);
 // app.use('/api', testRoutes);
 
+// Resend verification email endpoint
+app.post('/api/auth/resend-verification', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email is required'
+      });
+    }
+
+    // Use Supabase to resend verification
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email,
+      options: {
+        emailRedirectTo: `${req.headers.origin || 'https://homeswift.co'}/verify-email`
+      }
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    res.json({
+      success: true,
+      message: 'Verification email sent successfully'
+    });
+  } catch (error) {
+    console.error('Resend verification error:', error);
+    res.status(500).json({
+      success: false,
+      error: isProduction ? 'Failed to send verification email' : error.message
+    });
+  }
+});
+
 // Root endpoint
 app.get('/', (req, res) => {
   res.json({
@@ -108,6 +146,7 @@ app.get('/', (req, res) => {
     endpoints: {
       health: '/health',
       auth: '/api/auth',
+      'resend-verification': '/api/auth/resend-verification',
       properties: '/api/properties',
       search: '/api/properties/search'
     },
@@ -257,7 +296,8 @@ app.use('/api/*', (req, res) => {
       'GET /api/properties',
       'GET /api/properties/:id',
       'GET /api/properties/search',
-      'POST /api/auth/*'
+      'POST /api/auth/*',
+      'POST /api/auth/resend-verification'
     ]
   });
 });
