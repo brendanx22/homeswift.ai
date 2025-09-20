@@ -13,20 +13,6 @@
       }
     }
   ],
-  "routes": [
-    {
-      "src": "/auth/callback",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/dashboard(.*)",
-      "dest": "/index.html"
-    },
-    {
-      "src": "/api/(.*)",
-      "dest": "/server/server.js"
-    }
-  ],
   "env": {
     "NODE_ENV": "production",
     "FRONTEND_URL": "https://homeswift.co",
@@ -54,6 +40,10 @@
     }
   ],
   "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/server/server.js"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"
