@@ -51,9 +51,11 @@ const corsOptions = {
     
     // Production whitelist
     const allowedOrigins = [
-      'https://homeswift.ai',
-      'https://www.homeswift.ai',
+      'https://homeswift.co',
+      'https://www.homeswift.co',
+      'https://chat.homeswift.co',
       'https://homeswift-ai.vercel.app',
+      'https://homeswift-ai-backend.vercel.app',
       /^https?:\/\/homeswift-.*\.vercel\.app$/,
       /^https?:\/\/homeswift-ai-[a-z0-9]+\-brendanx22s-projects\.vercel\.app$/
     ];
@@ -97,6 +99,22 @@ app.use('/api/auth', authRoutes);
 // app.use('/api', usersRoutes);
 // app.use('/api', testRoutes);
 
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    message: 'HomeSwift API Server',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: {
+      health: '/health',
+      auth: '/api/auth',
+      properties: '/api/properties',
+      search: '/api/properties/search'
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Health check endpoint
 app.get('/health', async (req, res) => {
   try {
@@ -121,6 +139,15 @@ app.get('/health', async (req, res) => {
       error: isProduction ? 'Internal Server Error' : error.message
     });
   }
+});
+
+// Favicon handling - return 204 No Content
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end();
+});
+
+app.get('/favicon.png', (req, res) => {
+  res.status(204).end();
 });
 
 // API Routes
@@ -218,9 +245,30 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler
+// 404 handler for API routes
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ 
+    error: 'API endpoint not found',
+    path: req.path,
+    method: req.method,
+    availableEndpoints: [
+      'GET /',
+      'GET /health',
+      'GET /api/properties',
+      'GET /api/properties/:id',
+      'GET /api/properties/search',
+      'POST /api/auth/*'
+    ]
+  });
+});
+
+// 404 handler for non-API routes
 app.use((req, res) => {
-  res.status(404).json({ error: 'Not Found' });
+  res.status(404).json({ 
+    error: 'Not Found',
+    message: 'This is an API server. Please use the frontend application.',
+    frontend: 'https://homeswift.co'
+  });
 });
 
 // Start server
