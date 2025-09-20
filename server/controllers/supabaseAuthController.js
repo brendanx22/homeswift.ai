@@ -1,5 +1,12 @@
-import { createClient } from '@supabase/supabase-js';
-import jwt from 'jsonwebtoken';
+import { createClient } from "@supabase/supabase-js";
+import jwt from "jsonwebtoken";
+import nodemailer from "nodemailer";
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Initialize Supabase client with service role key for server-side operations
 const supabase = createClient(
@@ -9,362 +16,362 @@ const supabase = createClient(
     auth: {
       autoRefreshToken: false,
       persistSession: false,
-      detectSessionInUrl: false
-    }
+      detectSessionInUrl: false,
+    },
   }
 );
 
+// Email transporter
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: process.env.SMTP_PORT,
+  secure: process.env.SMTP_SECURE === "true",
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
+
+// Generate JWT token
+const generateToken = (user) => {
+  return jwt.sign(
+    { id: user.id, email: user.email, role: user.role || "user" },
+    process.env.JWT_SECRET,
+    { expiresIn: "7d" }
+  );
+};
+
+// Send verification email
+const sendVerificationEmail = async (email, name, token) => {
+  const verificationUrl = `https://chat.homeswift.co/verify-email?token=${token}`;
+
+  // Read email template
+  const emailTemplatePath = path.join(
+    __dirname,
+    "../../email-templates/verification-email.html"
+  );
+  let emailTemplate = fs.readFileSync(emailTemplatePath, "utf8");
+
+  // Replace placeholders
+  emailTemplate = emailTemplate
+    .replace(/{{name}}/g, name || "User")
+    .replace(/{{verificationUrl}}/g, verificationUrl);
+
+  const mailOptions = {
+    from: `"HomeSwift" <${process.env.EMAIL_FROM}>`,
+    to: email,
+    subject: "Verify Your HomeSwift Account",
+    html: emailTemplate,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    console.log(`Verification email sent to ${email}`);
+  } catch (error) {
+    console.error("Error sending verification email:", error);
+    throw new Error("Failed to send verification email");
+  }
+};
+
+// Check if email exists
 export const checkEmailExists = async (req, res) => {
   const { email } = req.body;
-  
+
   try {
     if (!email) {
       return res.status(400).json({
         success: false,
-        message: 'Email is required',
-        code: 'MISSING_EMAIL'
+        message: "Email is required",
+        code: "MISSING_EMAIL",
       });
     }
 
-    console.log('Checking email:', email.toLowerCase());
-
-    // First try to get user by email from auth.users
+    // Check if user exists in auth.users
     const { data: authUser, error: authError } = await supabase
-      .from('users')
-      .select('email')
-      .eq('email', email.toLowerCase())
+      .from("users")
+      .select("email")
+      .eq("email", email.toLowerCase())
       .maybeSingle();
 
-    if (authError) {
-      console.error('Error checking auth.users:', authError);
-      // If there's an error, try checking the public.users table as fallback
-      const { data: publicUser, error: publicError } = await supabase
-        .from('user_profiles')
-        .select('email')
-        .eq('email', email.toLowerCase())
-        .maybeSingle();
+    if (authError) throw authError;
 
-      if (publicError) {
-        console.error('Error checking user_profiles:', publicError);
-        // If both checks fail, assume email is available
-        return res.json({
-          success: true,
-          exists: false,
-          message: 'Email is available'
-        });
-      }
-
-      // If we found the email in the public.users table
-      return res.json({
-        success: true,
-        exists: !!publicUser,
-        message: publicUser ? 'Email is already registered' : 'Email is available'
-      });
-    }
-
-    // If we found the email in auth.users
-    res.json({
-      success: true,
+    return res.json({
       exists: !!authUser,
-      message: authUser ? 'Email is already registered' : 'Email is available'
-    });
-
-  } catch (error) {
-    console.error('Check email exists error:', error);
-    // On error, assume email is available to not block signup
-    res.json({
       success: true,
-      exists: false,
-      message: 'Email is available'
+    });
+  } catch (error) {
+    console.error("Error checking email:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error checking email",
+      error: error.message,
     });
   }
 };
 
+// Register new user
 export const register = async (req, res) => {
-  const { email, password, firstName, lastName } = req.body;
-  
-  try {
-    // Validate required fields
-    if (!email || !password || !firstName || !lastName) {
-      return res.status(400).json({
-        success: false,
-        message: 'All fields are required',
-        code: 'MISSING_FIELDS'
-      });
-    }
+  const { email, password, name } = req.body;
 
-    // Determine redirect URL based on environment
-    const isProduction = process.env.NODE_ENV === 'production';
-    const baseUrl = isProduction 
-      ? process.env.FRONTEND_URL || 'https://homeswift-ai.vercel.app'
-      : 'http://localhost:3000';
-    
-    // Create user in Supabase Auth
-    const { data, error } = await supabase.auth.signUp({
-      email: email.toLowerCase(),
+  try {
+    // 1. Create user in Supabase Auth
+    const { data: authData, error: signUpError } = await supabase.auth.signUp({
+      email,
       password,
       options: {
         data: {
-          first_name: firstName,
-          last_name: lastName,
-          full_name: `${firstName} ${lastName}`,
+          full_name: name,
         },
-        emailRedirectTo: `${baseUrl}/verify-email`
-      }
+        emailRedirectTo: "https://chat.homeswift.co/auth/callback",
+      },
     });
 
-    if (error) {
-      console.error('Registration error:', error);
-      return res.status(400).json({
-        success: false,
-        message: error.message || 'Registration failed',
-        code: error.code || 'REGISTRATION_ERROR'
-      });
-    }
+    if (signUpError) throw signUpError;
 
-    // Supabase automatically sends verification email
-    res.status(201).json({
+    // 2. Generate verification token
+    const verificationToken = jwt.sign(
+      { email, sub: authData.user.id },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    // 3. Send verification email
+    await sendVerificationEmail(email, name, verificationToken);
+
+    // 4. Generate auth token
+    const authToken = generateToken(authData.user);
+
+    // 5. Return success response
+    return res.status(201).json({
       success: true,
-      message: 'Registration successful! Please check your email to verify your account.',
+      message:
+        "Registration successful! Please check your email to verify your account.",
+      token: authToken,
       user: {
-        id: data.user?.id,
-        email: data.user?.email,
-        email_confirmed_at: data.user?.email_confirmed_at
-      }
+        id: authData.user.id,
+        email: authData.user.email,
+        name: authData.user.user_metadata?.full_name,
+        emailVerified: authData.user.email_confirmed_at !== null,
+      },
     });
   } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({
+    console.error("Registration error:", error);
+    return res.status(400).json({
       success: false,
-      message: 'Registration failed. Please try again.',
-      code: 'SERVER_ERROR'
+      message: error.message || "Registration failed",
+      code: error.code || "REGISTRATION_FAILED",
     });
   }
 };
 
+// Login user
 export const login = async (req, res) => {
   const { email, password } = req.body;
-  
+
   try {
-    // Validate required fields
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email and password are required',
-        code: 'MISSING_CREDENTIALS'
-      });
-    }
-
-    // Sign in with Supabase
+    // 1. Authenticate with Supabase
     const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.toLowerCase(),
-      password
+      email,
+      password,
     });
 
-    if (error) {
-      console.error('Login error:', error);
-      return res.status(401).json({
+    if (error) throw error;
+
+    // 2. Check if email is verified
+    if (!data.user.email_confirmed_at) {
+      return res.status(403).json({
         success: false,
-        message: error.message || 'Invalid credentials',
-        code: error.code || 'LOGIN_FAILED'
+        message: "Please verify your email before logging in",
+        code: "EMAIL_NOT_VERIFIED",
       });
     }
 
-    // Check if email is verified
-    if (!data.user?.email_confirmed_at) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please verify your email address before logging in',
-        code: 'EMAIL_NOT_VERIFIED'
-      });
-    }
+    // 3. Generate JWT token
+    const token = generateToken(data.user);
 
-    // Generate JWT token for API authentication
-    const token = jwt.sign(
-      {
-        userId: data.user.id,
-        email: data.user.email,
-        role: data.user.role || 'user'
-      },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '7d' }
-    );
-
-    // Set session cookie
-    res.cookie('sb-access-token', data.session.access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: data.session.expires_in * 1000
-    });
-
-    res.json({
+    // 4. Return success response with redirect URL
+    return res.status(200).json({
       success: true,
-      message: 'Login successful',
+      message: "Login successful",
+      token,
+      redirectUrl: "https://chat.homeswift.co/auth/callback",
       user: {
         id: data.user.id,
         email: data.user.email,
-        first_name: data.user.user_metadata?.first_name,
-        last_name: data.user.user_metadata?.last_name,
-        email_confirmed_at: data.user.email_confirmed_at
+        name: data.user.user_metadata?.full_name,
+        emailVerified: true,
       },
-      token,
-      session: data.session
     });
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({
+    console.error("Login error:", error);
+    return res.status(401).json({
       success: false,
-      message: 'Login failed. Please try again.',
-      code: 'SERVER_ERROR'
+      message: error.message || "Login failed",
+      code: error.code || "LOGIN_FAILED",
     });
   }
 };
 
-export const logout = async (req, res) => {
+// Verify email
+export const verifyEmail = async (req, res) => {
+  const { token } = req.query;
+
   try {
-    // Get the access token from cookies
-    const accessToken = req.cookies['sb-access-token'];
-    
-    if (accessToken) {
-      // Sign out from Supabase
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('Supabase sign out error:', error);
-      }
+    if (!token) {
+      return res.redirect(
+        "https://chat.homeswift.co/verification-error?error=invalid_token"
+      );
     }
 
-    // Clear cookies
-    res.clearCookie('sb-access-token');
-    res.clearCookie('sb-refresh-token');
-    
-    res.json({
-      success: true,
-      message: 'Logout successful'
-    });
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Mark email as verified in Supabase
+    const { data: user, error } = await supabase.auth.admin.updateUserById(
+      decoded.sub,
+      { email_confirm: true }
+    );
+
+    if (error) throw error;
+
+    // Generate auth token
+    const authToken = generateToken(user);
+
+    // Redirect to chat app with token
+    const redirectUrl = `https://chat.homeswift.co/auth/callback?token=${authToken}`;
+    return res.redirect(redirectUrl);
   } catch (error) {
-    console.error('Logout error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Logout failed',
-      code: 'SERVER_ERROR'
-    });
+    console.error("Email verification error:", error);
+    return res.redirect(
+      `https://chat.homeswift.co/verification-error?error=${encodeURIComponent(
+        error.message
+      )}`
+    );
   }
 };
 
+// Get current user
 export const getCurrentUser = async (req, res) => {
   try {
-    // Get the access token from cookies or Authorization header
-    const accessToken = req.cookies['sb-access-token'] || 
-                       req.headers.authorization?.split(' ')[1];
+    const token = req.headers.authorization?.split(" ")[1];
 
-    if (!accessToken) {
+    if (!token) {
       return res.status(401).json({
         success: false,
-        message: 'Not authenticated',
-        code: 'UNAUTHORIZED'
+        message: "No token provided",
       });
     }
 
-    // Verify the token with Supabase
-    const { data: { user }, error } = await supabase.auth.getUser(accessToken);
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    if (error || !user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid or expired token',
-        code: 'INVALID_TOKEN'
-      });
-    }
+    // Get user from Supabase
+    const { data: user, error } = await supabase
+      .from("users")
+      .select("*")
+      .eq("id", decoded.id)
+      .single();
 
-    res.json({
+    if (error) throw error;
+
+    return res.status(200).json({
       success: true,
       user: {
         id: user.id,
         email: user.email,
-        first_name: user.user_metadata?.first_name,
-        last_name: user.user_metadata?.last_name,
-        email_confirmed_at: user.email_confirmed_at,
-        created_at: user.created_at,
-        updated_at: user.updated_at
-      }
+        name: user.user_metadata?.full_name,
+        emailVerified: !!user.email_confirmed_at,
+      },
     });
   } catch (error) {
-    console.error('Get user error:', error);
-    res.status(500).json({
+    console.error("Get current user error:", error);
+    return res.status(401).json({
       success: false,
-      message: 'Failed to get user',
-      code: 'SERVER_ERROR'
+      message: "Invalid or expired token",
     });
   }
 };
 
+// Logout
+export const logout = async (req, res) => {
+  try {
+    const token = req.headers.authorization?.split(" ")[1];
+
+    if (token) {
+      // Invalidate token (optional: add to blacklist)
+      // This is a simplified example - in production, you might want to implement token blacklisting
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Logged out successfully",
+    });
+  } catch (error) {
+    console.error("Logout error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Logout failed",
+    });
+  }
+};
+
+// Resend verification email
 export const resendVerification = async (req, res) => {
   const { email } = req.body;
-  
+
   try {
     if (!email) {
       return res.status(400).json({
         success: false,
-        message: 'Email is required',
-        code: 'MISSING_EMAIL'
+        message: "Email is required",
       });
     }
 
-    // Determine redirect URL based on environment
-    const isProduction = process.env.NODE_ENV === 'production';
-    const baseUrl = isProduction 
-      ? process.env.FRONTEND_URL || 'https://homeswift-ai.vercel.app'
-      : 'http://localhost:3000';
+    // Get user by email
+    const { data: user, error: userError } = await supabase
+      .from("users")
+      .select("*")
+      .eq("email", email)
+      .single();
 
-    // Resend verification email using Supabase
-    const { error } = await supabase.auth.resend({
-      type: 'signup',
-      email: email.toLowerCase(),
-      options: {
-        emailRedirectTo: `${baseUrl}/verify-email`
-      }
-    });
+    if (userError || !user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
 
-    if (error) {
-      console.error('Resend verification error:', error);
+    // Check if already verified
+    if (user.email_confirmed_at) {
       return res.status(400).json({
         success: false,
-        message: error.message || 'Failed to resend verification email',
-        code: error.code || 'RESEND_FAILED'
+        message: "Email is already verified",
       });
     }
 
-    res.json({
-      success: true,
-      message: 'Verification email sent successfully'
-    });
-  } catch (error) {
-    console.error('Resend verification error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to resend verification email',
-      code: 'SERVER_ERROR'
-    });
-  }
-};
+    // Generate new verification token
+    const verificationToken = jwt.sign(
+      { email: user.email, sub: user.id },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
 
-export const verifyEmail = async (req, res) => {
-  try {
-    // Supabase handles email verification automatically when users click the link
-    // This endpoint is mainly for handling the redirect after verification
-    const { token, type, redirect_to } = req.query;
-    
-    if (type === 'signup' && token) {
-      // Redirect directly to the main app after email verification
-      const redirectUrl = `http://localhost:3000/app`;
-      return res.redirect(redirectUrl);
-    }
-    
-    // Default redirect to main app
-    res.redirect(`http://localhost:3000/app`);
+    // Send verification email
+    await sendVerificationEmail(
+      user.email,
+      user.user_metadata?.full_name,
+      verificationToken
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Verification email resent successfully",
+    });
   } catch (error) {
-    console.error('Email verification error:', error);
-    res.redirect(`http://localhost:3000/verify-email?error=verification_failed`);
+    console.error("Resend verification error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to resend verification email",
+    });
   }
 };

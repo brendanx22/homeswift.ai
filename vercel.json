@@ -61,19 +61,9 @@
   ],
   "redirects": [
     {
-      "source": "/",
+      "source": "/app",
       "destination": "https://chat.homeswift.co",
-      "permanent": true
-    },
-    {
-      "source": "/login",
-      "destination": "https://chat.homeswift.co/login",
-      "permanent": true
-    },
-    {
-      "source": "/signup",
-      "destination": "https://chat.homeswift.co/signup",
-      "permanent": true
+      "permanent": false
     }
   ]
 }

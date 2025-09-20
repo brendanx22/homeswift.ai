@@ -18,7 +18,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     detectSessionInUrl: true,
     flowType: 'pkce',
-    redirectTo: 'https://chat.homeswift.co/auth/callback'
+    redirectTo: window.location.hostname.startsWith('chat.') 
+      ? 'https://chat.homeswift.co/auth/callback'
+      : 'https://homeswift.co/auth/callback'
   },
 });
 

@@ -45,7 +45,12 @@ export default function MainLanding() {
   // Redirect if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
-      navigate('/login');
+      // If on chat subdomain and not authenticated, redirect to main domain login
+      if (window.location.hostname.startsWith('chat.')) {
+        window.location.href = 'https://homeswift.co/login?redirect=' + encodeURIComponent(window.location.href);
+      } else {
+        navigate('/login');
+      }
     }
   }, [isAuthenticated, navigate]);
 
@@ -87,10 +92,18 @@ export default function MainLanding() {
     // Handle navigation based on the selected item
     switch(id) {
       case 'search':
-        navigate('/properties');
+        if (window.location.hostname.startsWith('chat.')) {
+          window.location.href = 'https://homeswift.co/properties';
+        } else {
+          navigate('/properties');
+        }
         break;
       case 'properties':
-        navigate('/properties');
+        if (window.location.hostname.startsWith('chat.')) {
+          window.location.href = 'https://homeswift.co/properties';
+        } else {
+          navigate('/properties');
+        }
         break;
       case 'saved':
         navigate('/app/saved');
@@ -174,7 +187,12 @@ export default function MainLanding() {
         ...(propertyType && { type: propertyType })
       });
       
-      navigate(`/properties?${searchParams.toString()}`);
+      // If on chat subdomain, navigate to properties on main domain
+      if (window.location.hostname.startsWith('chat.')) {
+        window.location.href = `https://homeswift.co/properties?${searchParams.toString()}`;
+      } else {
+        navigate(`/properties?${searchParams.toString()}`);
+      }
     } catch (error) {
       console.error('Search error:', error);
       setSearchError('Search failed. Please try again.');
@@ -1122,7 +1140,13 @@ export default function MainLanding() {
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => navigate('/properties')}
+                  onClick={() => {
+                    if (window.location.hostname.startsWith('chat.')) {
+                      window.location.href = 'https://homeswift.co/properties';
+                    } else {
+                      navigate('/properties');
+                    }
+                  }}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-medium transition-colors duration-200"
                 >
                   View All Properties

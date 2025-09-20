@@ -160,7 +160,39 @@ const AppRoutes = () => {
   return <AnimatedRoutes />;
 };
 
+// Check if we're on the chat subdomain
+const isChatSubdomain = window.location.hostname.startsWith('chat.');
+
 const App = () => {
+  // If on chat subdomain, only show MainLanding with its routes
+  if (isChatSubdomain) {
+    return (
+      <>
+        <Toaster position="top-right" richColors />
+        <Routes>
+          <Route path="/*" element={
+            <ProtectedRoute>
+              <MainLanding />
+            </ProtectedRoute>
+          }>
+            <Route index element={null} />
+            <Route path="search" element={<HouseListings isSearchResult={true} />} />
+            <Route path="saved" element={<HouseListings showSaved={true} />} />
+            <Route path="neighborhoods" element={<HouseListings showNeighborhoods={true} />} />
+            <Route path="gallery" element={<Gallery />} />
+            <Route path="calculator" element={<InquiryForm type="calculator" />} />
+            <Route path="tours" element={<Gallery showTours={true} />} />
+            <Route path="filters" element={<HouseListings showFilters={true} />} />
+            <Route path="recent" element={<HouseListings showRecent={true} />} />
+            <Route path="inquiry" element={<InquiryForm />} />
+            <Route path="profile" element={<div>Profile Page - Coming Soon</div>} />
+          </Route>
+        </Routes>
+      </>
+    );
+  }
+
+  // For main domain, show regular routes
   return (
     <>
       <Toaster position="top-right" richColors />

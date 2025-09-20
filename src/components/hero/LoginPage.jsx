@@ -67,8 +67,13 @@ export default function LoginPage() {
       const redirectPath = searchParams.get('redirect') || '/app';
       console.log('Redirecting to:', redirectPath);
       
-      // Redirect to the specified path or main page
-      navigate(redirectPath);
+      // If redirect is to chat subdomain, use window.location.href
+      if (redirectPath.includes('chat.homeswift.co')) {
+        window.location.href = redirectPath;
+      } else {
+        // Redirect to the specified path or main page
+        navigate(redirectPath);
+      }
       
     } catch (err) {
       console.error('Login error:', err);

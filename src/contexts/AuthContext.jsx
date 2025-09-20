@@ -156,7 +156,12 @@ export const AuthProvider = ({ children }) => {
           // Don't redirect if on root, login, signup, or verify-email pages
           const publicPaths = ['/', '/login', '/signup', '/verify-email'];
           if (!publicPaths.includes(window.location.pathname)) {
-            navigate('/login');
+            // If on chat subdomain and not authenticated, redirect to main domain login
+            if (window.location.hostname.startsWith('chat.')) {
+              window.location.href = 'https://homeswift.co/login?redirect=' + encodeURIComponent(window.location.href);
+            } else {
+              navigate('/login');
+            }
           }
         }
       }
@@ -207,7 +212,9 @@ export const AuthProvider = ({ children }) => {
             last_name: userData.lastName,
             full_name: `${userData.firstName} ${userData.lastName}`,
           },
-          emailRedirectTo: `${window.location.origin}/verify-email`,
+          emailRedirectTo: window.location.hostname.startsWith('chat.') 
+            ? 'https://chat.homeswift.co/verify-email'
+            : `${window.location.origin}/verify-email`,
         },
       });
       
@@ -278,7 +285,9 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: window.location.hostname.startsWith('chat.') 
+          ? 'https://chat.homeswift.co/reset-password'
+          : `${window.location.origin}/reset-password`,
       });
       
       if (error) throw error;
@@ -303,7 +312,9 @@ export const AuthProvider = ({ children }) => {
         type: 'signup',
         email: email,
         options: {
-          emailRedirectTo: `${window.location.origin}/verify-email`
+          emailRedirectTo: window.location.hostname.startsWith('chat.') 
+            ? 'https://chat.homeswift.co/verify-email'
+            : `${window.location.origin}/verify-email`
         }
       });
       
