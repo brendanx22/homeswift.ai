@@ -17,6 +17,22 @@ export const AuthProvider = ({ children }) => {
   const checkSession = useCallback(async () => {
     try {
       setLoading(true);
+      
+      // First check if there's a session in localStorage
+      const storedSession = localStorage.getItem('homeswift-auth-token');
+      if (storedSession) {
+        try {
+          const parsedSession = JSON.parse(storedSession);
+          if (parsedSession.currentSession) {
+            setSession(parsedSession.currentSession);
+            setUser(parsedSession.currentSession?.user ?? null);
+            return parsedSession.currentSession;
+          }
+        } catch (e) {
+          console.log('No valid stored session found');
+        }
+      }
+      
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       
       setSession(currentSession);
@@ -89,6 +105,28 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     // Check session on mount
     checkSession();
+    
+    // Listen for storage changes (cross-domain session sync)
+    const handleStorageChange = (e) => {
+      if (e.key === 'homeswift-auth-token') {
+        if (e.newValue) {
+          try {
+            const parsedSession = JSON.parse(e.newValue);
+            if (parsedSession.currentSession) {
+              setSession(parsedSession.currentSession);
+              setUser(parsedSession.currentSession?.user ?? null);
+            }
+          } catch (error) {
+            console.log('Error parsing stored session:', error);
+          }
+        } else {
+          setSession(null);
+          setUser(null);
+        }
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
     
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -169,6 +207,7 @@ export const AuthProvider = ({ children }) => {
     
     return () => {
       subscription?.unsubscribe();
+      window.removeEventListener('storage', handleStorageChange);
     };
   }, [checkSession, navigate]);
 

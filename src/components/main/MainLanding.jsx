@@ -44,15 +44,20 @@ export default function MainLanding() {
   
   // Redirect if not authenticated
   useEffect(() => {
-    if (!isAuthenticated) {
-      // If on chat subdomain and not authenticated, redirect to main domain login
-      if (window.location.hostname.startsWith('chat.')) {
-        window.location.href = 'https://homeswift.co/login?redirect=' + encodeURIComponent(window.location.href);
-      } else {
-        navigate('/login');
+    // Add a small delay to allow session to be checked
+    const timer = setTimeout(() => {
+      if (!isAuthenticated && !loading) {
+        // If on chat subdomain and not authenticated, redirect to main domain login
+        if (window.location.hostname.startsWith('chat.')) {
+          window.location.href = 'https://homeswift.co/login?redirect=' + encodeURIComponent(window.location.href);
+        } else {
+          navigate('/login');
+        }
       }
-    }
-  }, [isAuthenticated, navigate]);
+    }, 1000); // 1 second delay to allow session check
+
+    return () => clearTimeout(timer);
+  }, [isAuthenticated, loading, navigate]);
 
   // Handle logout
   const handleLogout = async () => {

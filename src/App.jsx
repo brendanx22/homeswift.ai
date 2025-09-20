@@ -17,6 +17,7 @@ import PropertyDetails from './pages/PropertyDetails';
 import Gallery from './pages/Gallery';
 import InquiryForm from './pages/InquiryForm';
 import NotFound from './pages/NotFound';
+import SessionChecker from './components/auth/SessionChecker';
 
 // Styles
 import './index.css';
@@ -169,25 +170,27 @@ const App = () => {
     return (
       <>
         <Toaster position="top-right" richColors />
-        <Routes>
-          <Route path="/*" element={
-            <ProtectedRoute>
-              <MainLanding />
-            </ProtectedRoute>
-          }>
-            <Route index element={null} />
-            <Route path="search" element={<HouseListings isSearchResult={true} />} />
-            <Route path="saved" element={<HouseListings showSaved={true} />} />
-            <Route path="neighborhoods" element={<HouseListings showNeighborhoods={true} />} />
-            <Route path="gallery" element={<Gallery />} />
-            <Route path="calculator" element={<InquiryForm type="calculator" />} />
-            <Route path="tours" element={<Gallery showTours={true} />} />
-            <Route path="filters" element={<HouseListings showFilters={true} />} />
-            <Route path="recent" element={<HouseListings showRecent={true} />} />
-            <Route path="inquiry" element={<InquiryForm />} />
-            <Route path="profile" element={<div>Profile Page - Coming Soon</div>} />
-          </Route>
-        </Routes>
+        <SessionChecker>
+          <Routes>
+            <Route path="/*" element={
+              <ProtectedRoute>
+                <MainLanding />
+              </ProtectedRoute>
+            }>
+              <Route index element={null} />
+              <Route path="search" element={<HouseListings isSearchResult={true} />} />
+              <Route path="saved" element={<HouseListings showSaved={true} />} />
+              <Route path="neighborhoods" element={<HouseListings showNeighborhoods={true} />} />
+              <Route path="gallery" element={<Gallery />} />
+              <Route path="calculator" element={<InquiryForm type="calculator" />} />
+              <Route path="tours" element={<Gallery showTours={true} />} />
+              <Route path="filters" element={<HouseListings showFilters={true} />} />
+              <Route path="recent" element={<HouseListings showRecent={true} />} />
+              <Route path="inquiry" element={<InquiryForm />} />
+              <Route path="profile" element={<div>Profile Page - Coming Soon</div>} />
+            </Route>
+          </Routes>
+        </SessionChecker>
       </>
     );
   }
