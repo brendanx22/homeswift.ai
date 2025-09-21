@@ -30,6 +30,16 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true,
     flowType: 'pkce',
     storage: window.localStorage,
+    // Explicitly set the auth endpoint
+    auth: {
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      persistSession: true,
+      storage: window.localStorage,
+      storageKey: 'sb-auth-token',
+      // This ensures all auth requests go to the correct URL
+      url: supabaseUrl
+    },
     storageKey: 'homeswift-auth-token',
     redirectTo: window.location.hostname.startsWith('chat.') 
       ? 'https://chat.homeswift.co/'
