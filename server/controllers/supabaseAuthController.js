@@ -166,48 +166,111 @@ export const register = async (req, res) => {
 
 // Login user
 export const login = async (req, res) => {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:3000');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  
   const { email, password } = req.body;
 
+  // Validate request body
+  if (!email || !password) {
+    return res.status(400).json({
+      success: false,
+      message: 'Email and password are required',
+      code: 'MISSING_CREDENTIALS'
+    });
+  }
+
   try {
+    console.log('Login attempt for:', email);
+    
     // 1. Authenticate with Supabase
     const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+      email: email.trim().toLowerCase(),
+      password: password.trim(),
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase auth error:', error);
+      throw error;
+    }
+
+    if (!data || !data.user) {
+      throw new Error('No user data returned from authentication');
+    }
 
     // 2. Check if email is verified
     if (!data.user.email_confirmed_at) {
       return res.status(403).json({
         success: false,
-        message: "Please verify your email before logging in",
-        code: "EMAIL_NOT_VERIFIED",
+        message: 'Please verify your email before logging in',
+        code: 'EMAIL_NOT_VERIFIED',
       });
     }
 
-    // 3. Generate JWT token
-    const token = generateToken(data.user);
+    // 3. Get additional user data
+    const { data: userData, error: userError } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('id', data.user.id)
+      .single();
 
-    // 4. Return success response with redirect URL
+    if (userError) {
+      console.warn('Could not fetch user profile:', userError);
+    }
+
+    // 4. Generate JWT token
+    const token = generateToken(data.user);
+    
+    // Set secure, httpOnly cookie
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      domain: process.env.NODE_ENV === 'production' ? '.homeswift.co' : 'localhost'
+    });
+
+    // 5. Return success response
     return res.status(200).json({
       success: true,
-      message: "Login successful",
+      message: 'Login successful',
       token,
-      redirectUrl: "https://chat.homeswift.co/auth/callback",
       user: {
         id: data.user.id,
         email: data.user.email,
-        name: data.user.user_metadata?.full_name,
-        emailVerified: true,
+        name: data.user.user_metadata?.full_name || userData?.full_name || 'User',
+        emailVerified: !!data.user.email_confirmed_at,
+        ...(userData || {})
       },
+      redirectUrl: process.env.FRONTEND_URL || 'https://homeswift.co'
     });
+    
   } catch (error) {
-    console.error("Login error:", error);
-    return res.status(401).json({
+    console.error('Login error:', error);
+    
+    // Handle specific Supabase errors
+    if (error.message.includes('Invalid login credentials')) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password',
+        code: 'INVALID_CREDENTIALS'
+      });
+    }
+    
+    if (error.code === 'too_many_requests') {
+      return res.status(429).json({
+        success: false,
+        message: 'Too many login attempts. Please try again later.',
+        code: 'TOO_MANY_ATTEMPTS'
+      });
+    }
+    
+    // Generic error response
+    return res.status(500).json({
       success: false,
-      message: error.message || "Login failed",
-      code: error.code || "LOGIN_FAILED",
+      message: error.message || 'An error occurred during login',
+      code: error.code || 'LOGIN_ERROR'
     });
   }
 };

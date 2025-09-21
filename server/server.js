@@ -70,13 +70,36 @@ const corsOptions = {
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-  exposedHeaders: ['Content-Range', 'X-Total-Count', 'X-Access-Token', 'X-Refresh-Token'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With', 
+    'Accept', 
+    'Origin',
+    'X-CSRF-Token',
+    'X-Requested-With',
+    'X-Session-Id'
+  ],
+  exposedHeaders: [
+    'Content-Range', 
+    'X-Total-Count', 
+    'X-Access-Token', 
+    'X-Refresh-Token',
+    'Set-Cookie',
+    'X-CSRF-Token'
+  ],
   maxAge: 86400,
 };
 
+// Apply CORS with preflight options
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
+
+// Trust first proxy (important for secure cookies)
+app.set('trust proxy', 1);
+
+// Cookie parser middleware
+app.use(cookieParser(process.env.SESSION_SECRET));
 
 // Rate limiting
 const limiter = rateLimit({
