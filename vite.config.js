@@ -27,10 +27,12 @@ export default ({ mode }) => {
     esbuild: {
       logOverride: { 'this-is-undefined-in-esm': 'silent' }
     },
-    base: isProduction ? './' : '/',
+    base: '/',
     define: {
       'process.env': {}
     },
+    // Ensure Vite handles environment variables correctly
+    envPrefix: 'VITE_',
     resolve: {
       alias: [
         {
@@ -67,7 +69,8 @@ export default ({ mode }) => {
     build: {
       outDir: 'dist',
       assetsDir: 'assets',
-      sourcemap: false,
+      sourcemap: true, // Enable sourcemaps for debugging
+      emptyOutDir: true,
       assetsInlineLimit: 0, // Ensure all assets are emitted as files
       modulePreload: {
         polyfill: false,
