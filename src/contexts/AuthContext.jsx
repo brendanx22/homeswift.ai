@@ -186,19 +186,36 @@ export const AuthProvider = ({ children }) => {
             ...userData
           });
           
-          // Redirect to main page if not already there
-          if (window.location.pathname === '/login' || window.location.pathname === '/signup' || window.location.pathname === '/verify-email') {
-            navigate('/app');
+          // Only redirect if we're on an auth page and the user is now authenticated
+          const authPages = ['/login', '/signup', '/verify-email'];
+          if (authPages.includes(window.location.pathname)) {
+            // Get redirect URL from query params or default to /app
+            const urlParams = new URLSearchParams(window.location.search);
+            const redirectTo = urlParams.get('redirect') || '/app';
+            
+            // Ensure we don't redirect back to an auth page
+            if (!authPages.some(page => redirectTo.includes(page))) {
+              navigate(redirectTo);
+            } else {
+              navigate('/app');
+            }
           }
         } else {
-          // Don't redirect if on root, login, signup, or verify-email pages
-          const publicPaths = ['/', '/login', '/signup', '/verify-email'];
-          if (!publicPaths.includes(window.location.pathname)) {
+          // Don't redirect if on root or public pages
+          const publicPaths = ['/', '/login', '/signup', '/verify-email', '/reset-password'];
+          const isPublicPath = publicPaths.some(path => 
+            window.location.pathname.startsWith(path)
+          );
+          
+          if (!isPublicPath) {
             // If on chat subdomain and not authenticated, redirect to main domain login
             if (window.location.hostname.startsWith('chat.')) {
               window.location.href = 'https://homeswift.co/login?redirect=' + encodeURIComponent(window.location.href);
             } else {
-              navigate('/login');
+              // Only redirect to login if we're not already there
+              if (window.location.pathname !== '/login') {
+                navigate(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+              }
             }
           }
         }
@@ -284,17 +301,46 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       setError(null);
       
+      // Clear any existing session to prevent conflicts
+      await supabase.auth.signOut();
+      
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+        email: email.trim().toLowerCase(),
+        password: password.trim(),
       });
       
-      if (signInError) throw signInError;
+      if (signInError) {
+        // Handle specific error cases
+        if (signInError.message.includes('Invalid login credentials')) {
+          throw new Error('Invalid email or password');
+        }
+        if (signInError.message.includes('Email not confirmed')) {
+          throw new Error('Please verify your email before logging in');
+        }
+        throw signInError;
+      }
+      
+      // Force a session refresh to ensure we have the latest data
+      const { data: { session: freshSession } } = await supabase.auth.getSession();
+      setSession(freshSession);
+      setUser(freshSession?.user ?? null);
+      
+      // Get redirect URL from query params or default to /app
+      const urlParams = new URLSearchParams(window.location.search);
+      const redirectTo = urlParams.get('redirect') || '/app';
+      
+      // Ensure we don't redirect back to an auth page
+      const authPages = ['/login', '/signup', '/verify-email', '/reset-password'];
+      if (!authPages.some(page => redirectTo.includes(page))) {
+        navigate(redirectTo);
+      } else {
+        navigate('/app');
+      }
       
       return data.user;
     } catch (error) {
       console.error('Sign in error:', error);
-      setError(error.message);
+      setError(error.message || 'An error occurred during sign in');
       throw error;
     } finally {
       setLoading(false);

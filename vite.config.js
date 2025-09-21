@@ -49,8 +49,12 @@ export default ({ mode }) => {
     },
     server: {
       host: true,  // Listen on all network interfaces
-      port: 3000,
+      port: 5173,
       strictPort: true,
+      headers: {
+        'Cross-Origin-Embedder-Policy': 'require-corp',
+        'Cross-Origin-Opener-Policy': 'same-origin',
+      },
       proxy: {
         '/api': {
           target: process.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5002',
