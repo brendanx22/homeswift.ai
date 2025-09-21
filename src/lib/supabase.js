@@ -1,25 +1,21 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Initialize Supabase client with explicit URL and key
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tproaiqvkohrlxjmkgxt.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRwcm9haXF2a29ocmx4am1rZ3h0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0MjUwNDksImV4cCI6MjA3MzAwMTA0OX0.RoOBMaKyPXi0BXfWOhLpAAj89sKYxWEE-Zz5iu3kTEI';
+// Initialize Supabase client
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 // Debug logging
-console.log('Environment Variables:', {
-  VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL ? 'Set' : 'Not set',
-  VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY ? 'Set' : 'Not set'
-});
-
-console.log('Using Supabase URL:', supabaseUrl);
+console.log('Supabase URL:', supabaseUrl);
+console.log('Supabase Key exists:', !!supabaseAnonKey);
 
 // Validate environment variables
 if (!supabaseUrl || !supabaseAnonKey) {
-  const error = new Error('Missing Supabase environment variables');
-  console.error('Error:', error.message, {
-    VITE_SUPABASE_URL: !!supabaseUrl,
-    VITE_SUPABASE_ANON_KEY: !!supabaseAnonKey
-  });
-  throw error;
+  console.error('Missing Supabase environment variables:');
+  console.error('VITE_SUPABASE_URL:', supabaseUrl);
+  console.error('VITE_SUPABASE_ANON_KEY:', supabaseAnonKey ? '***' : 'MISSING');
+  throw new Error(
+    'Missing Supabase environment variables. Please check your .env file.'
+  );
 }
 
 // Create a single supabase client for interacting with your database
@@ -30,22 +26,22 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true,
     flowType: 'pkce',
     storage: window.localStorage,
-    // Explicitly set the auth endpoint
-    auth: {
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-      persistSession: true,
-      storage: window.localStorage,
-      storageKey: 'sb-auth-token',
-      // This ensures all auth requests go to the correct URL
-      url: supabaseUrl
-    },
     storageKey: 'homeswift-auth-token',
     redirectTo: window.location.hostname.startsWith('chat.') 
       ? 'https://chat.homeswift.co/'
       : 'https://homeswift.co/'
   },
+  global: {
+    headers: {
+      'apikey': supabaseAnonKey,
+      'Authorization': `Bearer ${supabaseAnonKey}`,
+      'Content-Type': 'application/json'
+    }
+  }
 });
+
+// Add a request interceptor to ensure API key is included in all requests
+supabase.realtime.setAuth(supabaseAnonKey);
 
 // Auth helper functions
 export const authHelpers = {
