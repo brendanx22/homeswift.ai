@@ -141,7 +141,7 @@ export default function LoginPage() {
 
   return (
     <div 
-      className="min-h-screen flex items-center justify-center px-6 bg-cover bg-center bg-no-repeat relative"
+      className="min-h-screen flex justify-center items-start pt-24 sm:pt-32 md:pt-40 pb-24 sm:pb-32 md:pb-40 px-6 bg-cover bg-center bg-no-repeat relative"
       style={{ 
         backgroundImage: 'url("/Hero Section Image.png")',
         backgroundSize: 'cover',
@@ -166,7 +166,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md relative z-10">
 
         {/* Login Form */}
-        <div className="bg-transparent border border-gray-400/50 rounded-[2rem] p-8">
+        <div className="bg-transparent border border-gray-400/50 rounded-[2rem] px-8 py-12 min-h-[560px] md:min-h-[640px]">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-white mb-2">
               {isVerified ? 'Email Verified!' : 'Welcome Back'}

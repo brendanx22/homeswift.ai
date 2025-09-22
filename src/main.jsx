@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactDOM from 'react-dom/client';
+import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { CacheProvider } from '@emotion/react';
 import createCache from '@emotion/cache';
@@ -10,8 +10,15 @@ import App from './App.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import './index.css';
 
-const emotionCache = createCache({ key: 'css', prepend: true });
+console.log('main.jsx loaded');
 
+// Create Emotion cache
+const emotionCache = createCache({ 
+  key: 'css', 
+  prepend: true 
+});
+
+// Configure QueryClient
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -22,17 +29,18 @@ const queryClient = new QueryClient({
   },
 });
 
+// Root component with all providers
 const Root = () => (
   <React.StrictMode>
     <ErrorBoundary>
       <BrowserRouter>
         <CacheProvider value={emotionCache}>
           <QueryClientProvider client={queryClient}>
-            <AuthProvider>
-              <AppProvider>
+            <AppProvider>
+              <AuthProvider>
                 <App />
-              </AppProvider>
-            </AuthProvider>
+              </AuthProvider>
+            </AppProvider>
           </QueryClientProvider>
         </CacheProvider>
       </BrowserRouter>
@@ -40,8 +48,10 @@ const Root = () => (
   </React.StrictMode>
 );
 
+// Get the root element
 const container = document.getElementById('root');
 if (!container) throw new Error('Root element not found');
 
-const root = ReactDOM.createRoot(container);
+// Create a root and render the app
+const root = createRoot(container);
 root.render(<Root />);

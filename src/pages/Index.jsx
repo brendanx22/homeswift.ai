@@ -3,6 +3,7 @@
 import HeroSection from '../components/hero/HeroSection';
 
 const Index = () => {
+  console.log('[Index] Render');
   return (
     <div className="min-h-screen">
       <HeroSection />

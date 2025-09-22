@@ -15,6 +15,7 @@ export const AuthProvider = ({ children }) => {
 
   // Check active session and set the user
   const checkSession = useCallback(async () => {
+    console.log('[AuthProvider] checkSession: start');
     try {
       setLoading(true);
       
@@ -91,6 +92,7 @@ export const AuthProvider = ({ children }) => {
         });
       }
       
+      console.log('[AuthProvider] checkSession: done, user=', Boolean(currentSession?.user));
       return currentSession;
     } catch (error) {
       console.error('Error checking session:', error);
@@ -476,7 +478,7 @@ export const AuthProvider = ({ children }) => {
   
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 };

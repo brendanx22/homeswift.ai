@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AppProvider, useAppContext } from './contexts/AppContext';
@@ -29,6 +29,10 @@ const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   const { isLoading } = useAppContext();
   const location = useLocation();
+
+  if (typeof window !== 'undefined') {
+    console.log('[ProtectedRoute] path=', location.pathname, 'authLoading=', loading, 'appLoading=', isLoading, 'isAuthenticated=', isAuthenticated);
+  }
 
   if (loading || isLoading) {
     return (
@@ -82,6 +86,9 @@ const AnimatedPage = ({ children }) => (
 
 const AnimatedRoutes = () => {
   const location = useLocation();
+  useEffect(() => {
+    console.log('[Routes] Navigated to', location.pathname);
+  }, [location.pathname]);
   
   return (
     <AnimatePresence mode="wait">
@@ -165,6 +172,9 @@ const AppRoutes = () => {
 const isChatSubdomain = window.location.hostname.startsWith('chat.');
 
 const App = () => {
+  useEffect(() => {
+    console.log('[App] Mounted. isChatSubdomain=', isChatSubdomain);
+  }, []);
   // If on chat subdomain, only show MainLanding with its routes
   if (isChatSubdomain) {
     return (
