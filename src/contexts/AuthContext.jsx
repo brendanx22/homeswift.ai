@@ -210,14 +210,9 @@ export const AuthProvider = ({ children }) => {
           );
           
           if (!isPublicPath) {
-            // If on chat subdomain and not authenticated, redirect to main domain login
-            if (window.location.hostname.startsWith('chat.')) {
-              window.location.href = 'https://homeswift.co/login?redirect=' + encodeURIComponent(window.location.href);
-            } else {
-              // Only redirect to login if we're not already there
-              if (window.location.pathname !== '/login') {
-                navigate(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
-              }
+            // Always redirect to local login on the same subdomain
+            if (window.location.pathname !== '/login') {
+              navigate(`/login?redirect=${encodeURIComponent(window.location.href)}`);
             }
           }
         }
@@ -304,12 +299,19 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       setError(null);
       
-      // Proceed to sign in directly
+      // Proceed to sign in directly with a timeout guard
       console.log('[AuthProvider.signIn] calling signInWithPassword');
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password: password.trim(),
-      });
+      const timeoutMs = 12000;
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Network timeout while contacting Auth service')), timeoutMs)
+      );
+      const { data, error: signInError } = await Promise.race([
+        supabase.auth.signInWithPassword({
+          email: email.trim().toLowerCase(),
+          password: password.trim(),
+        }),
+        timeoutPromise,
+      ]);
       console.log('[AuthProvider.signIn] signInWithPassword result', { hasError: !!signInError, user: !!data?.user });
       
       if (signInError) {
@@ -329,18 +331,26 @@ export const AuthProvider = ({ children }) => {
       setSession(freshSession);
       setUser(freshSession?.user ?? null);
       
-      // Get redirect URL from query params or default to /app
+      // Get redirect URL from query params or default based on domain
       const urlParams = new URLSearchParams(window.location.search);
-      const redirectTo = urlParams.get('redirect') || '/app';
+      const redirectTo = urlParams.get('redirect');
+      const defaultAfterLogin = window.location.hostname.startsWith('chat.') ? '/' : '/app';
       
       // Ensure we don't redirect back to an auth page
       const authPages = ['/login', '/signup', '/verify-email', '/reset-password'];
-      if (!authPages.some(page => redirectTo.includes(page))) {
-        console.log('[AuthProvider.signIn] navigating to', redirectTo);
-        navigate(redirectTo);
+      const target = redirectTo || defaultAfterLogin;
+
+      // If redirect is absolute URL (e.g., chat.homeswift.co), perform a full navigation
+      const isAbsolute = /^https?:\/\//i.test(target);
+      if (isAbsolute) {
+        console.log('[AuthProvider.signIn] cross-origin redirect to', target);
+        window.location.assign(target);
+      } else if (!authPages.some(page => target.includes(page))) {
+        console.log('[AuthProvider.signIn] navigating to', target);
+        navigate(target);
       } else {
-        console.log('[AuthProvider.signIn] navigating to /app');
-        navigate('/app');
+        console.log('[AuthProvider.signIn] navigating to', defaultAfterLogin);
+        navigate(defaultAfterLogin);
       }
       
       console.log('[AuthProvider.signIn] success');

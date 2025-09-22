@@ -181,6 +181,23 @@ const App = () => {
         <Toaster position="top-right" richColors />
         <SessionChecker>
           <Routes>
+            {/* Public auth routes on chat subdomain */}
+            <Route path="/login" element={
+              <AnimatedPage>
+                <LoginPage />
+              </AnimatedPage>
+            } />
+            <Route path="/signup" element={
+              <AnimatedPage>
+                <SignupPage />
+              </AnimatedPage>
+            } />
+            <Route path="/verify-email" element={
+              <AnimatedPage>
+                <EmailVerification />
+              </AnimatedPage>
+            } />
+            
             <Route path="/*" element={
               <ProtectedRoute>
                 <MainLanding />
