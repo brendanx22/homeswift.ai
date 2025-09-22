@@ -191,15 +191,34 @@ export const AuthProvider = ({ children }) => {
           // Only redirect if we're on an auth page and the user is now authenticated
           const authPages = ['/login', '/signup', '/verify-email'];
           if (authPages.includes(window.location.pathname)) {
-            // Get redirect URL from query params or default to /app
+            // Get redirect URL from query params
             const urlParams = new URLSearchParams(window.location.search);
-            const redirectTo = urlParams.get('redirect') || '/app';
-            
-            // Ensure we don't redirect back to an auth page
-            if (!authPages.some(page => redirectTo.includes(page))) {
-              navigate(redirectTo);
+            const redirectTo = urlParams.get('redirect');
+            const isChat = window.location.hostname.startsWith('chat.');
+            const isHomeswiftMain = window.location.hostname.endsWith('homeswift.co') && !isChat;
+            const defaultAfterLogin = isHomeswiftMain ? 'https://chat.homeswift.co/' : '/';
+
+            // Determine target
+            let target = redirectTo || defaultAfterLogin;
+            // If we are on main domain and target is main-domain /app (relative or absolute), override to chat homepage
+            if (isHomeswiftMain && target === '/app') {
+              target = 'https://chat.homeswift.co/';
+            } else if (isHomeswiftMain && target && /^https?:\/\//i.test(target) && target.includes('homeswift.co/app')) {
+              target = 'https://chat.homeswift.co/';
+            }
+            const isAbsolute = /^https?:\/\//i.test(target);
+
+            // Avoid redirecting back to auth pages
+            if (isAbsolute) {
+              window.location.assign(target);
+            } else if (!authPages.some(page => target.includes(page))) {
+              navigate(target);
             } else {
-              navigate('/app');
+              if (isHomeswiftMain) {
+                window.location.assign('https://chat.homeswift.co/');
+              } else {
+                navigate('/');
+              }
             }
           }
         } else {
@@ -210,9 +229,12 @@ export const AuthProvider = ({ children }) => {
           );
           
           if (!isPublicPath) {
-            // Always redirect to local login on the same subdomain
+            // Always redirect to login with a redirect target appropriate to the current domain
             if (window.location.pathname !== '/login') {
-              navigate(`/login?redirect=${encodeURIComponent(window.location.href)}`);
+              const host = window.location.hostname;
+              const isHomeswiftMain = host.endsWith('homeswift.co') && !host.startsWith('chat.');
+              const target = isHomeswiftMain ? 'https://chat.homeswift.co/' : window.location.href;
+              navigate(`/login?redirect=${encodeURIComponent(target)}`);
             }
           }
         }
@@ -334,11 +356,17 @@ export const AuthProvider = ({ children }) => {
       // Get redirect URL from query params or default based on domain
       const urlParams = new URLSearchParams(window.location.search);
       const redirectTo = urlParams.get('redirect');
-      const defaultAfterLogin = window.location.hostname.startsWith('chat.') ? '/' : '/app';
+      const isChat = window.location.hostname.startsWith('chat.');
+      const isHomeswiftMain = window.location.hostname.endsWith('homeswift.co') && !isChat;
+      const defaultAfterLogin = isHomeswiftMain ? 'https://chat.homeswift.co/' : '/';
       
       // Ensure we don't redirect back to an auth page
       const authPages = ['/login', '/signup', '/verify-email', '/reset-password'];
-      const target = redirectTo || defaultAfterLogin;
+      let target = redirectTo || defaultAfterLogin;
+      // Handle relative '/app' on main domain by sending to chat
+      if (isHomeswiftMain && target === '/app') {
+        target = 'https://chat.homeswift.co/';
+      }
 
       // If redirect is absolute URL (e.g., chat.homeswift.co), perform a full navigation
       const isAbsolute = /^https?:\/\//i.test(target);
