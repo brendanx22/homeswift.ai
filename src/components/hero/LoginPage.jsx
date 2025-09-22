@@ -1,6 +1,6 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { AppContext } from '../../contexts/AppContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import api from '../../lib/api';
 
@@ -13,14 +13,14 @@ export default function LoginPage() {
   const [isVerified, setIsVerified] = useState(false);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { login, isAuthenticated, isLoading } = useContext(AppContext);
+  const { signIn, isAuthenticated, loading: authLoading } = useAuth();
 
   // Check for verification status and redirect if authenticated
   useEffect(() => {
-    console.log('LoginPage - isAuthenticated:', isAuthenticated, 'isLoading:', isLoading);
+    console.log('LoginPage - isAuthenticated:', isAuthenticated, 'authLoading:', authLoading);
     
     // Only proceed if we're done loading
-    if (isLoading) return;
+    if (authLoading) return;
     
     // Check for verification success in URL params
     const verified = searchParams.get('verified') === 'true';
@@ -38,7 +38,7 @@ export default function LoginPage() {
       console.log('Already authenticated, redirecting to', redirectPath);
       navigate(redirectPath, { replace: true });
     }
-  }, [isAuthenticated, isLoading, navigate, searchParams]);
+  }, [isAuthenticated, authLoading, navigate, searchParams]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -58,8 +58,8 @@ export default function LoginPage() {
     try {
       console.log('Login attempt with:', { email, password: '***' });
       
-      // Use the login function from AppContext
-      const userData = await login({ email, password });
+      // Use the signIn function from AuthContext
+      const userData = await signIn(email, password);
       
       console.log('Login successful:', userData);
       
@@ -213,10 +213,15 @@ export default function LoginPage() {
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                 <input
                   type="email"
+                  name="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-4 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                   placeholder="Enter your email"
+                  autoComplete="username"
+                  inputMode="email"
+                  autoCapitalize="none"
+                  autoCorrect="off"
                   required
                 />
               </div>
@@ -230,10 +235,12 @@ export default function LoginPage() {
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                 <input
                   type={showPassword ? 'text' : 'password'}
+                  name="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-12 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                   placeholder="Enter your password"
+                  autoComplete="current-password"
                   required
                 />
                 <button

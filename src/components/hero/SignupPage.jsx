@@ -207,6 +207,7 @@ export default function SignupPage() {
                     onChange={handleInputChange}
                     className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-4 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                     placeholder="First name"
+                    autoComplete="given-name"
                     required
                   />
                 </div>
@@ -224,6 +225,7 @@ export default function SignupPage() {
                     onChange={handleInputChange}
                     className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-4 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                     placeholder="Last name"
+                    autoComplete="family-name"
                     required
                   />
                 </div>
@@ -244,6 +246,10 @@ export default function SignupPage() {
                   onChange={handleInputChange}
                   className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-12 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                   placeholder="Enter your email"
+                  autoComplete="email"
+                  inputMode="email"
+                  autoCapitalize="none"
+                  autoCorrect="off"
                   required
                 />
                 {/* Email status indicator */}
@@ -293,6 +299,7 @@ export default function SignupPage() {
                   onChange={handleInputChange}
                   className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-12 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                   placeholder="Create a password"
+                  autoComplete="new-password"
                   required
                 />
                 <button
@@ -319,6 +326,7 @@ export default function SignupPage() {
                   onChange={handleInputChange}
                   className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-12 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                   placeholder="Confirm your password"
+                  autoComplete="new-password"
                   required
                 />
                 <button

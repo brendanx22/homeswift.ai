@@ -300,16 +300,17 @@ export const AuthProvider = ({ children }) => {
   // Sign in with email and password
   const signIn = useCallback(async (email, password) => {
     try {
+      console.log('[AuthProvider.signIn] start', { email });
       setLoading(true);
       setError(null);
       
-      // Clear any existing session to prevent conflicts
-      await supabase.auth.signOut();
-      
+      // Proceed to sign in directly
+      console.log('[AuthProvider.signIn] calling signInWithPassword');
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password: password.trim(),
       });
+      console.log('[AuthProvider.signIn] signInWithPassword result', { hasError: !!signInError, user: !!data?.user });
       
       if (signInError) {
         // Handle specific error cases
@@ -324,6 +325,7 @@ export const AuthProvider = ({ children }) => {
       
       // Force a session refresh to ensure we have the latest data
       const { data: { session: freshSession } } = await supabase.auth.getSession();
+      console.log('[AuthProvider.signIn] getSession', { hasSession: !!freshSession });
       setSession(freshSession);
       setUser(freshSession?.user ?? null);
       
@@ -334,17 +336,21 @@ export const AuthProvider = ({ children }) => {
       // Ensure we don't redirect back to an auth page
       const authPages = ['/login', '/signup', '/verify-email', '/reset-password'];
       if (!authPages.some(page => redirectTo.includes(page))) {
+        console.log('[AuthProvider.signIn] navigating to', redirectTo);
         navigate(redirectTo);
       } else {
+        console.log('[AuthProvider.signIn] navigating to /app');
         navigate('/app');
       }
       
+      console.log('[AuthProvider.signIn] success');
       return data.user;
     } catch (error) {
       console.error('Sign in error:', error);
       setError(error.message || 'An error occurred during sign in');
       throw error;
     } finally {
+      console.log('[AuthProvider.signIn] finish');
       setLoading(false);
     }
   }, []);
