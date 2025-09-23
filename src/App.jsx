@@ -42,7 +42,9 @@ const ProtectedRoute = ({ children }) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+    // Preserve the full URL so the login page can redirect back (works for chat and main domain)
+    const target = typeof window !== 'undefined' ? `/login?redirect=${encodeURIComponent(window.location.href)}` : '/login';
+    return <Navigate to={target} replace />;
   }
 
   return children;
@@ -197,24 +199,77 @@ const App = () => {
                 <EmailVerification />
               </AnimatedPage>
             } />
-            
-            <Route path="/*" element={
-              <ProtectedRoute>
+            {/* Public main landing on chat root */}
+            <Route path="/" element={
+              <AnimatedPage>
                 <MainLanding />
+              </AnimatedPage>
+            } />
+
+            {/* Protected chat sub-pages */}
+            <Route path="/saved" element={
+              <ProtectedRoute>
+                <AnimatedPage>
+                  <HouseListings showSaved={true} />
+                </AnimatedPage>
               </ProtectedRoute>
-            }>
-              <Route index element={null} />
-              <Route path="search" element={<HouseListings isSearchResult={true} />} />
-              <Route path="saved" element={<HouseListings showSaved={true} />} />
-              <Route path="neighborhoods" element={<HouseListings showNeighborhoods={true} />} />
-              <Route path="gallery" element={<Gallery />} />
-              <Route path="calculator" element={<InquiryForm type="calculator" />} />
-              <Route path="tours" element={<Gallery showTours={true} />} />
-              <Route path="filters" element={<HouseListings showFilters={true} />} />
-              <Route path="recent" element={<HouseListings showRecent={true} />} />
-              <Route path="inquiry" element={<InquiryForm />} />
-              <Route path="profile" element={<div>Profile Page - Coming Soon</div>} />
-            </Route>
+            } />
+            <Route path="/neighborhoods" element={
+              <ProtectedRoute>
+                <AnimatedPage>
+                  <HouseListings showNeighborhoods={true} />
+                </AnimatedPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/gallery" element={
+              <ProtectedRoute>
+                <AnimatedPage>
+                  <Gallery />
+                </AnimatedPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/calculator" element={
+              <ProtectedRoute>
+                <AnimatedPage>
+                  <InquiryForm type="calculator" />
+                </AnimatedPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/tours" element={
+              <ProtectedRoute>
+                <AnimatedPage>
+                  <Gallery showTours={true} />
+                </AnimatedPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/filters" element={
+              <ProtectedRoute>
+                <AnimatedPage>
+                  <HouseListings showFilters={true} />
+                </AnimatedPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/recent" element={
+              <ProtectedRoute>
+                <AnimatedPage>
+                  <HouseListings showRecent={true} />
+                </AnimatedPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/inquiry" element={
+              <ProtectedRoute>
+                <AnimatedPage>
+                  <InquiryForm />
+                </AnimatedPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <AnimatedPage>
+                  <div>Profile Page - Coming Soon</div>
+                </AnimatedPage>
+              </ProtectedRoute>
+            } />
           </Routes>
         </SessionChecker>
       </>

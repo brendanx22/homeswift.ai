@@ -17,11 +17,18 @@ export default function HeroSection() {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     const query = searchText.trim();
-    if (query) {
-      navigate(`/properties?search=${encodeURIComponent(query)}`);
-    } else {
-      navigate('/properties');
+    const chatBase = 'https://chat.homeswift.co';
+    const target = `${chatBase}/?search=${encodeURIComponent(query)}`;
+    const isChat = typeof window !== 'undefined' && window.location.hostname.startsWith('chat.');
+
+    // Always route auth and search to chat app. If on main site, go straight to chat login
+    if (!isChat) {
+      window.location.assign(`${chatBase}/login?redirect=${encodeURIComponent(target)}`);
+      return;
     }
+
+    // If already on chat subdomain, open local login to preserve session on chat
+    navigate(`/login?redirect=${encodeURIComponent(target)}`);
   };
 
 

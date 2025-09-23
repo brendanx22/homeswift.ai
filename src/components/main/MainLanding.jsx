@@ -174,6 +174,13 @@ export default function MainLanding() {
     setSearchError(null);
 
     try {
+      // If not authenticated, prompt login and return to chat main landing with the query preserved
+      if (!isAuthenticated) {
+        const redirectTarget = `${window.location.origin}/?search=${encodeURIComponent(query)}`;
+        navigate(`/login?redirect=${encodeURIComponent(redirectTarget)}`);
+        return;
+      }
+
       // Save search history if user is authenticated
       if (user?.id) {
         await searchService.saveSearchHistory(user.id, query, {
@@ -181,20 +188,12 @@ export default function MainLanding() {
           propertyType: propertyType
         });
       }
-
-      // Navigate to search results page with query parameters
-      const searchParams = new URLSearchParams({
-        search: query,
-        ...(searchLocation && { location: searchLocation }),
-        ...(propertyType && { type: propertyType })
-      });
-      
-      // If on chat subdomain, navigate to properties on main domain
-      if (window.location.hostname.startsWith('chat.')) {
-        window.location.href = `https://homeswift.co/properties?${searchParams.toString()}`;
-      } else {
-        navigate(`/properties?${searchParams.toString()}`);
-      }
+      // Stay on MainLanding and reflect the query in the URL
+      const params = new URLSearchParams(window.location.search);
+      params.set('search', query);
+      if (searchLocation) params.set('location', searchLocation);
+      if (propertyType) params.set('type', propertyType);
+      navigate({ pathname: '/', search: params.toString() }, { replace: true });
     } catch (error) {
       console.error('Search error:', error);
       setSearchError('Search failed. Please try again.');
@@ -791,13 +790,13 @@ export default function MainLanding() {
                 {user ? (
                   // Logged in menu items
                   [
-                    { label: 'Dashboard', action: () => navigate('/app') },
-                    { label: 'Browse Properties', action: () => navigate('/properties') },
-                    { label: 'Saved Properties', action: () => navigate('/app/saved') },
-                    { label: 'Neighborhoods', action: () => navigate('/app/neighborhoods') },
-                    { label: 'Gallery', action: () => navigate('/app/gallery') },
-                    { label: 'Mortgage Calculator', action: () => navigate('/app/calculator') },
-                    { label: 'Profile', action: () => navigate('/app/profile') },
+                    { label: 'Dashboard', action: () => navigate(isChat ? '/' : '/app') },
+                    { label: 'Browse Properties', action: () => (isChat ? (window.location.href = 'https://homeswift.co/properties') : navigate('/properties')) },
+                    { label: 'Saved Properties', action: () => navigate(`${isChat ? '' : '/app'}/saved`) },
+                    { label: 'Neighborhoods', action: () => navigate(`${isChat ? '' : '/app'}/neighborhoods`) },
+                    { label: 'Gallery', action: () => navigate(`${isChat ? '' : '/app'}/gallery`) },
+                    { label: 'Mortgage Calculator', action: () => navigate(`${isChat ? '' : '/app'}/calculator`) },
+                    { label: 'Profile', action: () => navigate(`${isChat ? '' : '/app'}/profile`) },
                     { label: 'Logout', action: handleLogout, className: 'text-red-400 hover:text-red-300' }
                   ].map((item, idx) => (
                     <motion.button 
