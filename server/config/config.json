@@ -1,0 +1,44 @@
+{
+  "development": {
+    "username": "postgres",
+    "password": "homeswift123",
+    "database": "homeswift",
+    "host": "localhost",
+    "port": 5432,
+    "dialect": "postgres"
+  },
+  "test": {
+    "username": "postgres.tproaiqvkohrlxjmkgxt",
+    "password": "8y4gVz1FkHj9mN2b",
+    "database": "postgres",
+    "host": "aws-1-eu-west-2.pooler.supabase.com",
+    "port": 6543,
+    "dialect": "postgres",
+    "dialectOptions": {
+      "ssl": {
+        "require": true,
+        "rejectUnauthorized": false
+      }
+    }
+  },
+  "production": {
+    "username": "postgres.tproaiqvkohrlxjmkgxt",
+    "password": "8y4gVz1FkHj9mN2b",
+    "database": "postgres",
+    "host": "aws-1-eu-west-2.pooler.supabase.com",
+    "port": 6543,
+    "dialect": "postgres",
+    "dialectOptions": {
+      "ssl": {
+        "require": true,
+        "rejectUnauthorized": false
+      }
+    },
+    "pool": {
+      "max": 5,
+      "min": 0,
+      "acquire": 30000,
+      "idle": 10000
+    }
+  }
+}

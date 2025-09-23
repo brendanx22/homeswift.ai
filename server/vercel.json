@@ -1,0 +1,28 @@
+{
+  "version": 2,
+  "name": "homeswift-backend",
+  "builds": [
+    {
+      "src": "server.js",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": [
+          "**/*.js",
+          "**/*.json",
+          "**/*.mjs"
+        ]
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/server.js"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production",
+    "CORS_ORIGIN": "https://homeswift-ai.vercel.app,https://homeswift-ai-backend.vercel.app"
+  },
+  "buildCommand": "npm install && npm run db:migrate"
+}

@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
-import { signInWithGoogle } from '../../lib/googleAuth';
-import { supabase } from '../../lib/supabase';
+import { AppContext } from '../../contexts/AppContext';
+// import { supabase } from '../../lib/supabase'; // Removed - using custom auth
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -18,6 +18,15 @@ export default function SignupPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
+  const { register, isAuthenticated, isLoading } = useContext(AppContext);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!isLoading && isAuthenticated) {
+      console.log('User already authenticated, redirecting to main');
+      navigate('/main', { replace: true });
+    }
+  }, [isAuthenticated, isLoading, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -30,63 +39,41 @@ export default function SignupPage() {
         return;
       }
 
-      const { data, error } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            full_name: `${formData.firstName} ${formData.lastName}`,
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-          }
-        }
+      console.log('Registration attempt with:', { 
+        email: formData.email, 
+        name: `${formData.firstName} ${formData.lastName}`,
+        password: '***'
       });
 
-      if (error) {
-        setError(error.message);
-      } else {
-        // Store user session for consistency with Google OAuth
-        const userSession = {
-          user: {
-            id: data.user.id,
-            email: data.user.email,
-            name: `${formData.firstName} ${formData.lastName}`,
-            picture: null
-          },
-          tokens: { access_token: data.session?.access_token || 'pending_confirmation' },
-          timestamp: Date.now()
-        };
-        
-        localStorage.setItem('google_user_session', JSON.stringify(userSession));
-        
-        // Check if email confirmation is required
-        if (data.user && !data.session) {
-          setSuccess('Please check your email to confirm your account before signing in.');
-        } else {
-          // Signup successful - redirect to main app
-          navigate('/main');
-        }
-      }
+      // Use the register function from AppContext
+      const userData = {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        password: formData.password
+      };
+      
+      // Register the user
+      await register(userData);
+
+      // Redirect to verification page
+      navigate('/verify-email', { 
+        state: { 
+          email: formData.email,
+          message: `We've sent a verification link to ${formData.email}. Please check your email to verify your account.`,
+          status: 'pending'
+        } 
+      });
     } catch (err) {
-      setError('An unexpected error occurred. Please try again.');
+      console.error('Registration error:', err);
+      setError(err.message || 'An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleGoogleSignup = () => {
-    try {
-      console.log('Starting Google OAuth signup flow...');
-      setLoading(true);
-      setError(''); // Clear any previous errors
-      
-      // Redirect to Google OAuth
-      signInWithGoogle();
-    } catch (error) {
-      console.error('Google signup error:', error);
-      setError(error.message || 'Failed to sign up with Google');
-      setLoading(false);
-    }
+    setError('Google Sign-Up is temporarily disabled. Please use email registration.');
   };
 
   const handleInputChange = (e) => {

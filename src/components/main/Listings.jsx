@@ -1,381 +1,355 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Home, Star, BookmarkPlus, Share2 } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { properties, searchProperties } from '../../data/dummyProperties';
+import { Heart, MapPin, Star, Bed, Bath, Ruler, Search } from 'lucide-react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import api from '../../lib/api';
 
 const Listings = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const location = useLocation();
-  const [displayProperties, setDisplayProperties] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState('all');
+  const [favorites, setFavorites] = useState(new Set());
+  const [listings, setListings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchInput, setSearchInput] = useState('');
 
+  // Get search parameters from URL
+  const searchQuery = searchParams.get('q') || '';
+  const propertyType = searchParams.get('propertyType') || '';
+  const minPrice = searchParams.get('minPrice');
+  const maxPrice = searchParams.get('maxPrice');
+  const bedrooms = searchParams.get('bedrooms');
+  const location = searchParams.get('city') || ''; // Changed from 'location' to 'city' to match backend
+
+  // Update search input when searchQuery changes
   useEffect(() => {
-    // Check if we have search results from navigation state
-    if (location.state?.searchResults) {
-      setDisplayProperties(location.state.searchResults);
-      setSearchQuery(location.state.query || '');
-    } else {
-      // Show all properties if no search results
-      setDisplayProperties(properties);
+    if (searchQuery) {
+      setSearchInput(searchQuery);
     }
-  }, [location.state]);
+  }, [searchQuery]);
 
-  const handlePropertyClick = (propertyId) => {
-    navigate(`/property/${propertyId}`);
+  const toggleFavorite = (id) => {
+    const newFavorites = new Set(favorites);
+    if (newFavorites.has(id)) {
+      newFavorites.delete(id);
+    } else {
+      newFavorites.add(id);
+    }
+    setFavorites(newFavorites);
   };
 
-  // Group properties by category for display
-  const groupedProperties = displayProperties.reduce((acc, property) => {
-    if (!acc[property.category]) {
-      acc[property.category] = [];
+  // Handle search form submission
+  const handleSearch = (e) => {
+    e.preventDefault();
+    const params = new URLSearchParams();
+    
+    // Only include search query if there's actual input
+    const searchTerm = searchInput.trim();
+    if (searchTerm) {
+      params.set('q', searchTerm);
+    } else {
+      params.delete('q');
     }
-    acc[property.category].push(property);
-    return acc;
-  }, {});
+    
+    // Update other filters
+    if (location) params.set('city', location);
+    if (minPrice) params.set('minPrice', minPrice);
+    if (maxPrice) params.set('maxPrice', maxPrice);
+    if (bedrooms) params.set('bedrooms', bedrooms);
+    if (propertyType) params.set('propertyType', propertyType);
+    if (activeTab !== 'all') params.set('status', activeTab);
+    
+    console.log('Setting search params:', Object.fromEntries(params));
+    setSearchParams(params);
+  };
 
-  // Sample listing data (keeping as fallback)
-  const sections = [
-    {
-      name: "Luxury Homes",
-      listings: [
-        {
-          id: 1,
-          title: "GRA Phase 1",
-          price: "1,100,000",
-          type: "For Sale",
-          image: "/GRAPhase1.png",
-          favorite: false
-        },
-        {
-          id: 2,
-          title: "Banana Island Villa",
-          price: "2,500,000",
-          type: "For Sale",
-          image: "/bananaislandvilla.jpg",
-          favorite: true
-        },
-        {
-          id: 7,
-          title: "Victoria Crest Penthouse",
-          price: "4,000,000",
-          type: "For Sale",
-          image: "/victoriacrestpenthouse.jpg",
-          favorite: false
-        },
-        {
-          id: 8,
-          title: "Eko Atlantic Tower",
-          price: "5,500,000",
-          type: "For Sale",
-          image: "/EkoAtlanticCity.jpg",
-          favorite: true
-        },
-        {
-          id: 17,
-          title: "Palm Grove Estate",
-          price: "3,800,000",
-          type: "For Sale",
-          image: "/pamgrooveestate.jpg",
-          favorite: false
-        },
-        {
-          id: 18,
-          title: "Ocean View Mansion",
-          price: "6,200,000",
-          type: "For Sale",
-          image: "/oceanviewmansion.jpg",
-          favorite: true
-        },
-      ]
-    },
-    {
-      name: "Affordable Apartments",
-      listings: [
-        {
-          id: 3,
-          title: "Studio Flat Lekki",
-          price: "400,000",
-          type: "For Rent",
-          image: "/studioflatlekki.jpg",
-          favorite: false
-        },
-        {
-          id: 4,
-          title: "2-Bedroom Mainland",
-          price: "600,000",
-          type: "For Rent",
-          image: "/2bedroommainland.jpg",
-          favorite: true
-        },
-        {
-          id: 9,
-          title: "Mini Flat Yaba",
-          price: "350,000",
-          type: "For Rent",
-          image: "/miniflatyaba.jpg",
-          favorite: false
-        },
-        {
-          id: 10,
-          title: "Shared Apartment Surulere",
-          price: "250,000",
-          type: "For Rent",
-          image: "/sharedapartment.jpg",
-          favorite: true
-        },
-        {
-          id: 19,
-          title: "1-Bedroom Ajah",
-          price: "300,000",
-          type: "For Rent",
-          image: "/1bedroom.jpg",
-          favorite: false
-        },
-        {
-          id: 20,
-          title: "Studio Flat Ikeja",
-          price: "320,000",
-          type: "For Rent",
-          image: "/studioflatikeja.jpg",
-          favorite: true
-        },
-      ]
-    },
-    {
-      name: "Family Houses",
-      listings: [
-        {
-          id: 5,
-          title: "GRA Phase 2",
-          price: "1,200,000",
-          type: "For Sale",
-          image: "/GRAPhase1.png",
-          favorite: false
-        },
-        {
-          id: 6,
-          title: "Ikoyi Mansion",
-          price: "3,000,000",
-          type: "For Sale",
-          image: "/image.png",
-          favorite: true
-        },
-        {
-          id: 11,
-          title: "Magodo Duplex",
-          price: "2,000,000",
-          type: "For Sale",
-          image: "/magododuplex.jpg",
-          favorite: false
-        },
-        {
-          id: 12,
-          title: "Ajah Family Home",
-          price: "1,500,000",
-          type: "For Sale",
-          image: "/ajahfamilyhouse.jpg",
-          favorite: true
-        },
-        {
-          id: 21,
-          title: "Lekki Family Duplex",
-          price: "2,200,000",
-          type: "For Sale",
-          image: "/lekkidupex.jpg",
-          favorite: false
-        },
-        {
-          id: 22,
-          title: "Surulere Family Home",
-          price: "1,700,000",
-          type: "For Sale",
-          image: "/surulerefamilyhouse.jpg",
-          favorite: true
-        },
-      ]
-    },
-    {
-      name: "Short Lets",
-      listings: [
-        {
-          id: 13,
-          title: "Lekki Short Stay",
-          price: "120,000",
-          type: "For Rent",
-          image: "/lekkishortstay.jpg",
-          favorite: false
-        },
-        {
-          id: 14,
-          title: "Victoria Island Weekend",
-          price: "200,000",
-          type: "For Rent",
-          image: "/victoriaislandweekend.jpg",
-          favorite: true
-        },
-        {
-          id: 23,
-          title: "Ajah Short Let",
-          price: "150,000",
-          type: "For Rent",
-          image: "/ajahshortlet.jpg",
-          favorite: false
-        },
-        {
-          id: 24,
-          title: "Mainland Short Stay",
-          price: "180,000",
-          type: "For Rent",
-          image: "/mainlandshortstay.jpg",
-          favorite: true
-        },
-      ]
-    },
-    {
-      name: "Student Hostels",
-      listings: [
-        {
-          id: 15,
-          title: "Unilag Hostel Room",
-          price: "80,000",
-          type: "For Rent",
-          image: "/unilaghostel.jpeg",
-          favorite: false
-        },
-        {
-          id: 16,
-          title: "Covenant Hostel",
-          price: "100,000",
-          type: "For Rent",
-          image: "/convenanthostel.jpg",
-          favorite: true
-        },
-        {
-          id: 25,
-          title: "LASU Hostel",
-          price: "90,000",
-          type: "For Rent",
-          image: "/lasuhostel.jpg",
-          favorite: false
-        },
-        {
-          id: 26,
-          title: "Babcock Hostel",
-          price: "110,000",
-          type: "For Rent",
-          image: "/babcockhostel.jpg",
-          favorite: true
-        },
-      ]
-    }
-  ];
+  // Reset search
+  const resetSearch = () => {
+    setSearchInput('');
+    setSearchParams({});
+    setActiveTab('all');
+  };
+
+  // Fetch properties when search parameters change
+  useEffect(() => {
+    // Log current search parameters for debugging
+    console.log('Current search params:', {
+      searchQuery,
+      location,
+      propertyType,
+      minPrice,
+      maxPrice,
+      bedrooms,
+      activeTab
+    });
+
+    const fetchProperties = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Build query parameters
+        const params = new URLSearchParams();
+        
+        // Only include search query if it's not empty
+        if (searchQuery && searchQuery.trim() !== '') {
+          params.append('q', searchQuery.trim());
+        }
+        
+        // Add other filters
+        if (propertyType) params.append('propertyType', propertyType);
+        if (minPrice) params.append('minPrice', minPrice);
+        if (maxPrice) params.append('maxPrice', maxPrice);
+        if (bedrooms) params.append('bedrooms', bedrooms);
+        if (location) params.append('city', location);
+        
+        // Add status filter if not 'all'
+        if (activeTab !== 'all') {
+          params.append('status', activeTab);
+        } else {
+          // Explicitly remove status filter when 'all' is selected
+          params.delete('status');
+        }
+        
+        // Add sorting and pagination
+        params.append('sortBy', 'createdAt');
+        params.append('sortOrder', 'DESC');
+        params.append('limit', '12');
+
+        console.log('Fetching properties with params:', params.toString());
+        const response = await api.get(`/properties?${params.toString()}`);
+        console.log('API response:', response.data);
+        
+        if (response.data && response.data.success && Array.isArray(response.data.data)) {
+          setListings(response.data.data);
+        } else {
+          console.error('Invalid response format:', response.data);
+          setListings([]);
+        }
+      } catch (err) {
+        console.error('Error fetching properties:', err);
+        if (err.response) {
+          // The request was made and the server responded with a status code
+          // that falls out of the range of 2xx
+          console.error('Response data:', err.response.data);
+          console.error('Response status:', err.response.status);
+          console.error('Response headers:', err.response.headers);
+          setError(`Error ${err.response.status}: ${err.response.data?.message || 'Failed to load properties'}`);
+        } else if (err.request) {
+          // The request was made but no response was received
+          console.error('No response received:', err.request);
+          setError('No response from server. Please check your connection.');
+        } else {
+          // Something happened in setting up the request that triggered an Error
+          console.error('Error setting up request:', err.message);
+          setError('Failed to load properties. Please try again.');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProperties();
+  }, [searchQuery, propertyType, minPrice, maxPrice, bedrooms, location, activeTab, setSearchInput]);
+
+  // Format price with commas
+  const formatPrice = (price) => {
+    return price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
 
   return (
-    <div className="min-h-screen bg-[#181A1B]">
+    <div className="min-h-screen bg-[#121212] text-white p-6">
       {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[#181A1B]/95 backdrop-blur-md shadow-lg p-4">
-        <div className="container mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src="/Group 129.png" alt="HomeSwift Logo" className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg object-cover" />
-            <h1 className="text-lg sm:text-xl font-bold text-white">HomeSwift</h1>
-          </div>
-          <button className="p-2 rounded-full hover:bg-gray-100">
-            <Home 
-              size={20} 
-              className="text-white hover:text-blue-500 transition-colors duration-200" 
-              onClick={() => navigate('/')} 
-              style={{ cursor: 'pointer' }}
-            />
-          </button>
+      <header className="mb-10 flex items-center justify-between">
+        <div className="flex items-center space-x-6">
+          <a href="/main" className="flex items-center group">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-gray-400 group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            <div className="flex items-center ml-4">
+              <img src="/Group 129.png" alt="HomeSwift Logo" className="w-8 h-8 rounded-lg object-cover" />
+              <h1 className="ml-3 text-3xl font-bold text-white tracking-tight group-hover:opacity-80 transition-opacity">
+                Home<span className="italic">Swift</span>
+              </h1>
+            </div>
+          </a>
         </div>
+        <button className="p-2 rounded-md hover:bg-gray-800">
+          <div className="w-6 h-0.5 bg-white mb-1.5"></div>
+          <div className="w-6 h-0.5 bg-white mb-1.5"></div>
+          <div className="w-6 h-0.5 bg-white"></div>
+        </button>
       </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto p-4 pt-24">
-  {/* Results Header */}
-  <div className="mb-8 mt-6">
-          <h2 className="text-4xl font-bold text-white mb-2">House Listings</h2>
-          <p className="text-gray-300 text-lg">
-            Here are the houses that matches your prompt. <span className="inline-block align-middle">✨</span>
-          </p>
-        </div>
+      {/* Search and Filters */}
+      <div className="mb-8">
+        <h2 className="text-4xl font-bold mb-6">Find Your Dream Home</h2>
+        
+        <form onSubmit={handleSearch} className="mb-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <Search className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="block w-full pl-10 pr-3 py-3 border border-gray-700 rounded-lg bg-gray-900 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Search by location, property type, or keywords..."
+              />
+            </div>
+            <button
+              type="submit"
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200"
+            >
+              Search
+            </button>
+            {(searchQuery || location || minPrice || maxPrice || bedrooms || propertyType || activeTab !== 'all') && (
+              <button
+                type="button"
+                onClick={resetSearch}
+                className="px-4 py-3 text-gray-300 hover:text-white font-medium rounded-lg transition-colors duration-200"
+              >
+                Clear Filters
+              </button>
+            )}
+          </div>
+        </form>
 
-        {/* Listings Sections with Carousel on Mobile */}
-        {sections.map((section) => (
-          <div key={section.name} className="mb-12">
-            <h3 className="text-2xl font-bold text-white mb-4">{section.name}</h3>
-            {/* Carousel for mobile, grid for desktop */}
-            <div className="block md:hidden">
-              <div className="flex overflow-x-auto gap-6 pb-2 hide-scrollbar" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                {section.listings.map((listing) => (
-                  <div
-                    key={listing.id}
-                    className="min-w-[80vw] max-w-xs relative bg-[#23262b] rounded-3xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow border border-gray-400/30 flex flex-col justify-end min-h-[320px]"
-                    style={{ backgroundImage: `url(${listing.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
-                  >
-                    <div className="absolute inset-0 bg-black/30"></div>
-                    <button className="absolute top-2 left-2 p-2 rounded-full shadow z-10" style={{ background: '#40403E' }}>
-                      <BookmarkPlus size={20} className="text-white" />
-                    </button>
-                    <div className={
-                      `absolute top-2 right-2 px-4 py-1 rounded-xl text-xs sm:text-sm font-bold z-10 shadow-lg ` +
-                      (listing.type === 'For Sale' || listing.type === 'For Rent'
-                        ? 'bg-[#40403E] text-white'
-                        : 'bg-[#2563eb] text-white')
-                    }>
-                      {listing.type}
-                    </div>
-                    <div className="relative z-10 p-4">
-                      <div className="flex flex-col gap-1">
-                        <h3 className="text-lg font-bold text-white drop-shadow">{listing.title}</h3>
-                        <span className="text-lg font-bold text-white drop-shadow">₦{listing.price}</span>
-                      </div>
-                    </div>
+        {searchQuery && (
+          <p className="text-gray-400 mb-4">
+            Showing results for: <span className="text-white font-medium">"{searchQuery}"</span>
+            {location && ` in ${location}`}
+          </p>
+        )}
+      </div>
+
+      {/* Tabs */}
+      <div className="flex space-x-4 mb-6 overflow-x-auto pb-2">
+        <button
+          onClick={() => setActiveTab('all')}
+          className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap ${
+            activeTab === 'all' 
+              ? 'bg-[#1E1E1E] text-white' 
+              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+          }`}
+        >
+          All Properties
+        </button>
+        <button
+          onClick={() => setActiveTab('For Rent')}
+          className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap ${
+            activeTab === 'For Rent' 
+              ? 'bg-[#1E1E1E] text-white' 
+              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+          }`}
+        >
+          For Rent
+        </button>
+        <button
+          onClick={() => setActiveTab('For Sale')}
+          className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap ${
+            activeTab === 'For Sale' 
+              ? 'bg-[#1E1E1E] text-white' 
+              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+          }`}
+        >
+          For Sale
+        </button>
+      </div>
+
+      {/* Loading and Error States */}
+      {loading && (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
+          <p>{error}</p>
+        </div>
+      )}
+
+      {/* Listings Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {listings.length > 0 ? listings.map((property) => (
+          <div key={property.id} className="relative rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 h-96">
+            {/* Background Image */}
+            <div className="absolute inset-0">
+              <img 
+                src={property.image} 
+                alt={property.title} 
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+            </div>
+            
+            {/* Favorite Button */}
+            <button 
+              onClick={() => toggleFavorite(property.id)}
+              className="absolute top-3 right-3 p-2 bg-black/40 rounded-full hover:bg-black/60 transition-colors z-10"
+            >
+              <Heart 
+                size={18} 
+                className={favorites.has(property.id) ? 'fill-red-500 text-red-500' : 'text-white'} 
+              />
+            </button>
+            
+            {/* Status Badge */}
+            <div className="absolute top-3 left-3 z-10">
+              <button className="px-3 py-1 bg-white/90 text-gray-800 text-xs font-medium rounded-2xl">
+                {property.status}
+              </button>
+            </div>
+            
+            {/* Property Details */}
+            <div className="absolute bottom-0 left-0 right-0 p-6 text-white z-10">
+              <div className="flex items-center text-gray-200 text-sm mb-2">
+                <MapPin size={16} className="mr-1.5 text-white/80" />
+                <span className="font-medium">{property.location}</span>
+              </div>
+              
+              <h3 className="text-white font-bold text-xl mb-2.5 leading-tight">
+                {property.title}
+              </h3>
+              
+              <p className="text-2xl font-extrabold text-white mb-4 flex items-baseline">
+                ₦{formatPrice(property.price)}
+                <span className="ml-1.5 text-base font-medium text-white/70">/year</span>
+              </p>
+              
+              <div className="flex justify-between text-white/90 text-sm pt-3.5 border-t border-white/20">
+                <div className="flex flex-col items-center">
+                  <Bed size={20} className="mb-1.5 text-white/90" />
+                  <span className="text-sm font-medium text-white/90">{property.beds} Beds</span>
+                </div>
+                <div className="flex flex-col items-center">
+                  <Bath size={20} className="mb-1.5 text-white/90" />
+                  <span className="text-sm font-medium text-white/90">{property.baths} Baths</span>
+                </div>
+                <div className="flex flex-col items-center">
+                  <Ruler size={20} className="mb-1.5 text-white/90" />
+                  <span className="text-sm font-medium text-white/90">{property.area} sqft</span>
+                </div>
+                <div className="flex flex-col items-center">
+                  <div className="flex items-center mb-1.5">
+                    <Star size={16} className="fill-yellow-400 text-yellow-400 mr-1.5" />
+                    <span className="text-sm font-medium text-white/90">{property.rating}</span>
                   </div>
-                ))}
+                  <span className="text-xs text-white/70">({property.reviews} reviews)</span>
+                </div>
               </div>
             </div>
-            <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-              {section.listings.slice(0, 4).map((listing) => (
-                <div
-                  key={listing.id}
-                  className="relative bg-[#23262b] rounded-3xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow border border-gray-400/30 flex flex-col justify-end min-h-[320px]"
-                  style={{ backgroundImage: `url(${listing.image})`, backgroundSize: 'cover', backgroundPosition: 'center' }}
-                >
-                  <div className="absolute inset-0 bg-black/30"></div>
-                  <button className="absolute top-2 left-2 p-2 rounded-full shadow z-10" style={{ background: '#40403E' }}>
-                    <BookmarkPlus size={20} className="text-white" />
-                  </button>
-                  <div className={
-                    `absolute top-2 right-2 px-4 py-1 rounded-xl text-xs sm:text-sm font-bold z-10 shadow-lg ` +
-                    (listing.type === 'For Sale' || listing.type === 'For Rent'
-                      ? 'bg-[#40403E] text-white'
-                      : 'bg-[#2563eb] text-white')
-                  }>
-                    {listing.type}
-                  </div>
-                  <div className="relative z-10 p-4">
-                    <div className="flex flex-col gap-1">
-                      <h3 className="text-lg font-bold text-white drop-shadow">{listing.title}</h3>
-                      <span className="text-lg font-bold text-white drop-shadow">₦{listing.price}</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {section.listings.length > 4 && (
-                <div className="col-span-full flex justify-end mt-4">
-                  <button className="bg-[#40403E] hover:bg-[#23262b] text-white px-4 py-2 rounded-lg font-semibold text-sm shadow" onClick={() => alert('Show all properties for ' + section.name)}>
-                    View All
-                  </button>
-                </div>
-              )}
-            </div>
           </div>
-        ))}
-
-        {/* Divider */}
-        <div className="my-8 border-t border-gray-200"></div>
-      </main>
+        )) : !loading && (
+          <div className="col-span-full text-center py-12">
+            <h3 className="text-xl font-medium text-gray-300 mb-2">No properties found</h3>
+            <p className="text-gray-400">Try adjusting your search filters</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

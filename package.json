@@ -12,22 +12,34 @@
     "build:main": "rimraf dist && vite build --outDir dist --config vite.main.config.js && node scripts/after-main-build.mjs"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.57.2",
+    "@emotion/babel-plugin": "^11.13.5",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@rollup/plugin-commonjs": "^25.0.4",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@supabase/supabase-js": "^2.57.4",
     "@vercel/speed-insights": "^1.2.0",
-    "@vitejs/plugin-react": "^5.0.0",
-    "framer-motion": "^11.18.2",
-    "lucide-react": "^0.542.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "axios": "^1.11.0",
+    "dompurify": "^3.2.6",
+    "framer-motion": "^10.18.0",
+    "hoist-non-react-statics": "^3.3.2",
+    "lucide-react": "^0.264.0",
     "nodemon": "^3.1.10",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
-    "react-router-dom": "^7.8.0",
-    "supabase": "^2.39.2",
-    "vite": "^7.1.2"
+    "pg": "^8.11.3",
+    "pg-hstore": "^2.3.4",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "react-router": "6.22.3",
+    "react-router-dom": "6.22.3",
+    "react-toastify": "^11.0.5",
+    "vite": "^5.0.12"
   },
   "devDependencies": {
     "@eslint/js": "^9.33.0",
-    "@types/react": "^19.1.10",
-    "@types/react-dom": "^19.1.7",
+    "@types/react": "^18.2.55",
+    "@types/react-dom": "^18.2.19",
+    "@types/react-router-dom": "^5.3.3",
     "autoprefixer": "^10.4.21",
     "eslint": "^9.33.0",
     "eslint-plugin-react-hooks": "^5.2.0",
@@ -35,6 +47,7 @@
     "globals": "^16.3.0",
     "postcss": "^8.5.6",
     "rimraf": "^6.0.1",
-    "tailwindcss": "^3.4.4"
+    "tailwindcss": "^3.4.4",
+    "terser": "^5.44.0"
   }
 }
