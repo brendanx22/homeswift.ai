@@ -36,33 +36,30 @@ export default function MainLanding() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user: appUser } = useContext(AppContext);
-  const { user: authUser, logout: contextLogout, isAuthenticated } = useAuth();
+  const { user: authUser, signOut: contextSignOut, isAuthenticated, loading: authLoading } = useAuth();
   const user = authUser || appUser;
   
-  // Only show search interface on the exact /app path
-  const isMainLandingPage = location.pathname === '/app';
+  // Only show search interface on the landing path per domain
+  const isChat = typeof window !== 'undefined' && window.location.hostname.startsWith('chat.');
+  const isMainLandingPage = isChat ? (location.pathname === '/') : (location.pathname === '/app');
   
-  // Redirect if not authenticated
-  useEffect(() => {
-    // Add a small delay to allow session to be checked
-    const timer = setTimeout(() => {
-      if (!isAuthenticated && !loading) {
-        // If on chat subdomain and not authenticated, redirect to main domain login
-        if (window.location.hostname.startsWith('chat.')) {
-          window.location.href = 'https://homeswift.co/login?redirect=' + encodeURIComponent(window.location.href);
-        } else {
-          navigate('/login');
-        }
-      }
-    }, 1000); // 1 second delay to allow session check
+  // ProtectedRoute handles auth gating; avoid duplicate redirects here
 
-    return () => clearTimeout(timer);
-  }, [isAuthenticated, loading, navigate]);
+  // Prefill search fields from URL params (supports HeroSection redirect to chat)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const q = params.get('search') || '';
+    const loc = params.get('location') || '';
+    const type = params.get('type') || '';
+    if (q) setSearchQuery(q);
+    if (loc) setSearchLocation(loc);
+    if (type) setPropertyType(type);
+  }, [location.search]);
 
   // Handle logout
   const handleLogout = async () => {
     try {
-      await contextLogout();
+      await contextSignOut();
       // No need to navigate here as it's handled in the AuthContext
     } catch (error) {
       console.error('Logout error:', error);
@@ -111,22 +108,22 @@ export default function MainLanding() {
         }
         break;
       case 'saved':
-        navigate('/app/saved');
+        navigate(`${isChat ? '' : '/app'}/saved`);
         break;
       case 'neighborhoods':
-        navigate('/app/neighborhoods');
+        navigate(`${isChat ? '' : '/app'}/neighborhoods`);
         break;
       case 'calculator':
-        navigate('/app/calculator');
+        navigate(`${isChat ? '' : '/app'}/calculator`);
         break;
       case 'tours':
-        navigate('/app/tours');
+        navigate(`${isChat ? '' : '/app'}/tours`);
         break;
       case 'filters':
-        navigate('/app/filters');
+        navigate(`${isChat ? '' : '/app'}/filters`);
         break;
       case 'recent':
-        navigate('/app/recent');
+        navigate(`${isChat ? '' : '/app'}/recent`);
         break;
       default:
         // For other items, just update the active tab

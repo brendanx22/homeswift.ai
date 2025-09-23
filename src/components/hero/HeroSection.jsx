@@ -16,8 +16,9 @@ export default function HeroSection() {
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    if (searchText.trim()) {
-      navigate(`/properties?search=${encodeURIComponent(searchText)}`);
+    const query = searchText.trim();
+    if (query) {
+      navigate(`/properties?search=${encodeURIComponent(query)}`);
     } else {
       navigate('/properties');
     }
@@ -228,12 +229,11 @@ export default function HeroSection() {
                  className="w-full bg-transparent border border-[#262626] rounded-full px-6 py-6 text-white text-md placeholder-[#404040] focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                />
                              <motion.button
-                type="submit"
-                onClick={() => navigate('/login')}
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-black bg-white px-3 py-3 rounded-full"
-              >
-                <ArrowUp size={20}/>
-              </motion.button>
+               type="submit"
+               className="absolute right-4 top-1/2 transform -translate-y-1/2 text-black bg-white px-3 py-3 rounded-full"
+             >
+              <ArrowUp size={20}/>
+            </motion.button>
             </div>
           </form>
         </motion.div>
