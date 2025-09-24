@@ -86,16 +86,19 @@ export const checkEmailExists = async (req, res) => {
       });
     }
 
-    const normalized = String(email).trim().toLowerCase();
+    // Check if user exists in auth.users
+    const { data: authUser, error: authError } = await supabase
+      .from("users")
+      .select("email")
+      .eq("email", email.toLowerCase())
+      .maybeSingle();
 
-    // Use Supabase Admin API to look up auth user by email
-    const { data, error } = await supabase.auth.admin.getUserByEmail(normalized);
-    if (error && !/User not found/i.test(error.message)) {
-      throw error;
-    }
+    if (authError) throw authError;
 
-    const exists = !!data?.user;
-    return res.json({ exists, success: true });
+    return res.json({
+      exists: !!authUser,
+      success: true,
+    });
   } catch (error) {
     console.error("Error checking email:", error);
     return res.status(500).json({
