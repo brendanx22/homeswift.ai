@@ -248,7 +248,7 @@ export const AuthProvider = ({ children }) => {
   }, [checkSession, navigate]);
 
   // Check if email already exists
-  const checkEmailExists = useCallback(async (email) => {
+  const checkEmailExists = useCallback(async (email, options = {}) => {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/check-email`, {
         method: 'POST',
@@ -256,6 +256,7 @@ export const AuthProvider = ({ children }) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ email: (email || '').trim().toLowerCase() }),
+        signal: options.signal,
       });
 
       const data = await response.json();

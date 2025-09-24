@@ -286,6 +286,8 @@ const App = () => {
                 </AnimatedPage>
               </ProtectedRoute>
             } />
+            {/* Catch-all on chat to avoid blank pages */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </SessionChecker>
       </>
