@@ -150,8 +150,9 @@ export default function MainLanding() {
   const searchTimeoutRef = useRef(null);
   const autoRoutedRef = useRef(false);
   
-  // Load featured and recent properties on component mount
+  // Load featured and recent properties only on non-chat domains
   useEffect(() => {
+    if (isChat) return;
     const loadProperties = async () => {
       try {
         const [featured, recent] = await Promise.all([
@@ -166,7 +167,7 @@ export default function MainLanding() {
     };
 
     loadProperties();
-  }, []);
+  }, [isChat]);
 
   // Handle search submission
   const handleSearchSubmit = async (e) => {
@@ -1084,8 +1085,8 @@ export default function MainLanding() {
             </AnimatePresence>
           </div>
 
-          {/* Featured Properties Section */}
-          {featuredProperties.length > 0 && (
+          {/* Featured Properties Section (hidden on chat landing) */}
+          {!isChat && featuredProperties.length > 0 && (
             <div className="w-full max-w-6xl mt-16 px-6">
               <div className="text-center mb-8">
                 <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">Featured Properties</h2>

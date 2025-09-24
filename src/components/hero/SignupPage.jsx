@@ -20,6 +20,12 @@ export default function SignupPage() {
   const navigate = useNavigate();
   const { signUp, isAuthenticated, loading: authLoading, checkEmailExists } = useAuth();
   const emailCheckTimeoutRef = useRef(null);
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const isEmailValid = emailRegex.test((formData.email || '').trim());
+  const passwordsMatch = formData.password && formData.confirmPassword && (formData.password === formData.confirmPassword);
+  const hasNames = Boolean(formData.firstName && formData.lastName);
+  const isEmailNotTaken = emailStatus !== 'taken';
+  const canSubmit = hasNames && isEmailValid && isEmailNotTaken && passwordsMatch;
 
   // Log auth state for debugging
   useEffect(() => {
@@ -105,11 +111,17 @@ export default function SignupPage() {
   };
 
   const checkEmailAvailability = async (email) => {
-    if (!email || !email.includes('@')) return;
-    
+    const sanitized = (email || '').trim().toLowerCase();
+    if (!emailRegex.test(sanitized)) {
+      setEmailStatus('');
+      return;
+    }
     setEmailStatus('checking');
     try {
-      const result = await checkEmailExists(email);
+      const result = await Promise.race([
+        checkEmailExists(sanitized),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 6000))
+      ]);
       setEmailStatus(result.exists ? 'taken' : 'available');
     } catch (error) {
       console.error('Email check error:', error);
@@ -131,7 +143,7 @@ export default function SignupPage() {
         clearTimeout(emailCheckTimeoutRef.current);
       }
 
-      if (value && value.includes('@')) {
+      if (value && emailRegex.test(value.trim())) {
         // Debounce the email check
         emailCheckTimeoutRef.current = setTimeout(() => {
           checkEmailAvailability(value);
@@ -360,7 +372,7 @@ export default function SignupPage() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={!canSubmit || loading}
               className="w-full bg-white text-black py-4 rounded-[2rem] font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (

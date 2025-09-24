@@ -199,11 +199,13 @@ const App = () => {
                 <EmailVerification />
               </AnimatedPage>
             } />
-            {/* Public main landing on chat root */}
+            {/* Protected main landing on chat root */}
             <Route path="/" element={
-              <AnimatedPage>
-                <MainLanding />
-              </AnimatedPage>
+              <ProtectedRoute>
+                <AnimatedPage>
+                  <MainLanding />
+                </AnimatedPage>
+              </ProtectedRoute>
             } />
 
             {/* Protected chat sub-pages */}
