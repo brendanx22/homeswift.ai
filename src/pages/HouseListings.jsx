@@ -107,7 +107,7 @@ const HouseListings = ({ showSaved = false, showNeighborhoods = false, showFilte
   }
 
   const handlePropertyClick = (propertyId) => {
-    navigate(`/property/${propertyId}`);
+    navigate(`/properties/${propertyId}`);
   };
 
   return (

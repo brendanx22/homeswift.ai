@@ -207,6 +207,20 @@ const App = () => {
             } />
 
             {/* Protected chat sub-pages */}
+            <Route path="/properties" element={
+              <ProtectedRoute>
+                <AnimatedPage>
+                  <HouseListings />
+                </AnimatedPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/properties/:id" element={
+              <ProtectedRoute>
+                <AnimatedPage>
+                  <PropertyDetails />
+                </AnimatedPage>
+              </ProtectedRoute>
+            } />
             <Route path="/saved" element={
               <ProtectedRoute>
                 <AnimatedPage>

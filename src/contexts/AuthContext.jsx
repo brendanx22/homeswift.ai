@@ -255,7 +255,7 @@ export const AuthProvider = ({ children }) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: (email || '').trim().toLowerCase() }),
       });
 
       const data = await response.json();
@@ -277,19 +277,30 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       setError(null);
       
-      // Remove the redundant email check - Supabase will handle duplicate email validation
+      // Basic sanitize and validation
+      const email = (userData.email || '').trim().toLowerCase();
+      const password = (userData.password || '').trim();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        throw new Error('Please enter a valid email address');
+      }
+
+      // Proceed with Supabase sign up
+      const isProd = typeof window !== 'undefined' && window.location.hostname.endsWith('homeswift.co');
+      const verifyRedirect = isProd
+        ? 'https://chat.homeswift.co/verify-email'
+        : `${window.location.origin}/verify-email`;
+
       const { data, error: signUpError } = await supabase.auth.signUp({
-        email: userData.email,
-        password: userData.password,
+        email,
+        password,
         options: {
           data: {
             first_name: userData.firstName,
             last_name: userData.lastName,
             full_name: `${userData.firstName} ${userData.lastName}`,
           },
-          emailRedirectTo: window.location.hostname.startsWith('chat.') 
-            ? 'https://chat.homeswift.co/verify-email'
-            : `${window.location.origin}/verify-email`,
+          emailRedirectTo: verifyRedirect,
         },
       });
       
@@ -395,18 +406,17 @@ export const AuthProvider = ({ children }) => {
   
   // Sign out
   const signOut = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      // Attempt to sign out from Supabase, but don't block UI on errors
+      await supabase.auth.signOut().catch((err) => {
+        console.warn('Supabase signOut warning:', err?.message || err);
+      });
+    } finally {
+      try { localStorage.removeItem('homeswift-auth-token'); } catch {}
       setUser(null);
       setSession(null);
       navigate('/login');
-    } catch (error) {
-      console.error('Sign out error:', error);
-      setError(error.message);
-      throw error;
-    } finally {
       setLoading(false);
     }
   }, [navigate]);
@@ -415,10 +425,12 @@ export const AuthProvider = ({ children }) => {
   const resetPassword = useCallback(async (email) => {
     try {
       setLoading(true);
+      const isProd = typeof window !== 'undefined' && window.location.hostname.endsWith('homeswift.co');
+      const resetRedirect = isProd
+        ? 'https://chat.homeswift.co/reset-password'
+        : `${window.location.origin}/reset-password`;
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.hostname.startsWith('chat.') 
-          ? 'https://chat.homeswift.co/reset-password'
-          : `${window.location.origin}/reset-password`,
+        redirectTo: resetRedirect,
       });
       
       if (error) throw error;
@@ -443,7 +455,7 @@ export const AuthProvider = ({ children }) => {
         type: 'signup',
         email: email,
         options: {
-          emailRedirectTo: window.location.hostname.startsWith('chat.') 
+          emailRedirectTo: (typeof window !== 'undefined' && window.location.hostname.endsWith('homeswift.co'))
             ? 'https://chat.homeswift.co/verify-email'
             : `${window.location.origin}/verify-email`
         }

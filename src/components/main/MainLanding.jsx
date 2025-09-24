@@ -56,6 +56,22 @@ export default function MainLanding() {
     if (type) setPropertyType(type);
   }, [location.search]);
 
+  // If the user lands on chat root with a search param and is already authenticated,
+  // automatically route to the results page to complete the flow
+  useEffect(() => {
+    if (!isChat) return;
+    if (location.pathname !== '/') return;
+    if (!isAuthenticated) return;
+    if (autoRoutedRef.current) return;
+
+    const params = new URLSearchParams(location.search);
+    const hasQuery = params.get('search');
+    if (hasQuery) {
+      autoRoutedRef.current = true;
+      navigate(`/properties?${params.toString()}`);
+    }
+  }, [isChat, isAuthenticated, location.pathname, location.search, navigate]);
+
   // Handle logout
   const handleLogout = async () => {
     try {
@@ -94,18 +110,10 @@ export default function MainLanding() {
     // Handle navigation based on the selected item
     switch(id) {
       case 'search':
-        if (window.location.hostname.startsWith('chat.')) {
-          window.location.href = 'https://homeswift.co/properties';
-        } else {
-          navigate('/properties');
-        }
+        navigate('/properties');
         break;
       case 'properties':
-        if (window.location.hostname.startsWith('chat.')) {
-          window.location.href = 'https://homeswift.co/properties';
-        } else {
-          navigate('/properties');
-        }
+        navigate('/properties');
         break;
       case 'saved':
         navigate(`${isChat ? '' : '/app'}/saved`);
@@ -140,6 +148,7 @@ export default function MainLanding() {
   const [featuredProperties, setFeaturedProperties] = useState([]);
   const [recentProperties, setRecentProperties] = useState([]);
   const searchTimeoutRef = useRef(null);
+  const autoRoutedRef = useRef(false);
   
   // Load featured and recent properties on component mount
   useEffect(() => {
@@ -176,7 +185,10 @@ export default function MainLanding() {
     try {
       // If not authenticated, prompt login and return to chat main landing with the query preserved
       if (!isAuthenticated) {
-        const redirectTarget = `${window.location.origin}/?search=${encodeURIComponent(query)}`;
+        const searchParams = new URLSearchParams({ search: query });
+        if (searchLocation) searchParams.set('location', searchLocation);
+        if (propertyType) searchParams.set('type', propertyType);
+        const redirectTarget = `${window.location.origin}/properties?${searchParams.toString()}`;
         navigate(`/login?redirect=${encodeURIComponent(redirectTarget)}`);
         return;
       }
@@ -188,12 +200,11 @@ export default function MainLanding() {
           propertyType: propertyType
         });
       }
-      // Stay on MainLanding and reflect the query in the URL
-      const params = new URLSearchParams(window.location.search);
-      params.set('search', query);
-      if (searchLocation) params.set('location', searchLocation);
-      if (propertyType) params.set('type', propertyType);
-      navigate({ pathname: '/', search: params.toString() }, { replace: true });
+      // Navigate to the results page with the query
+      const searchParams = new URLSearchParams({ search: query });
+      if (searchLocation) searchParams.set('location', searchLocation);
+      if (propertyType) searchParams.set('type', propertyType);
+      navigate(`/properties?${searchParams.toString()}`);
     } catch (error) {
       console.error('Search error:', error);
       setSearchError('Search failed. Please try again.');
