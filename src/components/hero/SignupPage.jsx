@@ -20,14 +20,12 @@ export default function SignupPage() {
   const navigate = useNavigate();
   const { signUp, isAuthenticated, loading: authLoading, checkEmailExists } = useAuth();
   const emailCheckTimeoutRef = useRef(null);
-  const emailAbortRef = useRef(null);
-  const lastRequestedEmailRef = useRef('');
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const isEmailValid = emailRegex.test((formData.email || '').trim());
   const passwordsMatch = formData.password && formData.confirmPassword && (formData.password === formData.confirmPassword);
   const hasNames = Boolean(formData.firstName && formData.lastName);
-  const isEmailAvailable = emailStatus === 'available';
-  const canSubmit = hasNames && isEmailValid && isEmailAvailable && passwordsMatch;
+  const isEmailNotTaken = emailStatus !== 'taken';
+  const canSubmit = hasNames && isEmailValid && isEmailNotTaken && passwordsMatch;
 
   // Log auth state for debugging
   useEffect(() => {
@@ -118,30 +116,16 @@ export default function SignupPage() {
       setEmailStatus('');
       return;
     }
-    // Cancel any in-flight request
-    if (emailAbortRef.current) {
-      emailAbortRef.current.abort();
-    }
-    const controller = new AbortController();
-    emailAbortRef.current = controller;
-    lastRequestedEmailRef.current = sanitized;
     setEmailStatus('checking');
     try {
       const result = await Promise.race([
-        checkEmailExists(sanitized, { signal: controller.signal }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000))
+        checkEmailExists(sanitized),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 6000))
       ]);
-      // Ignore stale responses if user typed a different email in the meantime
-      const currentEmail = (formData.email || '').trim().toLowerCase();
-      if (currentEmail !== lastRequestedEmailRef.current) return;
       setEmailStatus(result.exists ? 'taken' : 'available');
     } catch (error) {
       console.error('Email check error:', error);
-      // Only clear if this was the latest request
-      const currentEmail = (formData.email || '').trim().toLowerCase();
-      if (currentEmail === lastRequestedEmailRef.current) {
-        setEmailStatus('');
-      }
+      setEmailStatus('');
     }
   };
 
@@ -166,7 +150,6 @@ export default function SignupPage() {
         }, 500);
       } else {
         setEmailStatus('');
-        if (emailAbortRef.current) emailAbortRef.current.abort();
       }
     }
   };
@@ -338,20 +321,6 @@ export default function SignupPage() {
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
-
-            {/* Disabled reasons */}
-            {(!canSubmit && !loading) && (
-              <div className="mt-2 text-xs text-gray-400">
-                <ul className="list-disc pl-5 space-y-1">
-                  {!hasNames && <li>Enter your first and last name</li>}
-                  {!isEmailValid && <li>Enter a valid email address</li>}
-                  {isEmailValid && emailStatus === '' && <li>Validate your email availability</li>}
-                  {emailStatus === 'checking' && <li>Checking email availability...</li>}
-                  {emailStatus === 'taken' && <li className="text-red-400">This email is already registered</li>}
-                  {!passwordsMatch && <li>Passwords must match</li>}
-                </ul>
-              </div>
-            )}
               </div>
             </div>
 

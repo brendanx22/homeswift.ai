@@ -34,7 +34,14 @@ export const AuthProvider = ({ children }) => {
         }
       }
       
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      // Guard against network stalls
+      const timeoutMs = 8000;
+      const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ data: { session: null } }), timeoutMs));
+      const safeGetSession = Promise.race([
+        supabase.auth.getSession(),
+        timeoutPromise
+      ]);
+      const { data: { session: currentSession } } = await safeGetSession;
       
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
@@ -380,9 +387,19 @@ export const AuthProvider = ({ children }) => {
         target = 'https://chat.homeswift.co/';
       }
 
-      // If redirect is absolute URL (e.g., chat.homeswift.co), perform a full navigation
+      // If we are on the main site and target is the chat domain, pass tokens via /auth/callback
       const isAbsolute = /^https?:\/\//i.test(target);
-      if (isAbsolute) {
+      const targetUrl = isAbsolute ? new URL(target) : null;
+      const goingToChat = !!(targetUrl && targetUrl.hostname === 'chat.homeswift.co');
+      const accessToken = freshSession?.access_token || data?.session?.access_token;
+      const refreshToken = freshSession?.refresh_token || data?.session?.refresh_token;
+
+      if (isHomeswiftMain && goingToChat && accessToken && refreshToken) {
+        const redirectPath = targetUrl.pathname + (targetUrl.search || '');
+        const callback = `https://chat.homeswift.co/auth/callback?access_token=${encodeURIComponent(accessToken)}&refresh_token=${encodeURIComponent(refreshToken)}&redirect=${encodeURIComponent(redirectPath)}`;
+        console.log('[AuthProvider.signIn] redirecting to chat callback with tokens');
+        window.location.assign(callback);
+      } else if (isAbsolute) {
         console.log('[AuthProvider.signIn] cross-origin redirect to', target);
         window.location.assign(target);
       } else if (!authPages.some(page => target.includes(page))) {

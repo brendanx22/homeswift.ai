@@ -18,6 +18,7 @@ import Gallery from './pages/Gallery';
 import InquiryForm from './pages/InquiryForm';
 import NotFound from './pages/NotFound';
 import SessionChecker from './components/auth/SessionChecker';
+import AuthCallback from './components/auth/AuthCallback';
 
 // Styles
 import './index.css';
@@ -112,6 +113,11 @@ const AnimatedRoutes = () => {
             <SignupPage />
           </AnimatedPage>
         } />
+        <Route path="/auth/callback" element={
+          <AnimatedPage>
+            <AuthCallback />
+          </AnimatedPage>
+        } />
         
         <Route path="/verify-email" element={
           <AnimatedPage>
@@ -181,8 +187,7 @@ const App = () => {
     return (
       <>
         <Toaster position="top-right" richColors />
-        <SessionChecker>
-          <Routes>
+        <Routes>
             {/* Public auth routes on chat subdomain */}
             <Route path="/login" element={
               <AnimatedPage>
@@ -197,6 +202,11 @@ const App = () => {
             <Route path="/verify-email" element={
               <AnimatedPage>
                 <EmailVerification />
+              </AnimatedPage>
+            } />
+            <Route path="/auth/callback" element={
+              <AnimatedPage>
+                <AuthCallback />
               </AnimatedPage>
             } />
             {/* Protected main landing on chat root */}
@@ -289,7 +299,6 @@ const App = () => {
             {/* Catch-all on chat to avoid blank pages */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </SessionChecker>
       </>
     );
   }

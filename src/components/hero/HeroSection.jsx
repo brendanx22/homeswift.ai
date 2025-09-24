@@ -21,14 +21,15 @@ export default function HeroSection() {
     const target = `${chatBase}/?search=${encodeURIComponent(query)}`;
     const isChat = typeof window !== 'undefined' && window.location.hostname.startsWith('chat.');
 
-    // Always route auth and search to chat app. If on main site, go straight to chat login
+    // If on main site, open local login with redirect to chat (do not send to chat login)
     if (!isChat) {
-      window.location.assign(`${chatBase}/login?redirect=${encodeURIComponent(target)}`);
+      navigate(`/login?redirect=${encodeURIComponent(target)}`);
       return;
     }
 
-    // If already on chat subdomain, open local login to preserve session on chat
-    navigate(`/login?redirect=${encodeURIComponent(target)}`);
+    // If already on chat subdomain, open local login with a local redirect
+    const localTarget = `/?search=${encodeURIComponent(query)}`;
+    navigate(`/login?redirect=${encodeURIComponent(localTarget)}`);
   };
 
 
