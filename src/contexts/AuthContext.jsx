@@ -340,19 +340,43 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       setError(null);
       
-      // Proceed to sign in directly with a timeout guard
-      console.log('[AuthProvider.signIn] calling signInWithPassword');
-      const timeoutMs = 12000;
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Network timeout while contacting Auth service')), timeoutMs)
-      );
-      const { data, error: signInError } = await Promise.race([
-        supabase.auth.signInWithPassword({
-          email: email.trim().toLowerCase(),
-          password: password.trim(),
-        }),
-        timeoutPromise,
-      ]);
+      const attemptSignIn = async (timeoutMs) => {
+        console.log('[AuthProvider.signIn] calling signInWithPassword timeout=', timeoutMs);
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Network timeout while contacting Auth service')), timeoutMs)
+        );
+        return Promise.race([
+          supabase.auth.signInWithPassword({
+            email: email.trim().toLowerCase(),
+            password: password.trim(),
+          }),
+          timeoutPromise,
+        ]);
+      };
+
+      // Try once quickly, then retry with a longer timeout if needed
+      let data, signInError;
+      try {
+        ({ data, error: signInError } = await attemptSignIn(10000));
+      } catch (err) {
+        console.warn('[AuthProvider.signIn] first attempt failed:', err?.message || err);
+        if (String(err?.message || '').includes('Network timeout')) {
+          // quick ping to auth settings endpoint for diagnosis
+          const supaUrl = import.meta.env.VITE_SUPABASE_URL;
+          try {
+            const ping = await Promise.race([
+              fetch(`${supaUrl}/auth/v1/settings`, { method: 'GET' }),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Ping timeout')), 4000))
+            ]);
+            console.log('[AuthProvider.signIn] auth settings ping status=', ping?.status);
+          } catch (e) {
+            console.warn('[AuthProvider.signIn] auth settings ping failed:', e?.message || e);
+          }
+          ({ data, error: signInError } = await attemptSignIn(20000));
+        } else {
+          throw err;
+        }
+      }
       console.log('[AuthProvider.signIn] signInWithPassword result', { hasError: !!signInError, user: !!data?.user });
       
       if (signInError) {
