@@ -13,6 +13,69 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
+  // Small helper to guard long network waits
+  const withTimeout = (promise, ms = 8000) =>
+    Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+    ]);
+
+  // Fetch user profile without blocking auth gating
+  const fetchAndMergeUserProfile = async (supabaseUser) => {
+    if (!supabaseUser?.id) return;
+    try {
+      // Try to fetch existing profile (timeout guarded)
+      let { data: userData } = await withTimeout(
+        supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('id', supabaseUser.id)
+          .single(),
+        6000
+      ).catch(() => ({ data: null }));
+
+      if (!userData) {
+        // Attempt RPC creation first (timeout guarded)
+        const { data: newProfile } = await withTimeout(
+          supabase.rpc('create_user_profile', {
+            user_id: supabaseUser.id,
+            user_email: supabaseUser.email,
+            first_name: supabaseUser.user_metadata?.first_name || '',
+            last_name: supabaseUser.user_metadata?.last_name || ''
+          }),
+          6000
+        ).catch(() => ({ data: null }));
+
+        if (newProfile) {
+          userData = newProfile;
+        } else {
+          // Fallback to direct insert (timeout guarded)
+          const { data: directProfile } = await withTimeout(
+            supabase
+              .from('user_profiles')
+              .insert({
+                id: supabaseUser.id,
+                email: supabaseUser.email,
+                first_name: supabaseUser.user_metadata?.first_name || '',
+                last_name: supabaseUser.user_metadata?.last_name || ''
+              })
+              .select()
+              .single(),
+            6000
+          ).catch(() => ({ data: null }));
+          if (directProfile) userData = directProfile;
+        }
+      }
+
+      // Merge into user state if we have any profile data
+      if (userData) {
+        setUser((prev) => ({ ...prev, ...userData }));
+      }
+    } catch (e) {
+      console.warn('[AuthProvider] fetchAndMergeUserProfile warning:', e?.message || e);
+    }
+  };
+
   // Check active session and set the user
   const checkSession = useCallback(async () => {
     console.log('[AuthProvider] checkSession: start');
@@ -42,61 +105,13 @@ export const AuthProvider = ({ children }) => {
         timeoutPromise
       ]);
       const { data: { session: currentSession } } = await safeGetSession;
-      
+
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
-      
+
+      // Fire profile fetch in background; do not block auth gating
       if (currentSession?.user) {
-        // Fetch additional user data if needed
-        let { data: userData, error: profileError } = await supabase
-          .from('user_profiles')
-          .select('*')
-          .eq('id', currentSession.user.id)
-          .single();
-          
-        // If no profile exists, try to create one using the secure function
-        if (!userData && !profileError) {
-          console.log('No user profile found, creating one...');
-          
-          // Try to create profile using RPC function
-          const { data: newProfile, error: rpcError } = await supabase
-            .rpc('create_user_profile', {
-              user_id: currentSession.user.id,
-              user_email: currentSession.user.email,
-              first_name: currentSession.user.user_metadata?.first_name || '',
-              last_name: currentSession.user.user_metadata?.last_name || ''
-            });
-            
-          if (rpcError) {
-            console.warn('RPC profile creation failed, trying direct insert:', rpcError);
-            
-            // Fallback: try direct insert
-            const { data: directProfile, error: directError } = await supabase
-              .from('user_profiles')
-              .insert({
-                id: currentSession.user.id,
-                email: currentSession.user.email,
-                first_name: currentSession.user.user_metadata?.first_name || '',
-                last_name: currentSession.user.user_metadata?.last_name || ''
-              })
-              .select()
-              .single();
-              
-            if (directError) {
-              console.warn('Direct profile creation also failed:', directError);
-              // Continue without profile data - user can still use the app
-            } else {
-              userData = directProfile;
-            }
-          } else {
-            userData = newProfile;
-          }
-        }
-          
-        setUser({
-          ...currentSession.user,
-          ...userData
-        });
+        fetchAndMergeUserProfile(currentSession.user);
       }
       
       console.log('[AuthProvider] checkSession: done, user=', Boolean(currentSession?.user));
@@ -142,72 +157,21 @@ export const AuthProvider = ({ children }) => {
       async (event, currentSession) => {
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
-        
+
         if (currentSession?.user) {
-          // Fetch additional user data if needed
-          let { data: userData, error: profileError } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('id', currentSession.user.id)
-            .single();
-            
-          // If no profile exists, try to create one using the secure function
-          if (!userData && !profileError) {
-            console.log('No user profile found, creating one...');
-            
-            // Try to create profile using RPC function
-            const { data: newProfile, error: rpcError } = await supabase
-              .rpc('create_user_profile', {
-                user_id: currentSession.user.id,
-                user_email: currentSession.user.email,
-                first_name: currentSession.user.user_metadata?.first_name || '',
-                last_name: currentSession.user.user_metadata?.last_name || ''
-              });
-              
-            if (rpcError) {
-              console.warn('RPC profile creation failed, trying direct insert:', rpcError);
-              
-              // Fallback: try direct insert
-              const { data: directProfile, error: directError } = await supabase
-                .from('user_profiles')
-                .insert({
-                  id: currentSession.user.id,
-                  email: currentSession.user.email,
-                  first_name: currentSession.user.user_metadata?.first_name || '',
-                  last_name: currentSession.user.user_metadata?.last_name || ''
-                })
-                .select()
-                .single();
-                
-              if (directError) {
-                console.warn('Direct profile creation also failed:', directError);
-                // Continue without profile data - user can still use the app
-              } else {
-                userData = directProfile;
-              }
-            } else {
-              userData = newProfile;
-            }
-          }
-            
-          setUser({
-            ...currentSession.user,
-            ...userData
-          });
-          
+          // Fetch profile in background (non-blocking)
+          fetchAndMergeUserProfile(currentSession.user);
+
           // Only redirect if we're on an auth page and the user is now authenticated
           const authPages = ['/login', '/signup', '/verify-email'];
           if (authPages.includes(window.location.pathname)) {
-            // Get redirect URL from query params
             const urlParams = new URLSearchParams(window.location.search);
             const redirectTo = urlParams.get('redirect');
             const isChat = window.location.hostname.startsWith('chat.');
             const isHomeswiftMain = window.location.hostname.endsWith('homeswift.co') && !isChat;
             const defaultAfterLogin = isHomeswiftMain ? 'https://chat.homeswift.co/' : '/';
 
-            // Determine target
             let target = redirectTo || defaultAfterLogin;
-            // If we are on main domain and target is main-domain /app (relative or absolute), override to chat homepage
             if (isHomeswiftMain && target === '/app') {
               target = 'https://chat.homeswift.co/';
             } else if (isHomeswiftMain && target && /^https?:\/\//i.test(target) && target.includes('homeswift.co/app')) {
@@ -215,7 +179,6 @@ export const AuthProvider = ({ children }) => {
             }
             const isAbsolute = /^https?:\/\//i.test(target);
 
-            // Avoid redirecting back to auth pages
             if (isAbsolute) {
               window.location.assign(target);
             } else if (!authPages.some(page => target.includes(page))) {
@@ -231,12 +194,8 @@ export const AuthProvider = ({ children }) => {
         } else {
           // Don't redirect if on root or public pages
           const publicPaths = ['/', '/login', '/signup', '/verify-email', '/reset-password'];
-          const isPublicPath = publicPaths.some(path => 
-            window.location.pathname.startsWith(path)
-          );
-          
+          const isPublicPath = publicPaths.some(path => window.location.pathname.startsWith(path));
           if (!isPublicPath) {
-            // Always redirect to login with a redirect target appropriate to the current domain
             if (window.location.pathname !== '/login') {
               const host = window.location.hostname;
               const isHomeswiftMain = host.endsWith('homeswift.co') && !host.startsWith('chat.');

@@ -19,6 +19,7 @@ import InquiryForm from './pages/InquiryForm';
 import NotFound from './pages/NotFound';
 import SessionChecker from './components/auth/SessionChecker';
 import AuthCallback from './components/auth/AuthCallback';
+import BrandedSpinner from './components/common/BrandedSpinner';
 
 // Styles
 import './index.css';
@@ -29,17 +30,27 @@ import './index.css';
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
+  const [loadingStuck, setLoadingStuck] = React.useState(false);
+
+  React.useEffect(() => {
+    if (loading) {
+      const t = setTimeout(() => setLoadingStuck(true), 9000);
+      return () => clearTimeout(t);
+    } else {
+      setLoadingStuck(false);
+    }
+  }, [loading]);
 
   if (typeof window !== 'undefined') {
     console.log('[ProtectedRoute] path=', location.pathname, 'authLoading=', loading, 'isAuthenticated=', isAuthenticated);
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
+    if (loadingStuck) {
+      const target = typeof window !== 'undefined' ? `/login?redirect=${encodeURIComponent(window.location.href)}` : '/login';
+      return <Navigate to={target} replace />;
+    }
+    return <BrandedSpinner message="Checking your session..." />;
   }
 
   if (!isAuthenticated) {
