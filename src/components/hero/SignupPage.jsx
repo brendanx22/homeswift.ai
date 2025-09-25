@@ -20,12 +20,25 @@ export default function SignupPage() {
   const navigate = useNavigate();
   const { signUp, isAuthenticated, loading: authLoading, checkEmailExists } = useAuth();
   const emailCheckTimeoutRef = useRef(null);
+  const emailAbortRef = useRef(null);
+  const lastRequestedEmailRef = useRef('');
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   const isEmailValid = emailRegex.test((formData.email || '').trim());
   const passwordsMatch = formData.password && formData.confirmPassword && (formData.password === formData.confirmPassword);
   const hasNames = Boolean(formData.firstName && formData.lastName);
-  const isEmailNotTaken = emailStatus !== 'taken';
-  const canSubmit = hasNames && isEmailValid && isEmailNotTaken && passwordsMatch;
+  const isEmailAvailable = emailStatus === 'available';
+  const canSubmit = hasNames && isEmailValid && isEmailAvailable && passwordsMatch;
+
+  // Dynamic email border color based on validity and availability
+  const emailBorder = !formData.email
+    ? 'border-gray-400/50 focus:border-gray-300'
+    : (!isEmailValid
+        ? 'border-red-500 focus:border-red-400'
+        : (emailStatus === 'taken'
+            ? 'border-red-500 focus:border-red-400'
+            : (emailStatus === 'available'
+                ? 'border-green-500 focus:border-green-400'
+                : 'border-gray-400/50 focus:border-gray-300')));
 
   // Log auth state for debugging
   useEffect(() => {
@@ -110,22 +123,52 @@ export default function SignupPage() {
     setError('Google Sign-Up is temporarily disabled. Please use email registration.');
   };
 
+  const handleEmailBlur = () => {
+    const value = (formData.email || '').trim();
+    if (!value) {
+      setEmailStatus('');
+      return;
+    }
+    if (emailRegex.test(value)) {
+      if (emailStatus !== 'available' && emailStatus !== 'taken') {
+        checkEmailAvailability(value);
+      }
+    } else {
+      setEmailStatus('');
+    }
+  };
+
   const checkEmailAvailability = async (email) => {
     const sanitized = (email || '').trim().toLowerCase();
     if (!emailRegex.test(sanitized)) {
       setEmailStatus('');
       return;
     }
+    // Cancel in-flight request
+    if (emailAbortRef.current) {
+      try { emailAbortRef.current.abort(); } catch {}
+    }
+    const controller = new AbortController();
+    emailAbortRef.current = controller;
+    lastRequestedEmailRef.current = sanitized;
     setEmailStatus('checking');
     try {
       const result = await Promise.race([
-        checkEmailExists(sanitized),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 6000))
+        checkEmailExists(sanitized, { signal: controller.signal }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000))
       ]);
+      // Ignore stale responses
+      const currentEmail = (formData.email || '').trim().toLowerCase();
+      if (currentEmail !== lastRequestedEmailRef.current) return;
       setEmailStatus(result.exists ? 'taken' : 'available');
     } catch (error) {
-      console.error('Email check error:', error);
-      setEmailStatus('');
+      // Ignore aborts; clear status only if this is the latest request
+      const currentEmail = (formData.email || '').trim().toLowerCase();
+      if (error?.name === 'AbortError') return;
+      if (currentEmail === lastRequestedEmailRef.current) {
+        console.error('Email check error:', error);
+        setEmailStatus('');
+      }
     }
   };
 
@@ -150,6 +193,9 @@ export default function SignupPage() {
         }, 500);
       } else {
         setEmailStatus('');
+        if (emailAbortRef.current) {
+          try { emailAbortRef.current.abort(); } catch {}
+        }
       }
     }
   };
@@ -256,12 +302,15 @@ export default function SignupPage() {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-12 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
+                  onBlur={handleEmailBlur}
+                  className={`w-full bg-transparent border ${emailBorder} rounded-[2rem] pl-12 pr-12 py-4 text-white placeholder-gray-400 focus:outline-none focus:bg-white/5 transition-all`}
                   placeholder="Enter your email"
                   autoComplete="email"
                   inputMode="email"
                   autoCapitalize="none"
                   autoCorrect="off"
+                  aria-invalid={!isEmailValid && !!formData.email}
+                  aria-live="polite"
                   required
                 />
                 {/* Email status indicator */}
@@ -286,6 +335,9 @@ export default function SignupPage() {
                 </div>
               </div>
               {/* Email status message */}
+              {formData.email && !isEmailValid && (
+                <p className="mt-1 text-sm text-red-400">Please enter a valid email address</p>
+              )}
               {emailStatus === 'available' && (
                 <p className="mt-1 text-sm text-green-400">✓ Email is available</p>
               )}
@@ -384,6 +436,20 @@ export default function SignupPage() {
                 'Create Account'
               )}
             </button>
+
+            {/* Disabled reasons for clarity */}
+            {(!canSubmit && !loading) && (
+              <div className="mt-2 text-xs text-gray-400">
+                <ul className="list-disc pl-5 space-y-1">
+                  {!hasNames && <li>Enter your first and last name</li>}
+                  {formData.email && !isEmailValid && <li>Enter a valid email address</li>}
+                  {isEmailValid && emailStatus === '' && <li>Validate your email availability</li>}
+                  {emailStatus === 'checking' && <li>Checking email availability...</li>}
+                  {emailStatus === 'taken' && <li className="text-red-400">This email is already registered</li>}
+                  {!passwordsMatch && <li>Passwords must match</li>}
+                </ul>
+              </div>
+            )}
           </form>
 
           {/* Divider */}
