@@ -8,10 +8,18 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Initialize Supabase client with service role key for server-side operations
+// Initialize Supabase clients
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// Regular client for normal operations
 const supabase = createClient(
+  SUPABASE_URL,
+  process.env.VITE_SUPABASE_ANON_KEY // Using anon key for regular operations
+);
+
+// Admin client for user management
+const supabaseAdmin = createClient(
   SUPABASE_URL,
   SUPABASE_SERVICE_ROLE_KEY,
   {
@@ -111,23 +119,19 @@ export const checkEmailExists = async (req, res) => {
 
     // Use Supabase Admin API to check auth users
     try {
-      // Use the standard auth API instead of admin API
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password: 'dummy-password-to-trigger-error'
-      });
+      // Use Admin API to check if user exists
+      const { data, error } = await supabaseAdmin.auth.admin.getUserByEmail(email);
       
       if (error) {
-        // If we get an auth error, it means the email exists but password was wrong
-        if (error.status === 400) {
-          return res.json({ exists: true, success: true });
-        }
         // If user not found, email is available
-        if (error.message && error.message.includes('user not found')) {
+        if (error.message && error.message.includes('User not found')) {
           return res.json({ exists: false, success: true });
         }
+        console.error('Supabase admin error:', error);
         throw error;
       }
+      
+      // If we get here, user exists
       return res.json({ exists: true, success: true });
       
     } catch (error) {

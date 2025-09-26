@@ -46,9 +46,9 @@ export default function HeroSection() {
     <div 
       className="min-h-screen relative overflow-hidden bg-cover bg-center bg-no-repeat"
       style={{ 
-        backgroundImage: 'url("/Hero Section Image.png")',
+       /* backgroundImage: 'url("/HeroSection-White.png")', */
         backgroundSize: 'cover',
-        backgroundColor: '#1a1a1a'
+        backgroundColor: 'ffffff'
       }}
       onMouseMove={(e) => {
         const rect = e.currentTarget.getBoundingClientRect();
@@ -57,8 +57,8 @@ export default function HeroSection() {
       }}
     >
       {/* Background overlay for better text readability */}
-      <div className="absolute inset-0 bg-black/40"></div>
-      <div className="absolute inset-0 bg-gradient-to-br from-gray-900/20 via-transparent to-gray-800/30"></div>
+      <div className="absolute inset-0 bg-white/40"></div>
+      <div className="absolute inset-0 bg-gradient-to-br from-[#8E765C]-900/20 via-transparent to-[#8E765C]-800/30"></div>
       {/* Header */}
       <motion.header
         className="relative z-10 flex items-center justify-between px-6 py-6 lg:px-12"
@@ -69,37 +69,37 @@ export default function HeroSection() {
         {/* Logo */}
         <div className="flex items-center space-x-3">
           <img src="/images/logo.png" alt="HomeSwift Logo" className="w-6 h-6 rounded-lg object-cover" />
-          <span className="text-white text-2xl tracking-tight">Home<span className="italic">Swift</span></span>
+          <span className="text-[#8E765C] text-2xl tracking-tight">Home<span className="italic">Swift</span></span>
         </div>
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-8">
-          <a href="#" className="text-white text-md font-medium border-b-2 border-white pb-1">Home</a>
-          <a href="#" className="text-gray-300 text-md hover:text-white transition-colors">FAQs</a>
-          <a href="#" className="text-gray-300 text-md hover:text-white transition-colors">About Us</a>
+          <a href="#" className="text-[#8E765C] text-md font-medium border-b-2 border-white pb-1">Home</a>
+          <a href="#" className="text-[#8E765C]-300 text-md hover:text-white transition-colors">FAQs</a>
+          <a href="#" className="text-[#8E765C]-300 text-md hover:text-white transition-colors">About Us</a>
         </nav>
 
         {/* Action Buttons */}
         <div className="hidden md:flex items-center space-x-4">
           <motion.button
             onClick={handleGetStartedClick}
-            className="flex items-center space-x-2 bg-white text-black px-6 py-2 rounded-full font-medium hover:bg-gray-100 transition-colors"
+            className="flex items-center space-x-2 bg-[#8E765C] text-white px-6 py-2 rounded-full font-medium hover:bg-gray-100 transition-colors"
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.95 }}
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
           >
             <span>Get Started</span>
             <motion.div 
-              className="w-6 h-6 bg-black rounded-full flex items-center justify-center"
+              className="w-6 h-6 bg-white rounded-full flex items-center justify-center"
               whileHover={{ rotate: 360 }}
               transition={{ duration: 0.6 }}
             >
-              <ArrowRight size={14} className="text-white" />
+              <ArrowRight size={14} className="text-[#8E765C]" />
             </motion.div>
           </motion.button>
           <motion.button
             onClick={handleLoginClick}
-            className="bg-transparent border border-gray-400 text-white px-6 py-2 rounded-full font-medium hover:bg-white/10 transition-colors"
+            className="bg-transparent border border-gray-400 text-[#8E765C]  px-6 py-2 rounded-full font-medium hover:bg-white/10 transition-colors"
             whileHover={{ scale: 1.05, y: -2 }}
             whileTap={{ scale: 0.95 }}
             transition={{ type: "spring", stiffness: 400, damping: 17 }}
@@ -111,7 +111,7 @@ export default function HeroSection() {
         {/* Mobile Menu Button */}
         <motion.button 
           onClick={() => setShowMobileMenu(!showMobileMenu)}
-          className="md:hidden text-white p-2"
+          className="md:hidden text-[#8E765C] p-2"
           whileHover={{ scale: 1.1, rotate: 90 }}
           whileTap={{ scale: 0.9 }}
           transition={{ type: "spring", stiffness: 400, damping: 17 }}
@@ -146,7 +146,7 @@ export default function HeroSection() {
       <AnimatePresence>
         {showMobileMenu && (
           <motion.div
-            className="md:hidden absolute top-20 left-0 right-0 bg-black/90 backdrop-blur-md border-t border-gray-400/50 z-20"
+            className="md:hidden absolute top-20 left-0 right-0 bg-[#8E765C]/90 backdrop-blur-md border-t border-gray-400/50 z-20"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
@@ -154,23 +154,23 @@ export default function HeroSection() {
           >
           <div className="px-6 py-6 space-y-6">
             <div className="space-y-4">
-              <a href="#" className="block text-white text-lg font-medium border-b-2 border-white pb-1 w-fit">Home</a>
-              <a href="#" className="block text-gray-300 text-lg hover:text-white transition-colors">FAQs</a>
-              <a href="#" className="block text-gray-300 text-lg hover:text-white transition-colors">About Us</a>
+              <a href="#" className="block text-[#8E765C] text-lg font-medium border-b-2 border-white pb-1 w-fit">Home</a>
+              <a href="#" className="block text-[#8E765C]-300 text-lg hover:text-white transition-colors">FAQs</a>
+              <a href="#" className="block text-[#8E765C]-300 text-lg hover:text-white transition-colors">About Us</a>
             </div>
             <div className="pt-4 space-y-3">
               <button
                 onClick={handleGetStartedClick}
-                className="w-full flex items-center justify-center space-x-2 bg-white text-black px-4 py-2 rounded-2xl font-medium hover:bg-gray-100 transition-colors"
+                className="w-full flex items-center justify-center space-x-2 bg-white text-[#8E765C] px-4 py-2 rounded-2xl font-medium hover:bg-gray-100 transition-colors"
               >
                 <span>Get Started</span>
-                <div className="w-6 h-6 bg-black rounded-full flex items-center justify-center">
-                  <ArrowRight size={10} className="text-white" />
+                <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
+                  <ArrowRight size={10} className="text-[#8E765C]" />
                 </div>
               </button>
               <button
                 onClick={handleLoginClick}
-                className="w-full bg-transparent border border-gray-400 text-white px-6 py-2 rounded-2xl font-medium hover:bg-white/10 transition-colors"
+                className="w-full bg-transparent border border-gray-400 text-[#8E765C] px-6 py-2 rounded-2xl font-medium hover:bg-black/10 transition-colors"
               >
                 Login
               </button>
@@ -184,7 +184,7 @@ export default function HeroSection() {
       <main className="relative z-10 flex flex-col items-center justify-center min-h-[calc(100vh-180px)] px-6 text-center">
         {/* Feature Tag */}
         <motion.div
-          className="flex items-center space-x-2 bg-[#262626] rounded-[2rem] px-6 py-3 mb-6"
+          className="flex items-center space-x-2 bg-[#8E765C] rounded-[2rem] px-6 py-3 mb-6"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: 'easeOut', delay: 0.2 }}
@@ -196,12 +196,12 @@ export default function HeroSection() {
           >
             <Sparkles className="w-4 h-4 text-white" />
           </motion.div>
-          <span className="text-gray-300 text-sm font-medium">Smarter, faster, simpler home search</span>
+          <span className="text-white text-sm font-medium">Smarter, faster, simpler home search</span>
         </motion.div>
 
         {/* Main Headline */}
         <motion.h1
-          className="text-3xl md:text-4xl lg:text-5xl text-white mb-4 leading-tight max-w-4xl"
+          className="text-3xl md:text-4xl lg:text-5xl text-[#8E765C] mb-4 leading-tight max-w-4xl"
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: 'easeOut', delay: 0.3 }}
@@ -212,7 +212,7 @@ export default function HeroSection() {
 
         {/* Sub-headline */}
         <motion.p
-          className="text-sm md:text-sm text-gray-300 mb-16 max-w-2xl leading-relaxed"
+          className="text-sm md:text-sm text-black mb-16 max-w-2xl leading-relaxed"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: 'easeOut', delay: 0.5 }}
@@ -238,7 +238,7 @@ export default function HeroSection() {
                />
                              <motion.button
                type="submit"
-               className="absolute right-4 top-1/2 transform -translate-y-1/2 text-black bg-white px-3 py-3 rounded-full"
+               className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white bg-[#8E765C] px-3 py-3 rounded-full"
              >
               <ArrowUp size={20}/>
             </motion.button>
