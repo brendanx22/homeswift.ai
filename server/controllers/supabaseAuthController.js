@@ -119,20 +119,22 @@ export const checkEmailExists = async (req, res) => {
 
     // Use Supabase Admin API to check auth users
     try {
-      // Use Admin API to check if user exists
-      const { data, error } = await supabaseAdmin.auth.admin.getUserByEmail(email);
+      // Use Admin API to check if user exists - using listUsers for Supabase v2+
+      const { data, error } = await supabaseAdmin.auth.admin.listUsers({
+        email: email
+      });
       
       if (error) {
-        // If user not found, email is available
-        if (error.message && error.message.includes('User not found')) {
-          return res.json({ exists: false, success: true });
-        }
         console.error('Supabase admin error:', error);
         throw error;
       }
       
-      // If we get here, user exists
-      return res.json({ exists: true, success: true });
+      // Check if any users were found with this email
+      const userExists = data?.users?.length > 0;
+      return res.json({ 
+        exists: userExists, 
+        success: true 
+      });
       
     } catch (error) {
       console.error('Error checking email with Supabase:', error);
@@ -334,15 +336,20 @@ export const verifyEmail = async (req, res) => {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Mark email as verified in Supabase
-    const { data: user, error } = await supabase.auth.admin.updateUserById(
+    // Mark email as verified in Supabase v2+
+    const { data: { user }, error } = await supabase.auth.admin.updateUserById(
       decoded.sub,
-      { email_confirm: true }
+      { 
+        email_confirm: true,
+        // In v2, we need to explicitly set the email confirmation timestamp
+        email_confirmed_at: new Date().toISOString()
+      }
     );
 
     if (error) throw error;
+    if (!user) throw new Error('User not found');
 
-    // Generate auth token
+    // Generate auth token with the updated user data
     const authToken = generateToken(user);
 
     // Redirect to chat app with token
