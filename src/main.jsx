@@ -1,30 +1,54 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import { CacheProvider } from '@emotion/react'
-import createCache from '@emotion/cache'
-import { ThemeProvider } from '@emotion/react'
-import { AppProvider } from './contexts/AppContext.jsx'
-import GlobalStyles from './styles/GlobalStyles.jsx'
-import theme from './styles/theme'
-import App from './App.jsx'
-import './index.css'
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
+import { CacheProvider } from '@emotion/react';
+import createCache from '@emotion/cache';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AuthProvider } from './contexts/AuthContext.jsx';
+import App from './App.jsx';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
+import './index.css';
 
-// Create a cache for Emotion
+console.log('main.jsx loaded');
+
+// Create Emotion cache
 const emotionCache = createCache({ 
   key: 'css', 
-  prepend: true,
-  stylisPlugins: []
-})
+  prepend: true 
+});
 
-ReactDOM.createRoot(document.getElementById('root')).render(
+// Configure QueryClient
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 5 * 60 * 1000,
+    },
+  },
+});
+
+// Root component with all providers
+const Root = () => (
   <React.StrictMode>
-    <CacheProvider value={emotionCache}>
-      <ThemeProvider theme={theme}>
-        <GlobalStyles />
-        <AppProvider>
-          <App />
-        </AppProvider>
-      </ThemeProvider>
-    </CacheProvider>
-  </React.StrictMode>,
-)
+    <ErrorBoundary>
+      <BrowserRouter>
+        <CacheProvider value={emotionCache}>
+          <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+              <App />
+            </AuthProvider>
+          </QueryClientProvider>
+        </CacheProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
+  </React.StrictMode>
+);
+
+// Get the root element
+const container = document.getElementById('root');
+if (!container) throw new Error('Root element not found');
+
+// Create a root and render the app
+const root = createRoot(container);
+root.render(<Root />);

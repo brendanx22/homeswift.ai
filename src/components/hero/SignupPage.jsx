@@ -1,8 +1,7 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
-import { AppContext } from '../../contexts/AppContext';
-// import { supabase } from '../../lib/supabase'; // Removed - using custom auth
+import { Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -17,16 +16,20 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [emailStatus, setEmailStatus] = useState(''); // '', 'checking', 'available', 'taken'
   const navigate = useNavigate();
-  const { register, isAuthenticated, isLoading } = useContext(AppContext);
+  const { signUp, isAuthenticated, loading: authLoading, checkEmailExists } = useAuth();
+  const emailCheckTimeoutRef = useRef(null);
 
-  // Redirect if already authenticated
+  // Log auth state for debugging
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
-      console.log('User already authenticated, redirecting to main');
-      navigate('/main', { replace: true });
+    console.log('Auth state changed:', { isAuthenticated, authLoading });
+    
+    if (!authLoading && isAuthenticated) {
+      console.log('User already authenticated, redirecting to app');
+      navigate('/app', { replace: true });
     }
-  }, [isAuthenticated, isLoading, navigate]);
+  }, [isAuthenticated, authLoading, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -39,13 +42,21 @@ export default function SignupPage() {
         return;
       }
 
+      // Check if user is already authenticated
+      if (isAuthenticated) {
+        setError('You are already logged in. Redirecting to dashboard...');
+        setTimeout(() => {
+          navigate('/app');
+        }, 1500);
+        return;
+      }
+
       console.log('Registration attempt with:', { 
         email: formData.email, 
-        name: `${formData.firstName} ${formData.lastName}`,
-        password: '***'
+        name: `${formData.firstName} ${formData.lastName}`
       });
 
-      // Use the register function from AppContext
+      // Use the signUp function from AuthContext
       const userData = {
         firstName: formData.firstName,
         lastName: formData.lastName,
@@ -54,16 +65,33 @@ export default function SignupPage() {
       };
       
       // Register the user
-      await register(userData);
-
-      // Redirect to verification page
-      navigate('/verify-email', { 
-        state: { 
-          email: formData.email,
-          message: `We've sent a verification link to ${formData.email}. Please check your email to verify your account.`,
-          status: 'pending'
-        } 
+      const user = await signUp({
+        ...userData,
+        email: formData.email,
+        password: formData.password
       });
+
+      console.log('User registered successfully:', user);
+      
+      // Check if user is already verified (for development/testing)
+      if (user?.email_confirmed_at) {
+        setSuccess(`Registration successful! Your email is already verified. Redirecting to dashboard...`);
+        setTimeout(() => {
+          navigate('/app');
+        }, 1500);
+      } else {
+        // Show success message
+        setSuccess(`Registration successful! Please check your email (${formData.email}) to verify your account.`);
+        
+        // Redirect to email verification page immediately
+        navigate('/verify-email', { 
+          state: { 
+            email: formData.email,
+            message: 'Registration successful! Please check your email to verify your account.',
+            status: 'pending'
+          } 
+        });
+      }
     } catch (err) {
       console.error('Registration error:', err);
       setError(err.message || 'An unexpected error occurred. Please try again.');
@@ -76,11 +104,42 @@ export default function SignupPage() {
     setError('Google Sign-Up is temporarily disabled. Please use email registration.');
   };
 
+  const checkEmailAvailability = async (email) => {
+    if (!email || !email.includes('@')) return;
+    
+    setEmailStatus('checking');
+    try {
+      const result = await checkEmailExists(email);
+      setEmailStatus(result.exists ? 'taken' : 'available');
+    } catch (error) {
+      console.error('Email check error:', error);
+      setEmailStatus('');
+    }
+  };
+
   const handleInputChange = (e) => {
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [name]: value
     });
+
+    // Check email availability when email field changes
+    if (name === 'email') {
+      // Clear existing timeout
+      if (emailCheckTimeoutRef.current) {
+        clearTimeout(emailCheckTimeoutRef.current);
+      }
+
+      if (value && value.includes('@')) {
+        // Debounce the email check
+        emailCheckTimeoutRef.current = setTimeout(() => {
+          checkEmailAvailability(value);
+        }, 500);
+      } else {
+        setEmailStatus('');
+      }
+    }
   };
 
   const handleBackToHome = () => {
@@ -89,7 +148,7 @@ export default function SignupPage() {
 
   return (
     <div 
-      className="min-h-screen flex items-center justify-center px-6 bg-cover bg-center bg-no-repeat relative"
+      className="min-h-screen flex justify-center items-start pt-24 sm:pt-32 md:pt-40 pb-24 sm:pb-32 md:pb-40 px-6 bg-cover bg-center bg-no-repeat relative"
       style={{ 
         backgroundImage: 'url("/Hero Section Image.png")',
         backgroundSize: 'cover',
@@ -103,18 +162,18 @@ export default function SignupPage() {
       {/* Back Button - Top Left Corner */}
       <button
         onClick={handleBackToHome}
-        className="absolute top-6 left-6 z-20 flex items-center space-x-3 bg-black/20 backdrop-blur-sm border border-gray-400/30 rounded-full px-4 py-2 text-gray-300 hover:text-white hover:bg-black/40 hover:border-gray-300/50 transition-all duration-300 group"
+        className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20 flex items-center space-x-2 bg-black/20 backdrop-blur-sm border border-gray-400/30 rounded-full px-3 py-2 sm:px-3 sm:py-2 text-gray-300 hover:text-white hover:bg-black/40 hover:border-gray-300/50 transition-all duration-300 min-w-[44px] min-h-[44px] sm:min-w-auto sm:min-h-auto"
       >
-        <ArrowLeft size={18} className="group-hover:-translate-x-1 transition-transform duration-300" />
-        <span className="font-medium text-sm">Back to Home</span>
+        <span className="text-lg font-bold">&lt;</span>
+        <img src="/images/logo.png" alt="HomeSwift Logo" className="w-4 h-4 rounded" />
       </button>
 
 
       
-      <div className="w-full max-w-md relative z-10">
+      <div className="w-full max-w-sm relative z-10">
 
         {/* Signup Form */}
-        <div className="bg-transparent border border-gray-400/50 rounded-[2rem] p-6">
+        <div className="bg-transparent border border-gray-400/50 rounded-[2rem] px-8 py-12 min-h-[560px] md:min-h-[640px]">
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold text-white mb-1">Create Account</h1>
             <p className="text-gray-300 text-sm">Join HomeSwift and find your dream home</p>
@@ -148,6 +207,7 @@ export default function SignupPage() {
                     onChange={handleInputChange}
                     className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-4 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                     placeholder="First name"
+                    autoComplete="given-name"
                     required
                   />
                 </div>
@@ -165,6 +225,7 @@ export default function SignupPage() {
                     onChange={handleInputChange}
                     className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-4 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                     placeholder="Last name"
+                    autoComplete="family-name"
                     required
                   />
                 </div>
@@ -183,11 +244,45 @@ export default function SignupPage() {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-4 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
+                  className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-12 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                   placeholder="Enter your email"
+                  autoComplete="email"
+                  inputMode="email"
+                  autoCapitalize="none"
+                  autoCorrect="off"
                   required
                 />
+                {/* Email status indicator */}
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center">
+                  {emailStatus === 'checking' && (
+                    <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                  )}
+                  {emailStatus === 'available' && (
+                    <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  )}
+                  {emailStatus === 'taken' && (
+                    <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
               </div>
+              {/* Email status message */}
+              {emailStatus === 'available' && (
+                <p className="mt-1 text-sm text-green-400">✓ Email is available</p>
+              )}
+              {emailStatus === 'taken' && (
+                <p className="mt-1 text-sm text-red-400">✗ This email is already registered</p>
+              )}
+              {emailStatus === 'checking' && (
+                <p className="mt-1 text-sm text-gray-400">Checking email availability...</p>
+              )}
             </div>
 
             {/* Password */}
@@ -204,6 +299,7 @@ export default function SignupPage() {
                   onChange={handleInputChange}
                   className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-12 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                   placeholder="Create a password"
+                  autoComplete="new-password"
                   required
                 />
                 <button
@@ -230,6 +326,7 @@ export default function SignupPage() {
                   onChange={handleInputChange}
                   className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-12 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                   placeholder="Confirm your password"
+                  autoComplete="new-password"
                   required
                 />
                 <button

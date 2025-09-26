@@ -16,7 +16,11 @@ export default function HeroSection() {
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    navigate('/login');
+    if (searchText.trim()) {
+      navigate(`/properties?search=${encodeURIComponent(searchText)}`);
+    } else {
+      navigate('/properties');
+    }
   };
 
 
@@ -55,7 +59,7 @@ export default function HeroSection() {
       >
         {/* Logo */}
         <div className="flex items-center space-x-3">
-          <img src="/Group 129.png" alt="HomeSwift Logo" className="w-6 h-6 rounded-lg object-cover" />
+          <img src="/images/logo.png" alt="HomeSwift Logo" className="w-6 h-6 rounded-lg object-cover" />
           <span className="text-white text-2xl tracking-tight">Home<span className="italic">Swift</span></span>
         </div>
 
@@ -224,24 +228,12 @@ export default function HeroSection() {
                  className="w-full bg-transparent border border-[#262626] rounded-full px-6 py-6 text-white text-md placeholder-[#404040] focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                />
                              <motion.button
-                 type="submit"
-                 onClick={() => navigate('/login')}
-                 className="absolute right-4 top-1/2 transform -translate-y-1/2 text-black bg-white  px-3 py-3 rounded-full"
-                 whileHover={{ 
-                   scale: 1.1, 
-                   rotate: 45,
-                   boxShadow: "0 8px 25px rgba(255, 255, 255, 0.3)"
-                 }}
-                 whileTap={{ scale: 0.9 }}
-                 transition={{ type: "spring", stiffness: 400, damping: 17 }}
-               >
-                 <motion.div
-                   animate={{ y: [-2, 2, -2] }}
-                   transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                 >
-                   <ArrowUp size={20}/>
-                 </motion.div>
-               </motion.button>
+                type="submit"
+                onClick={() => navigate('/login')}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-black bg-white px-3 py-3 rounded-full"
+              >
+                <ArrowUp size={20}/>
+              </motion.button>
             </div>
           </form>
         </motion.div>

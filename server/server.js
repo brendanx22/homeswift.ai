@@ -7,6 +7,15 @@ import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import supabase, { testConnection, dbUtils } from './config/supabase-db.js';
+
+// Import routes
+import authRoutes from './routes/auth.js';
+// import propertiesRoutes from './routes/properties.js';
+// import propertyRoutes from './routes/propertyRoutes.js';
+// import searchRoutes from './routes/search.js';
+// import usersRoutes from './routes/users.js';
+// import testRoutes from './routes/test.js';
 
 // ES Modules fix for __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -14,6 +23,7 @@ const __dirname = path.dirname(__filename);
 
 // Initialize express app
 const app = express();
+const PORT = process.env.PORT || 5001;
 
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '.env') });
@@ -25,103 +35,71 @@ if (process.env.NODE_ENV === 'production') {
 
 const isProduction = process.env.NODE_ENV === 'production';
 
-// ------------------ CORS ------------------
+// ------------------ Middleware ------------------
+app.use(helmet({ crossOriginEmbedderPolicy: false }));
+app.use(cookieParser());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// CORS Configuration
 const corsOptions = {
   origin: function (origin, callback) {
-    if (!origin) {
-      console.log('CORS: No origin (non-browser request)');
+    // Allow all origins in development
+    if (!isProduction) {
       return callback(null, true);
     }
-
-    const allowedOrigins = isProduction
-      ? [
-          'https://homeswift.ai',
-          'https://www.homeswift.ai',
-          'https://homeswift-ai.vercel.app',
-          'https://homeswift-ai-brendanx22s-projects.vercel.app',
-          /^https?:\/\/homeswift-.*\.vercel\.app$/
-        ]
-      : [
-          /^https?:\/\/localhost(:\d+)?$/,
-          'http://localhost:3000',
-          'http://localhost:3001',
-          /^https?:\/\/homeswift-.*\.vercel\.app$/
-        ];
-
-    console.log(`CORS: Checking origin ${origin}`);
-
-    const isAllowed = allowedOrigins.some((allowedOrigin) => {
-      if (typeof allowedOrigin === 'string') return origin === allowedOrigin;
-      if (allowedOrigin instanceof RegExp) return allowedOrigin.test(origin);
-      return false;
-    });
-
-    if (isAllowed) {
-      console.log(`CORS: Allowed ${origin}`);
-      return callback(null, true);
+    
+    // Production whitelist
+    const allowedOrigins = [
+      'https://homeswift.co',
+      'https://www.homeswift.co',
+      'https://chat.homeswift.co',
+      'https://homeswift-ai.vercel.app',
+      'https://homeswift-ai-backend.vercel.app',
+      /^https?:\/\/homeswift-.*\.vercel\.app$/,
+      /^https?:\/\/homeswift-ai-[a-z0-9]+\-brendanx22s-projects\.vercel\.app$/
+    ];
+    
+    if (!origin || allowedOrigins.includes(origin) || 
+        allowedOrigins.some(o => o instanceof RegExp && o.test(origin))) {
+      callback(null, true);
+    } else {
+      console.warn(`Blocked request from origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
     }
-
-    const msg = `CORS policy: ${origin} not allowed`;
-    console.warn(msg);
-    return callback(new Error(msg), false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
   allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'X-Requested-With',
-    'Accept',
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With', 
+    'Accept', 
     'Origin',
-    'X-Access-Token',
-    'X-Refresh-Token',
-    'X-XSRF-TOKEN'
+    'X-CSRF-Token',
+    'X-Requested-With',
+    'X-Session-Id'
   ],
   exposedHeaders: [
-    'Content-Range',
-    'X-Total-Count',
-    'X-Access-Token',
+    'Content-Range', 
+    'X-Total-Count', 
+    'X-Access-Token', 
     'X-Refresh-Token',
-    'Set-Cookie'
+    'Set-Cookie',
+    'X-CSRF-Token'
   ],
   maxAge: 86400,
-  optionsSuccessStatus: 204
 };
 
+// Apply CORS with preflight options
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
-// Always send credentials header
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Credentials', 'true');
-  next();
-});
+// Trust first proxy (important for secure cookies)
+app.set('trust proxy', 1);
 
-// ------------------ Models ------------------
-import models from './models/index.js';
-import { createClient } from './middleware/supabaseAuth.js';
-import authRoutes from './routes/auth.js';
-import userRoutes from './routes/users.js';
-import searchRoutes from './routes/search.js';
-import testRoutes from './routes/test.js';
-import { propertyRouter } from './routes/propertyRoutes.js';
-import Database from './config/database.js';
-
-const PORT = process.env.PORT || 5000;
-const db = new Database();
-
-// Initialize DB
-console.log('Initializing database connection...');
-try {
-  await models.initialize();
-  console.log('✅ Database connected');
-} catch (err) {
-  console.error('❌ Database connection failed:', err);
-  process.exit(1);
-}
-
-// ------------------ Middleware ------------------
-app.use(helmet({ crossOriginEmbedderPolicy: false }));
+// Cookie parser middleware
+app.use(cookieParser(process.env.SESSION_SECRET));
 
 // Rate limiting
 const limiter = rateLimit({
@@ -131,91 +109,248 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-app.get('/', (req, res) => {
-  res.send('HomeSwift API is running 🚀');
-});
-app.get('/favicon.ico', (req, res) => res.status(204).end());
-
-app.use(cookieParser());
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Initialize Supabase client
-app.use((req, res, next) => {
-  req.supabase = createClient(req, res);
-  next();
-});
-
+// Logging
 if (!isProduction) {
   app.use(morgan('dev'));
 }
 
-// ================== PUBLIC ROUTES ==================
-// Health check
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    database: 'n/a' // Supabase handles the database connection
-  });
-});
-
-// Public API routes
+// Register API routes
 app.use('/api/auth', authRoutes);
+// app.use('/api', propertiesRoutes);
+// app.use('/api', propertyRoutes);
+// app.use('/api', searchRoutes);
+// app.use('/api', usersRoutes);
+// app.use('/api', testRoutes);
 
-// Public property routes (read-only)
-app.get('/api/properties', propertyRouter);
-app.get('/api/properties/featured', propertyRouter);
-app.get('/api/properties/:id', propertyRouter);
+// Resend verification email endpoint
+app.post('/api/auth/resend-verification', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        error: 'Email is required'
+      });
+    }
 
-// ================== PROTECTED ROUTES ==================
-import { requireAuth } from './middleware/supabaseAuth.js';
+    // Use Supabase to resend verification
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email,
+      options: {
+        emailRedirectTo: `${req.headers.origin || 'https://homeswift.co'}/verify-email`
+      }
+    });
 
-// Apply auth middleware to all routes below this point
-app.use((req, res, next) => {
-  console.log(`Auth check for protected route: ${req.method} ${req.path}`);
-  next();
+    if (error) {
+      throw error;
+    }
+
+    res.json({
+      success: true,
+      message: 'Verification email sent successfully'
+    });
+  } catch (error) {
+    console.error('Resend verification error:', error);
+    res.status(500).json({
+      success: false,
+      error: isProduction ? 'Failed to send verification email' : error.message
+    });
+  }
 });
 
-// Protected API routes
-app.use('/api/users', requireAuth, userRoutes);
-app.use('/api/search', requireAuth, searchRoutes);
-app.use('/api/test', requireAuth, testRoutes);
-
-// Protected property routes (write operations)
-app.post('/api/properties', requireAuth, propertyRouter);
-app.put('/api/properties/:id', requireAuth, propertyRouter);
-app.delete('/api/properties/:id', requireAuth, propertyRouter);
-
-// ------------------ Error Handling ------------------
-app.use('*', (req, res) => {
-  res.status(404).json({ success: false, error: 'Route not found' });
-});
-
-app.use((err, req, res, next) => {
-  console.error('Global error handler:', err.stack || err);
-  res.status(err.status || 500).json({
-    success: false,
-    error: isProduction ? 'Something went wrong!' : err.message
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    message: 'HomeSwift API Server',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: {
+      health: '/health',
+      auth: '/api/auth',
+      'resend-verification': '/api/auth/resend-verification',
+      properties: '/api/properties',
+      search: '/api/properties/search'
+    },
+    timestamp: new Date().toISOString()
   });
 });
 
-// Handle graceful shutdown
-process.on('SIGTERM', async () => {
-  console.log('\n🛑 Shutting down gracefully...');
-  if (db.sequelize) {
-    await db.sequelize.close();
+// Health check endpoint
+app.get('/health', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .limit(1);
+    
+    if (error) throw error;
+    
+    res.status(200).json({
+      status: 'ok',
+      database: 'connected',
+      users: data ? data.length : 0,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Health check failed:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Database connection failed',
+      error: isProduction ? 'Internal Server Error' : error.message
+    });
   }
-  process.exit(0);
 });
 
-// ------------------ Start Server ------------------
-app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🌐 CORS enabled`);
-  console.log(`🗄️  Database: ${db.sequelize ? 'Connected' : 'Disconnected'}`);
+// Favicon handling - return 204 No Content
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end();
 });
+
+app.get('/favicon.png', (req, res) => {
+  res.status(204).end();
+});
+
+// API Routes
+app.get('/api/properties', async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const filters = {
+      listing_type: req.query.listing_type,
+      property_type: req.query.property_type,
+      min_price: req.query.min_price,
+      max_price: req.query.max_price,
+      bedrooms: req.query.bedrooms,
+      bathrooms: req.query.bathrooms,
+      city: req.query.city,
+      state: req.query.state
+    };
+
+    const result = await dbUtils.getProperties(page, limit, filters);
+    
+    res.json({
+      success: true,
+      data: result.properties,
+      pagination: {
+        currentPage: result.currentPage,
+        totalPages: result.totalPages,
+        totalCount: result.totalCount,
+        limit: limit
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching properties:', error);
+    res.status(500).json({
+      success: false,
+      error: isProduction ? 'Internal Server Error' : error.message
+    });
+  }
+});
+
+// Get property by ID
+app.get('/api/properties/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const property = await dbUtils.getPropertyById(id);
+    
+    res.json({
+      success: true,
+      data: property
+    });
+  } catch (error) {
+    console.error('Error fetching property:', error);
+    res.status(500).json({
+      success: false,
+      error: isProduction ? 'Internal Server Error' : error.message
+    });
+  }
+});
+
+// Search properties
+app.get('/api/properties/search', async (req, res) => {
+  try {
+    const { q, ...filters } = req.query;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+
+    if (!q) {
+      return res.status(400).json({
+        success: false,
+        error: 'Search query is required'
+      });
+    }
+
+    const properties = await dbUtils.searchProperties(q, filters, page, limit);
+    
+    res.json({
+      success: true,
+      data: properties,
+      query: q
+    });
+  } catch (error) {
+    console.error('Error searching properties:', error);
+    res.status(500).json({
+      success: false,
+      error: isProduction ? 'Internal Server Error' : error.message
+    });
+  }
+});
+
+// Error handling
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({
+    error: isProduction ? 'Internal Server Error' : err.message,
+    ...(!isProduction && { stack: err.stack })
+  });
+});
+
+// 404 handler for API routes
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ 
+    error: 'API endpoint not found',
+    path: req.path,
+    method: req.method,
+    availableEndpoints: [
+      'GET /',
+      'GET /health',
+      'GET /api/properties',
+      'GET /api/properties/:id',
+      'GET /api/properties/search',
+      'POST /api/auth/*',
+      'POST /api/auth/resend-verification'
+    ]
+  });
+});
+
+// 404 handler for non-API routes
+app.use((req, res) => {
+  res.status(404).json({ 
+    error: 'Not Found',
+    message: 'This is an API server. Please use the frontend application.',
+    frontend: 'https://homeswift.co'
+  });
+});
+
+// Start server
+async function startServer() {
+  try {
+    // Test database connection
+    await testConnection();
+    
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+    });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+startServer();
 
 export default app;

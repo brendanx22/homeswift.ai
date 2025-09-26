@@ -1,247 +1,502 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import authService from '../services/authService';
 import { supabase } from '../lib/supabase';
+import { useNavigate } from 'react-router-dom';
 
-const AuthContext = createContext();
+// Create auth context
+const AuthContext = createContext(undefined);
 
-export function AuthProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(null);
+// Auth Provider Component
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
-  const location = useLocation();
+
+  // Check active session and set the user
+  const checkSession = useCallback(async () => {
+    console.log('[AuthProvider] checkSession: start');
+    try {
+      setLoading(true);
+      
+      // First check if there's a session in localStorage
+      const storedSession = localStorage.getItem('homeswift-auth-token');
+      if (storedSession) {
+        try {
+          const parsedSession = JSON.parse(storedSession);
+          if (parsedSession.currentSession) {
+            setSession(parsedSession.currentSession);
+            setUser(parsedSession.currentSession?.user ?? null);
+            return parsedSession.currentSession;
+          }
+        } catch (e) {
+          console.log('No valid stored session found');
+        }
+      }
+      
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
+      
+      if (currentSession?.user) {
+        // Fetch additional user data if needed
+        let { data: userData, error: profileError } = await supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('id', currentSession.user.id)
+          .single();
+          
+        // If no profile exists, try to create one using the secure function
+        if (!userData && !profileError) {
+          console.log('No user profile found, creating one...');
+          
+          // Try to create profile using RPC function
+          const { data: newProfile, error: rpcError } = await supabase
+            .rpc('create_user_profile', {
+              user_id: currentSession.user.id,
+              user_email: currentSession.user.email,
+              first_name: currentSession.user.user_metadata?.first_name || '',
+              last_name: currentSession.user.user_metadata?.last_name || ''
+            });
+            
+          if (rpcError) {
+            console.warn('RPC profile creation failed, trying direct insert:', rpcError);
+            
+            // Fallback: try direct insert
+            const { data: directProfile, error: directError } = await supabase
+              .from('user_profiles')
+              .insert({
+                id: currentSession.user.id,
+                email: currentSession.user.email,
+                first_name: currentSession.user.user_metadata?.first_name || '',
+                last_name: currentSession.user.user_metadata?.last_name || ''
+              })
+              .select()
+              .single();
+              
+            if (directError) {
+              console.warn('Direct profile creation also failed:', directError);
+              // Continue without profile data - user can still use the app
+            } else {
+              userData = directProfile;
+            }
+          } else {
+            userData = newProfile;
+          }
+        }
+          
+        setUser({
+          ...currentSession.user,
+          ...userData
+        });
+      }
+      
+      console.log('[AuthProvider] checkSession: done, user=', Boolean(currentSession?.user));
+      return currentSession;
+    } catch (error) {
+      console.error('Error checking session:', error);
+      setError(error.message);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   // Handle auth state changes
-  const handleAuthChange = useCallback(async (event, session) => {
-    try {
-      if (session?.user) {
-        const user = await authService.getCurrentUser();
-        setCurrentUser(user);
-      } else {
-        setCurrentUser(null);
-      }
-    } catch (error) {
-      console.error('Auth state change error:', error);
-      setError(error.message);
-    } finally {
-      if (loading) setLoading(false);
-    }
-  }, [loading]);
-
-  // Set up auth state listener
   useEffect(() => {
-    // Check initial auth state
-    const checkAuth = async () => {
-      try {
-        const user = await authService.getCurrentUser();
-        if (user) {
-          setCurrentUser(user);
+    // Check session on mount
+    checkSession();
+    
+    // Listen for storage changes (cross-domain session sync)
+    const handleStorageChange = (e) => {
+      if (e.key === 'homeswift-auth-token') {
+        if (e.newValue) {
+          try {
+            const parsedSession = JSON.parse(e.newValue);
+            if (parsedSession.currentSession) {
+              setSession(parsedSession.currentSession);
+              setUser(parsedSession.currentSession?.user ?? null);
+            }
+          } catch (error) {
+            console.log('Error parsing stored session:', error);
+          }
+        } else {
+          setSession(null);
+          setUser(null);
         }
-      } catch (error) {
-        console.error('Auth check failed:', error);
-        setError(error.message);
-      } finally {
-        setLoading(false);
       }
     };
-
-    checkAuth();
-
-    // Set up auth state change listener
-    const { data: { subscription } = supabase.auth.onAuthStateChange(handleAuthChange);
-
-    // Clean up subscription on unmount
-    return () => {
-      if (subscription?.unsubscribe) {
-        subscription.unsubscribe();
-      }
-    };
-  }, [handleAuthChange]);
-
-  // Handle OAuth callback
-  useEffect(() => {
-    const handleOAuthCallback = async () => {
-      try {
-        const { data, error } = await supabase.auth.getSession();
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, currentSession) => {
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
         
-        if (error) throw error;
-        
-        if (data?.session) {
-          const user = await authService.getCurrentUser();
-          setCurrentUser(user);
+        if (currentSession?.user) {
+          // Fetch additional user data if needed
+          let { data: userData, error: profileError } = await supabase
+            .from('user_profiles')
+            .select('*')
+            .eq('id', currentSession.user.id)
+            .single();
+            
+          // If no profile exists, try to create one using the secure function
+          if (!userData && !profileError) {
+            console.log('No user profile found, creating one...');
+            
+            // Try to create profile using RPC function
+            const { data: newProfile, error: rpcError } = await supabase
+              .rpc('create_user_profile', {
+                user_id: currentSession.user.id,
+                user_email: currentSession.user.email,
+                first_name: currentSession.user.user_metadata?.first_name || '',
+                last_name: currentSession.user.user_metadata?.last_name || ''
+              });
+              
+            if (rpcError) {
+              console.warn('RPC profile creation failed, trying direct insert:', rpcError);
+              
+              // Fallback: try direct insert
+              const { data: directProfile, error: directError } = await supabase
+                .from('user_profiles')
+                .insert({
+                  id: currentSession.user.id,
+                  email: currentSession.user.email,
+                  first_name: currentSession.user.user_metadata?.first_name || '',
+                  last_name: currentSession.user.user_metadata?.last_name || ''
+                })
+                .select()
+                .single();
+                
+              if (directError) {
+                console.warn('Direct profile creation also failed:', directError);
+                // Continue without profile data - user can still use the app
+              } else {
+                userData = directProfile;
+              }
+            } else {
+              userData = newProfile;
+            }
+          }
+            
+          setUser({
+            ...currentSession.user,
+            ...userData
+          });
           
-          // Redirect to intended URL or home
-          const from = location.state?.from?.pathname || '/';
-          navigate(from, { replace: true });
+          // Only redirect if we're on an auth page and the user is now authenticated
+          const authPages = ['/login', '/signup', '/verify-email'];
+          if (authPages.includes(window.location.pathname)) {
+            // Get redirect URL from query params or default to /app
+            const urlParams = new URLSearchParams(window.location.search);
+            const redirectTo = urlParams.get('redirect') || '/app';
+            
+            // Ensure we don't redirect back to an auth page
+            if (!authPages.some(page => redirectTo.includes(page))) {
+              navigate(redirectTo);
+            } else {
+              navigate('/app');
+            }
+          }
+        } else {
+          // Don't redirect if on root or public pages
+          const publicPaths = ['/', '/login', '/signup', '/verify-email', '/reset-password'];
+          const isPublicPath = publicPaths.some(path => 
+            window.location.pathname.startsWith(path)
+          );
+          
+          if (!isPublicPath) {
+            // If on chat subdomain and not authenticated, redirect to main domain login
+            if (window.location.hostname.startsWith('chat.')) {
+              window.location.href = 'https://homeswift.co/login?redirect=' + encodeURIComponent(window.location.href);
+            } else {
+              // Only redirect to login if we're not already there
+              if (window.location.pathname !== '/login') {
+                navigate(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+              }
+            }
+          }
         }
-      } catch (error) {
-        console.error('OAuth callback error:', error);
-        setError(error.message);
-        navigate('/login', { state: { error: error.message } });
       }
+    );
+    
+    return () => {
+      subscription?.unsubscribe();
+      window.removeEventListener('storage', handleStorageChange);
     };
+  }, [checkSession, navigate]);
 
-    // Check if this is an OAuth callback
-    if (window.location.pathname === '/auth/callback') {
-      handleOAuthCallback();
-    }
-  }, [navigate, location]);
-
-  // Login function
-  const login = async (credentials) => {
+  // Check if email already exists
+  const checkEmailExists = useCallback(async (email) => {
     try {
-      setLoading(true);
-      setError(null);
-      const user = await authService.login(credentials);
-      setCurrentUser(user);
-      return user;
-    } catch (error) {
-      setError(error.message);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Register function
-  const register = async (userData) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const user = await authService.register(userData);
-      return user;
-    } catch (error) {
-      setError(error.message);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Logout function
-  const logout = async () => {
-    try {
-      setLoading(true);
-      await authService.logout();
-      setCurrentUser(null);
-      // Clear any cached data
-      localStorage.removeItem('supabase.auth.token');
-      return true;
-    } catch (error) {
-      console.error('Logout failed:', error);
-      setError(error.message);
-      return false;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Update user function
-  const updateUser = async (userData) => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase.auth.updateUser({
-        data: {
-          ...currentUser,
-          ...userData
-        }
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/check-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
       });
 
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to check email');
+      }
+
+      return data;
+    } catch (error) {
+      console.error('Check email exists error:', error);
+      throw error;
+    }
+  }, []);
+
+  // Sign up with email and password
+  const signUp = useCallback(async (userData) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Remove the redundant email check - Supabase will handle duplicate email validation
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password,
+        options: {
+          data: {
+            first_name: userData.firstName,
+            last_name: userData.lastName,
+            full_name: `${userData.firstName} ${userData.lastName}`,
+          },
+          emailRedirectTo: window.location.hostname.startsWith('chat.') 
+            ? 'https://chat.homeswift.co/verify-email'
+            : `${window.location.origin}/verify-email`,
+        },
+      });
+      
+      console.log('Signup response:', { data, error: signUpError });
+      
+      if (signUpError) {
+        // Handle specific error cases
+        if (signUpError.message.includes('already registered')) {
+          throw new Error('An account with this email already exists. Please try logging in instead.');
+        }
+        throw signUpError;
+      }
+      
+      console.log('User account created successfully. Please check your email to verify your account.');
+      return data.user;
+    } catch (error) {
+      console.error('Sign up error:', error);
+      setError(error.message);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  
+  // Sign in with email and password
+  const signIn = useCallback(async (email, password) => {
+    try {
+      console.log('[AuthProvider.signIn] start', { email });
+      setLoading(true);
+      setError(null);
+      
+      // Proceed to sign in directly
+      console.log('[AuthProvider.signIn] calling signInWithPassword');
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password: password.trim(),
+      });
+      console.log('[AuthProvider.signIn] signInWithPassword result', { hasError: !!signInError, user: !!data?.user });
+      
+      if (signInError) {
+        // Handle specific error cases
+        if (signInError.message.includes('Invalid login credentials')) {
+          throw new Error('Invalid email or password');
+        }
+        if (signInError.message.includes('Email not confirmed')) {
+          throw new Error('Please verify your email before logging in');
+        }
+        throw signInError;
+      }
+      
+      // Force a session refresh to ensure we have the latest data
+      const { data: { session: freshSession } } = await supabase.auth.getSession();
+      console.log('[AuthProvider.signIn] getSession', { hasSession: !!freshSession });
+      setSession(freshSession);
+      setUser(freshSession?.user ?? null);
+      
+      // Get redirect URL from query params or default to /app
+      const urlParams = new URLSearchParams(window.location.search);
+      const redirectTo = urlParams.get('redirect') || '/app';
+      
+      // Ensure we don't redirect back to an auth page
+      const authPages = ['/login', '/signup', '/verify-email', '/reset-password'];
+      if (!authPages.some(page => redirectTo.includes(page))) {
+        console.log('[AuthProvider.signIn] navigating to', redirectTo);
+        navigate(redirectTo);
+      } else {
+        console.log('[AuthProvider.signIn] navigating to /app');
+        navigate('/app');
+      }
+      
+      console.log('[AuthProvider.signIn] success');
+      return data.user;
+    } catch (error) {
+      console.error('Sign in error:', error);
+      setError(error.message || 'An error occurred during sign in');
+      throw error;
+    } finally {
+      console.log('[AuthProvider.signIn] finish');
+      setLoading(false);
+    }
+  }, []);
+  
+  // Sign out
+  const signOut = useCallback(async () => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      setUser(null);
+      setSession(null);
+      navigate('/login');
+    } catch (error) {
+      console.error('Sign out error:', error);
+      setError(error.message);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, [navigate]);
+  
+  // Reset password
+  const resetPassword = useCallback(async (email) => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.hostname.startsWith('chat.') 
+          ? 'https://chat.homeswift.co/reset-password'
+          : `${window.location.origin}/reset-password`,
+      });
+      
       if (error) throw error;
       
-      const updatedUser = {
-        ...currentUser,
-        ...userData,
-        ...data.user.user_metadata
-      };
+      return true;
+    } catch (error) {
+      console.error('Password reset error:', error);
+      setError(error.message);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Resend email verification
+  const resendVerification = useCallback(async (email) => {
+    try {
+      setLoading(true);
+      setError(null);
       
-      setCurrentUser(updatedUser);
-      return updatedUser;
-    } catch (error) {
-      console.error('Update user failed:', error);
-      setError(error.message);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Reset password
-  const resetPassword = async (email) => {
-    try {
-      setLoading(true);
-      setError(null);
-      await authService.resetPassword(email);
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+        options: {
+          emailRedirectTo: window.location.hostname.startsWith('chat.') 
+            ? 'https://chat.homeswift.co/verify-email'
+            : `${window.location.origin}/verify-email`
+        }
+      });
+      
+      if (error) throw error;
+      
       return true;
     } catch (error) {
-      console.error('Password reset failed:', error);
+      console.error('Resend verification error:', error);
       setError(error.message);
       throw error;
     } finally {
       setLoading(false);
     }
-  };
-
-  // Update password
-  const updatePassword = async (newPassword) => {
+  }, []);
+  
+  // Update user profile
+  const updateProfile = useCallback(async (updates) => {
     try {
       setLoading(true);
       setError(null);
-      await authService.updatePassword(newPassword);
-      return true;
+      
+      // Update auth user data
+      const { data: authData, error: authError } = await supabase.auth.updateUser({
+        data: {
+          ...updates,
+        },
+      });
+      
+      if (authError) throw authError;
+      
+      // Update user profile in database
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+        
+      if (profileError) throw profileError;
+      
+      // Update local user state
+      setUser(prev => ({
+        ...prev,
+        ...updates,
+      }));
+      
+      return authData.user;
     } catch (error) {
-      console.error('Password update failed:', error);
+      console.error('Update profile error:', error);
       setError(error.message);
       throw error;
     } finally {
       setLoading(false);
     }
-  };
-
-  // Sign in with Google
-  const signInWithGoogle = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      await authService.signInWithGoogle();
-    } catch (error) {
-      console.error('Google sign in failed:', error);
-      setError(error.message);
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  }, [user?.id]);
+  
+  // Value to be provided by the context
   const value = {
-    currentUser,
-    isAuthenticated: !!currentUser,
+    user,
+    session,
     loading,
     error,
-    login,
-    register,
-    logout,
-    updateUser,
+    isAuthenticated: !!user,
+    signUp,
+    signIn,
+    signOut,
     resetPassword,
-    updatePassword,
-    signInWithGoogle,
-    setError
+    resendVerification,
+    checkEmailExists,
+    updateProfile,
+    checkSession,
   };
-
+  
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
-}
+};
 
-export function useAuth() {
+// Custom hook to use the auth context
+export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}
+};
 
-export default AuthContext;
+// Export the context for direct use
+export { AuthContext };

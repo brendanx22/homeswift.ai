@@ -2,7 +2,6 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { body } from 'express-validator';
 import * as authController from '../controllers/supabaseAuthController.js';
-import { requireAuth } from '../middleware/supabaseAuth.js';
 
 const router = express.Router();
 
@@ -12,6 +11,14 @@ const authLimiter = rateLimit({
   max: 5, // limit each IP to 5 requests per windowMs
   message: { error: 'Too many authentication attempts, please try again later.' }
 });
+
+// Check if email already exists
+router.post('/check-email', 
+  [
+    body('email').isEmail().normalizeEmail().withMessage('Please enter a valid email address')
+  ],
+  authController.checkEmailExists
+);
 
 // Register
 router.post('/register', 
@@ -29,7 +36,7 @@ router.post('/register',
   authController.register
 );
 
-// Login
+// POST /api/auth/login - User login
 router.post('/login', 
   authLimiter,
   [
@@ -42,37 +49,13 @@ router.post('/login',
 // Logout
 router.post('/logout', authController.logout);
 
-// Get current user
-router.get('/me', requireAuth, authController.getCurrentUser);
+// Get current user - requires authentication
+router.get('/me', authController.getCurrentUser);
 
-// Email verification
-router.get('/verify', (req, res) => {
-  // This is handled client-side with Supabase
-  res.redirect(`${process.env.FRONTEND_URL}/auth/verify`);
-});
+// Email verification endpoint
+router.get('/verify-email', authController.verifyEmail);
 
 // Resend verification email
-router.post('/resend-verification', requireAuth, async (req, res) => {
-  try {
-    const { data, error } = await supabase.auth.resend({
-      type: 'signup',
-      email: req.user.email
-    });
-
-    if (error) throw error;
-
-    res.json({
-      success: true,
-      message: 'Verification email resent successfully'
-    });
-  } catch (error) {
-    console.error('Resend verification error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to resend verification email',
-      error: error.message
-    });
-  }
-});
+router.post('/resend-verification', authController.resendVerification);
 
 export default router;

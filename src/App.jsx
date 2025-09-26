@@ -1,82 +1,100 @@
-import React, { Suspense } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AppProvider, useAppContext } from './contexts/AppContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { CircularProgress, Box } from '@mui/material';
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "sonner";
 
-// Lazy load components for better performance
-const HeroSection = React.lazy(() => import('./components/hero/HeroSection'));
-const LoginPage = React.lazy(() => import('./components/hero/LoginPage'));
-const SignupPage = React.lazy(() => import('./components/hero/SignupPage'));
-const EmailVerification = React.lazy(() => import('./components/hero/EmailVerification'));
-const MainLanding = React.lazy(() => import('./components/main/MainLanding'));
-const PropertyDetails = React.lazy(() => import('./components/main/PropertyDetails'));
-const Listings = React.lazy(() => import('./components/main/Listings'));
-const AuthCallback = React.lazy(() => import('./pages/AuthCallback'));
+// Pages
+import Index from './pages/Index';
+import LoginPage from './components/hero/LoginPage';
+import SignupPage from './components/hero/SignupPage';
+import EmailVerification from './components/hero/EmailVerification';
+import MainLanding from './components/main/MainLanding';
+import HouseListings from './pages/HouseListings';
+import PropertyDetails from './pages/PropertyDetails';
+import Gallery from './pages/Gallery';
+import InquiryForm from './pages/InquiryForm';
+import NotFound from './pages/NotFound';
+import SessionChecker from './components/auth/SessionChecker';
+
+// Styles
+import './index.css';
+
+// QueryClient is defined in main.jsx
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
-  const { isLoading } = useAppContext();
+  const location = useLocation();
 
-  if (loading || isLoading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  if (typeof window !== 'undefined') {
+    console.log('[ProtectedRoute] path=', location.pathname, 'authLoading=', loading, 'isAuthenticated=', isAuthenticated);
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: window.location.pathname }} replace />;
+    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 
   return children;
 };
 
 // Animation variants for page transitions
-const pageVariants = {
-  initial: {
-    opacity: 0,
-    y: 20,
-  },
-  animate: {
-    opacity: 1,
+const variants = {
+  hidden: { opacity: 0, y: 20 },
+  enter: { 
+    opacity: 1, 
     y: 0,
     transition: {
-      duration: 0.4,
-      ease: [0.2, 0, 0, 1],
-    },
+      duration: 0.3,
+      ease: [0.4, 0, 0.2, 1]
+    }
   },
-  exit: {
-    opacity: 0,
+  exit: { 
+    opacity: 0, 
     y: -20,
     transition: {
-      duration: 0.3,
-      ease: [0.4, 0, 0.2, 1],
-    },
-  },
+      duration: 0.2,
+      ease: [0.4, 0, 0.2, 1]
+    }
+  }
 };
 
 // Wrapper component for animated pages
 const AnimatedPage = ({ children }) => (
   <motion.div
-    initial="initial"
-    animate="animate"
+    initial="hidden"
+    animate="enter"
     exit="exit"
-    variants={pageVariants}
+    variants={variants}
     className="min-h-screen w-full"
+    style={{ position: 'relative' }}
   >
     {children}
   </motion.div>
 );
 
-function AppRoutes() {
+const AnimatedRoutes = () => {
   const location = useLocation();
+  useEffect(() => {
+    console.log('[Routes] Navigated to', location.pathname);
+  }, [location.pathname]);
   
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
+        {/* Public Routes */}
         <Route path="/" element={
           <AnimatedPage>
-            <HeroSection />
+            <Index />
           </AnimatedPage>
         } />
         
@@ -96,90 +114,105 @@ function AppRoutes() {
           <AnimatedPage>
             <EmailVerification />
           </AnimatedPage>
+          
         } />
         
-        {/* OAuth Callback Route */}
-        <Route path="/auth/callback" element={
-          <Suspense fallback={<div>Loading...</div>}>
-            <AuthCallback />
-          </Suspense>
-        } />
-        
-        {/* Password Reset Callback */}
-        <Route path="/reset-password" element={
+        {/* Public Properties Route for Search */}
+        <Route path="/properties" element={
           <AnimatedPage>
-            <ResetPasswordPage />
+            <HouseListings />
           </AnimatedPage>
         } />
         
-        {/* Protected Routes */}
-        <Route
-          path="/main"
-          element={
-            <ProtectedRoute>
-              <AnimatedPage>
-                <MainLanding />
-              </AnimatedPage>
-            </ProtectedRoute>
-          }
-        />
+        {/* Property Details Route */}
+        <Route path="/properties/:id" element={
+          <AnimatedPage>
+            <PropertyDetails />
+          </AnimatedPage>
+        } />
         
-        <Route
-          path="/listings"
-          element={
-            <ProtectedRoute>
-              <AnimatedPage>
-                <Listings />
-              </AnimatedPage>
-            </ProtectedRoute>
-          }
-        />
+        {/* Main App Routes - Protected */}
+        <Route path="/main" element={
+          <ProtectedRoute>
+            <AnimatedPage>
+              <MainLanding />
+            </AnimatedPage>
+          </ProtectedRoute>
+        } />
         
-        <Route
-          path="/property/:id"
-          element={
-            <ProtectedRoute>
-              <AnimatedPage>
-                <PropertyDetails />
-              </AnimatedPage>
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/listings" element={
+          <AnimatedPage>
+            <HouseListings />
+          </AnimatedPage>
+        } />
         
-        {/* Catch-all route */}
+        <Route path="/property/:id" element={
+          <AnimatedPage>
+            <PropertyDetails />
+          </AnimatedPage>
+        } />
+        
+        <Route path="/gallery" element={
+          <AnimatedPage>
+            <Gallery />
+          </AnimatedPage>
+        } />
+        
+        <Route path="/inquiry" element={
+          <AnimatedPage>
+            <InquiryForm />
+          </AnimatedPage>
+        } />
+        
+        {/* 404 Route */}
         <Route path="*" element={
           <AnimatedPage>
-            <Navigate to="/" replace />
+            <NotFound />
           </AnimatedPage>
         } />
       </Routes>
     </AnimatePresence>
   );
-}
+};
 
-export default function App() {
-  // Loading component for Suspense fallback
-  const LoadingSpinner = () => (
-    <Box sx={{
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      minHeight: '100vh',
-      backgroundColor: 'background.default'
-    }}>
-      <CircularProgress />
-    </Box>
-  );
+const AppRoutes = () => {
+  return <AnimatedRoutes />;
+};
 
+// Check if we're on the chat subdomain
+const isChatSubdomain = window.location.hostname.startsWith('chat.');
+
+const App = () => {
+  useEffect(() => {
+    console.log('[App] Mounted. isChatSubdomain=', isChatSubdomain);
+  }, []);
+  // If on chat subdomain, only show MainLanding with its routes
+  if (isChatSubdomain) {
+    return (
+      <>
+        <Toaster position="top-right" richColors />
+        <SessionChecker>
+          <Routes>
+            <Route path="/*" element={
+              <ProtectedRoute>
+                <MainLanding />
+              </ProtectedRoute>
+            } />
+          </Routes>
+        </SessionChecker>
+      </>
+    );
+  }
+
+  // For main domain, show regular routes
   return (
-    <Router>
-      <Suspense fallback={<LoadingSpinner />}>
-        <AppProvider>
-          <AuthProvider>
-            <AppRoutes />
-          </AuthProvider>
-        </AppProvider>
-      </Suspense>
-    </Router>
+    <>
+      <Toaster position="top-right" richColors />
+      <AppRoutes />
+    </>
   );
 }
+
+
+
+export default App;

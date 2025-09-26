@@ -22,7 +22,7 @@
   ],
   "env": {
     "NODE_ENV": "production",
-    "CORS_ORIGIN": "https://homeswift-ai.vercel.app,https://homeswift-ai-backend.vercel.app"
+    "CORS_ORIGIN": "https://homeswift.co,https://chat.homeswift.co,https://homeswift-ai.vercel.app,https://homeswift-ai-backend.vercel.app"
   },
   "buildCommand": "npm install && npm run db:migrate"
 }

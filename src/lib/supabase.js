@@ -1,92 +1,42 @@
-import { createClient } from '@supabase/supabase-js'
+// src/lib/supabaseClient.js
+import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-
-console.log('Supabase URL:', supabaseUrl)
-console.log('Supabase Anon Key exists:', !!supabaseAnonKey)
-
-// Create a mock client if environment variables are missing
-let supabase;
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Missing Supabase environment variables! Creating mock client.')
-  console.warn('VITE_SUPABASE_URL:', supabaseUrl)
-  console.warn('VITE_SUPABASE_ANON_KEY exists:', !!supabaseAnonKey)
-  console.warn('Please create a .env file with your Supabase credentials.')
-  
-  // Create a mock client that doesn't crash the app
-  supabase = {
-    auth: {
-      signUp: async () => ({ data: null, error: { message: 'Supabase not configured' } }),
-      signInWithPassword: async () => ({ data: null, error: { message: 'Supabase not configured' } }),
-      signOut: async () => ({ error: null }),
-      getUser: async () => ({ data: { user: null }, error: null }),
-      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-      resetPasswordForEmail: async () => ({ data: null, error: { message: 'Supabase not configured' } }),
-      signInWithOAuth: async () => ({ data: null, error: { message: 'Supabase not configured' } })
-    }
-  };
-} else {
-  supabase = createClient(supabaseUrl, supabaseAnonKey)
+  throw new Error(
+    "Missing Supabase environment variables. " +
+      "Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env"
+  );
 }
 
-export { supabase }
-
-// Auth helper functions
-export const authHelpers = {
-  // Sign up with email and password
-  signUp: async (email, password, userData = {}) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: userData
-      }
-    })
-    return { data, error }
-  },
-
-  // Sign in with email and password
-  signIn: async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    })
-    return { data, error }
-  },
-
-  // Sign out
-  signOut: async () => {
-    const { error } = await supabase.auth.signOut()
-    return { error }
-  },
-
-  // Get current user
-  getCurrentUser: () => {
-    return supabase.auth.getUser()
-  },
-
-  // Listen to auth changes
-  onAuthStateChange: (callback) => {
-    return supabase.auth.onAuthStateChange(callback)
-  },
-
-  // Reset password
-  resetPassword: async (email) => {
-    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`
-    })
-    return { data, error }
-  }
-}
-
-// Sign in with Google OAuth
-export const signInWithGoogle = async () => {
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "google"
-  });
-  
-  if (error) throw error;
-  return data;
+// Simple localStorage wrapper (guards for SSR)
+const storage = {
+  getItem: (key) =>
+    typeof window !== "undefined" ? localStorage.getItem(key) : null,
+  setItem: (key, value) =>
+    typeof window !== "undefined" ? localStorage.setItem(key, value) : null,
+  removeItem: (key) =>
+    typeof window !== "undefined" ? localStorage.removeItem(key) : null,
 };
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    flowType: "pkce",
+    storage,
+    storageKey: "homeswift-auth-token",
+    redirectTo: window?.location?.hostname?.startsWith("chat.")
+      ? "https://chat.homeswift.co/auth/callback"
+      : "https://homeswift.co/auth/callback",
+  },
+  // remove the custom fetch override – let Supabase call its own auth endpoints
+  global: {
+    headers: { "x-application-name": "HomeSwift" },
+  },
+});
+
+export default supabase;
