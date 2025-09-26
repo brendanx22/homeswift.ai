@@ -24,7 +24,7 @@ export default function LoginPage() {
     
     // Check for verification success in URL params
     const verified = searchParams.get('verified') === 'true';
-    const redirectPath = searchParams.get('redirect') || '/app';
+    const redirectPath = searchParams.get('redirect');
     
     if (verified) {
       setIsVerified(true);
@@ -35,8 +35,21 @@ export default function LoginPage() {
     
     // If already authenticated, redirect to main or the specified path
     if (isAuthenticated) {
-      console.log('Already authenticated, redirecting to', redirectPath);
-      navigate(redirectPath, { replace: true });
+      console.log('Already authenticated');
+      if (redirectPath) {
+        if (/^https?:\/\//i.test(redirectPath)) {
+          window.location.assign(redirectPath);
+        } else {
+          navigate(redirectPath, { replace: true });
+        }
+      } else {
+        const host = window.location.hostname;
+        if (host.endsWith('homeswift.co') && !host.startsWith('chat.')) {
+          window.location.assign('https://chat.homeswift.co/');
+        } else {
+          navigate('/', { replace: true });
+        }
+      }
     }
   }, [isAuthenticated, authLoading, navigate, searchParams]);
 
@@ -58,22 +71,9 @@ export default function LoginPage() {
     try {
       console.log('Login attempt with:', { email, password: '***' });
       
-      // Use the signIn function from AuthContext
+      // Use the signIn function from AuthContext (it will handle navigation)
       const userData = await signIn(email, password);
-      
       console.log('Login successful:', userData);
-      
-      // Get redirect path from URL or default to '/app'
-      const redirectPath = searchParams.get('redirect') || '/app';
-      console.log('Redirecting to:', redirectPath);
-      
-      // If redirect is to chat subdomain, use window.location.href
-      if (redirectPath.includes('chat.homeswift.co')) {
-        window.location.href = redirectPath;
-      } else {
-        // Redirect to the specified path or main page
-        navigate(redirectPath);
-      }
       
     } catch (err) {
       console.error('Login error:', err);

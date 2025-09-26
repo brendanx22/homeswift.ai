@@ -33,32 +33,48 @@ import { useAuth } from '../../contexts/AuthContext';
 export default function MainLanding() {
   // --- authentication state ---
   const navigate = useNavigate();
-  const { user, signOut, isAuthenticated } = useAuth();
+  const location = useLocation();
+  const { user: appUser } = useContext(AppContext);
+  const { user: authUser, signOut: contextSignOut, isAuthenticated, loading: authLoading } = useAuth();
+  const user = authUser || appUser;
   
-  // Only show search interface on the exact /app path
-  const isMainLandingPage = location.pathname === '/app';
+  // Only show search interface on the landing path per domain
+  const isChat = typeof window !== 'undefined' && window.location.hostname.startsWith('chat.');
+  const isMainLandingPage = isChat ? (location.pathname === '/') : (location.pathname === '/app');
   
-  // Redirect if not authenticated
-  useEffect(() => {
-    // Add a small delay to allow session to be checked
-    const timer = setTimeout(() => {
-      if (!isAuthenticated && !loading) {
-        // If on chat subdomain and not authenticated, redirect to main domain login
-        if (window.location.hostname.startsWith('chat.')) {
-          window.location.href = 'https://homeswift.co/login?redirect=' + encodeURIComponent(window.location.href);
-        } else {
-          navigate('/login');
-        }
-      }
-    }, 1000); // 1 second delay to allow session check
+  // ProtectedRoute handles auth gating; avoid duplicate redirects here
 
-    return () => clearTimeout(timer);
-  }, [isAuthenticated, loading, navigate]);
+  // Prefill search fields from URL params (supports HeroSection redirect to chat)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const q = params.get('search') || '';
+    const loc = params.get('location') || '';
+    const type = params.get('type') || '';
+    if (q) setSearchQuery(q);
+    if (loc) setSearchLocation(loc);
+    if (type) setPropertyType(type);
+  }, [location.search]);
+
+  // If the user lands on chat root with a search param and is already authenticated,
+  // automatically route to the results page to complete the flow
+  useEffect(() => {
+    if (!isChat) return;
+    if (location.pathname !== '/') return;
+    if (!isAuthenticated) return;
+    if (autoRoutedRef.current) return;
+
+    const params = new URLSearchParams(location.search);
+    const hasQuery = params.get('search');
+    if (hasQuery) {
+      autoRoutedRef.current = true;
+      navigate(`/properties?${params.toString()}`);
+    }
+  }, [isChat, isAuthenticated, location.pathname, location.search, navigate]);
 
   // Handle logout
   const handleLogout = async () => {
     try {
-      await signOut();
+      await contextSignOut();
       // No need to navigate here as it's handled in the AuthContext
     } catch (error) {
       console.error('Logout error:', error);
@@ -93,36 +109,28 @@ export default function MainLanding() {
     // Handle navigation based on the selected item
     switch(id) {
       case 'search':
-        if (window.location.hostname.startsWith('chat.')) {
-          window.location.href = 'https://homeswift.co/properties';
-        } else {
-          navigate('/properties');
-        }
+        navigate('/properties');
         break;
       case 'properties':
-        if (window.location.hostname.startsWith('chat.')) {
-          window.location.href = 'https://homeswift.co/properties';
-        } else {
-          navigate('/properties');
-        }
+        navigate('/properties');
         break;
       case 'saved':
-        navigate('/app/saved');
+        navigate(`${isChat ? '' : '/app'}/saved`);
         break;
       case 'neighborhoods':
-        navigate('/app/neighborhoods');
+        navigate(`${isChat ? '' : '/app'}/neighborhoods`);
         break;
       case 'calculator':
-        navigate('/app/calculator');
+        navigate(`${isChat ? '' : '/app'}/calculator`);
         break;
       case 'tours':
-        navigate('/app/tours');
+        navigate(`${isChat ? '' : '/app'}/tours`);
         break;
       case 'filters':
-        navigate('/app/filters');
+        navigate(`${isChat ? '' : '/app'}/filters`);
         break;
       case 'recent':
-        navigate('/app/recent');
+        navigate(`${isChat ? '' : '/app'}/recent`);
         break;
       default:
         // For other items, just update the active tab
@@ -139,9 +147,11 @@ export default function MainLanding() {
   const [featuredProperties, setFeaturedProperties] = useState([]);
   const [recentProperties, setRecentProperties] = useState([]);
   const searchTimeoutRef = useRef(null);
+  const autoRoutedRef = useRef(false);
   
-  // Load featured and recent properties on component mount
+  // Load featured and recent properties only on non-chat domains
   useEffect(() => {
+    if (isChat) return;
     const loadProperties = async () => {
       try {
         const [featured, recent] = await Promise.all([
@@ -156,7 +166,7 @@ export default function MainLanding() {
     };
 
     loadProperties();
-  }, []);
+  }, [isChat]);
 
   // Handle search submission
   const handleSearchSubmit = async (e) => {
@@ -173,6 +183,16 @@ export default function MainLanding() {
     setSearchError(null);
 
     try {
+      // If not authenticated, prompt login and return to chat main landing with the query preserved
+      if (!isAuthenticated) {
+        const searchParams = new URLSearchParams({ search: query });
+        if (searchLocation) searchParams.set('location', searchLocation);
+        if (propertyType) searchParams.set('type', propertyType);
+        const redirectTarget = `${window.location.origin}/properties?${searchParams.toString()}`;
+        navigate(`/login?redirect=${encodeURIComponent(redirectTarget)}`);
+        return;
+      }
+
       // Save search history if user is authenticated
       if (user?.id) {
         await searchService.saveSearchHistory(user.id, query, {
@@ -180,20 +200,11 @@ export default function MainLanding() {
           propertyType: propertyType
         });
       }
-
-      // Navigate to search results page with query parameters
-      const searchParams = new URLSearchParams({
-        search: query,
-        ...(searchLocation && { location: searchLocation }),
-        ...(propertyType && { type: propertyType })
-      });
-      
-      // If on chat subdomain, navigate to properties on main domain
-      if (window.location.hostname.startsWith('chat.')) {
-        window.location.href = `https://homeswift.co/properties?${searchParams.toString()}`;
-      } else {
-        navigate(`/properties?${searchParams.toString()}`);
-      }
+      // Navigate to the results page with the query
+      const searchParams = new URLSearchParams({ search: query });
+      if (searchLocation) searchParams.set('location', searchLocation);
+      if (propertyType) searchParams.set('type', propertyType);
+      navigate(`/properties?${searchParams.toString()}`);
     } catch (error) {
       console.error('Search error:', error);
       setSearchError('Search failed. Please try again.');
@@ -788,13 +799,13 @@ export default function MainLanding() {
                 {user ? (
                   // Logged in menu items
                   [
-                    { label: 'Dashboard', action: () => navigate('/app') },
-                    { label: 'Browse Properties', action: () => navigate('/properties') },
-                    { label: 'Saved Properties', action: () => navigate('/app/saved') },
-                    { label: 'Neighborhoods', action: () => navigate('/app/neighborhoods') },
-                    { label: 'Gallery', action: () => navigate('/app/gallery') },
-                    { label: 'Mortgage Calculator', action: () => navigate('/app/calculator') },
-                    { label: 'Profile', action: () => navigate('/app/profile') },
+                    { label: 'Dashboard', action: () => navigate(isChat ? '/' : '/app') },
+                    { label: 'Browse Properties', action: () => (isChat ? (window.location.href = 'https://homeswift.co/properties') : navigate('/properties')) },
+                    { label: 'Saved Properties', action: () => navigate(`${isChat ? '' : '/app'}/saved`) },
+                    { label: 'Neighborhoods', action: () => navigate(`${isChat ? '' : '/app'}/neighborhoods`) },
+                    { label: 'Gallery', action: () => navigate(`${isChat ? '' : '/app'}/gallery`) },
+                    { label: 'Mortgage Calculator', action: () => navigate(`${isChat ? '' : '/app'}/calculator`) },
+                    { label: 'Profile', action: () => navigate(`${isChat ? '' : '/app'}/profile`) },
                     { label: 'Logout', action: handleLogout, className: 'text-red-400 hover:text-red-300' }
                   ].map((item, idx) => (
                     <motion.button 
@@ -1071,8 +1082,8 @@ export default function MainLanding() {
             </AnimatePresence>
           </div>
 
-          {/* Featured Properties Section */}
-          {featuredProperties.length > 0 && (
+          {/* Featured Properties Section (hidden on chat landing) */}
+          {!isChat && featuredProperties.length > 0 && (
             <div className="w-full max-w-6xl mt-16 px-6">
               <div className="text-center mb-8">
                 <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2">Featured Properties</h2>

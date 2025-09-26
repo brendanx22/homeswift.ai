@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import BrandedSpinner from '../common/BrandedSpinner';
 
 export default function SessionChecker({ children }) {
   const [isChecking, setIsChecking] = useState(true);
@@ -52,11 +53,7 @@ export default function SessionChecker({ children }) {
   }, []);
 
   if (isChecking) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
-      </div>
-    );
+    return <BrandedSpinner message="Checking your session..." />;
   }
 
   return children;

@@ -17,6 +17,8 @@ import Gallery from './pages/Gallery';
 import InquiryForm from './pages/InquiryForm';
 import NotFound from './pages/NotFound';
 import SessionChecker from './components/auth/SessionChecker';
+import AuthCallback from './components/auth/AuthCallback';
+import BrandedSpinner from './components/common/BrandedSpinner';
 
 // Styles
 import './index.css';
@@ -27,21 +29,33 @@ import './index.css';
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
+  const [loadingStuck, setLoadingStuck] = React.useState(false);
+
+  React.useEffect(() => {
+    if (loading) {
+      const t = setTimeout(() => setLoadingStuck(true), 9000);
+      return () => clearTimeout(t);
+    } else {
+      setLoadingStuck(false);
+    }
+  }, [loading]);
 
   if (typeof window !== 'undefined') {
     console.log('[ProtectedRoute] path=', location.pathname, 'authLoading=', loading, 'isAuthenticated=', isAuthenticated);
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-      </div>
-    );
+    if (loadingStuck) {
+      const target = typeof window !== 'undefined' ? `/login?redirect=${encodeURIComponent(window.location.href)}` : '/login';
+      return <Navigate to={target} replace />;
+    }
+    return <BrandedSpinner message="Checking your session..." />;
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location.pathname }} replace />;
+    // Preserve the full URL so the login page can redirect back (works for chat and main domain)
+    const target = typeof window !== 'undefined' ? `/login?redirect=${encodeURIComponent(window.location.href)}` : '/login';
+    return <Navigate to={target} replace />;
   }
 
   return children;
@@ -107,6 +121,11 @@ const AnimatedRoutes = () => {
         <Route path="/signup" element={
           <AnimatedPage>
             <SignupPage />
+          </AnimatedPage>
+        } />
+        <Route path="/auth/callback" element={
+          <AnimatedPage>
+            <AuthCallback />
           </AnimatedPage>
         } />
         
@@ -191,15 +210,118 @@ const App = () => {
     return (
       <>
         <Toaster position="top-right" richColors />
-        <SessionChecker>
-          <Routes>
-            <Route path="/*" element={
+        <Routes>
+            {/* Public auth routes on chat subdomain */}
+            <Route path="/login" element={
+              <AnimatedPage>
+                <LoginPage />
+              </AnimatedPage>
+            } />
+            <Route path="/signup" element={
+              <AnimatedPage>
+                <SignupPage />
+              </AnimatedPage>
+            } />
+            <Route path="/verify-email" element={
+              <AnimatedPage>
+                <EmailVerification />
+              </AnimatedPage>
+            } />
+            <Route path="/auth/callback" element={
+              <AnimatedPage>
+                <AuthCallback />
+              </AnimatedPage>
+            } />
+            {/* Protected main landing on chat root */}
+            <Route path="/" element={
               <ProtectedRoute>
-                <MainLanding />
+                <AnimatedPage>
+                  <MainLanding />
+                </AnimatedPage>
               </ProtectedRoute>
             } />
+
+            {/* Protected chat sub-pages */}
+            <Route path="/properties" element={
+              <ProtectedRoute>
+                <AnimatedPage>
+                  <HouseListings />
+                </AnimatedPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/properties/:id" element={
+              <ProtectedRoute>
+                <AnimatedPage>
+                  <PropertyDetails />
+                </AnimatedPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/saved" element={
+              <ProtectedRoute>
+                <AnimatedPage>
+                  <HouseListings showSaved={true} />
+                </AnimatedPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/neighborhoods" element={
+              <ProtectedRoute>
+                <AnimatedPage>
+                  <HouseListings showNeighborhoods={true} />
+                </AnimatedPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/gallery" element={
+              <ProtectedRoute>
+                <AnimatedPage>
+                  <Gallery />
+                </AnimatedPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/calculator" element={
+              <ProtectedRoute>
+                <AnimatedPage>
+                  <InquiryForm type="calculator" />
+                </AnimatedPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/tours" element={
+              <ProtectedRoute>
+                <AnimatedPage>
+                  <Gallery showTours={true} />
+                </AnimatedPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/filters" element={
+              <ProtectedRoute>
+                <AnimatedPage>
+                  <HouseListings showFilters={true} />
+                </AnimatedPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/recent" element={
+              <ProtectedRoute>
+                <AnimatedPage>
+                  <HouseListings showRecent={true} />
+                </AnimatedPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/inquiry" element={
+              <ProtectedRoute>
+                <AnimatedPage>
+                  <InquiryForm />
+                </AnimatedPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <AnimatedPage>
+                  <div>Profile Page - Coming Soon</div>
+                </AnimatedPage>
+              </ProtectedRoute>
+            } />
+            {/* Catch-all on chat to avoid blank pages */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-        </SessionChecker>
       </>
     );
   }

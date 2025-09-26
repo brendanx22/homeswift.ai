@@ -16,11 +16,20 @@ export default function HeroSection() {
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    if (searchText.trim()) {
-      navigate(`/properties?search=${encodeURIComponent(searchText)}`);
-    } else {
-      navigate('/properties');
+    const query = searchText.trim();
+    const chatBase = 'https://chat.homeswift.co';
+    const target = `${chatBase}/?search=${encodeURIComponent(query)}`;
+    const isChat = typeof window !== 'undefined' && window.location.hostname.startsWith('chat.');
+
+    // If on main site, open local login with redirect to chat (do not send to chat login)
+    if (!isChat) {
+      navigate(`/login?redirect=${encodeURIComponent(target)}`);
+      return;
     }
+
+    // If already on chat subdomain, open local login with a local redirect
+    const localTarget = `/?search=${encodeURIComponent(query)}`;
+    navigate(`/login?redirect=${encodeURIComponent(localTarget)}`);
   };
 
 
@@ -228,12 +237,11 @@ export default function HeroSection() {
                  className="w-full bg-transparent border border-[#262626] rounded-full px-6 py-6 text-white text-md placeholder-[#404040] focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                />
                              <motion.button
-                type="submit"
-                onClick={() => navigate('/login')}
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-black bg-white px-3 py-3 rounded-full"
-              >
-                <ArrowUp size={20}/>
-              </motion.button>
+               type="submit"
+               className="absolute right-4 top-1/2 transform -translate-y-1/2 text-black bg-white px-3 py-3 rounded-full"
+             >
+              <ArrowUp size={20}/>
+            </motion.button>
             </div>
           </form>
         </motion.div>

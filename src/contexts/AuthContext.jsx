@@ -13,6 +13,69 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
+  // Small helper to guard long network waits
+  const withTimeout = (promise, ms = 8000) =>
+    Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+    ]);
+
+  // Fetch user profile without blocking auth gating
+  const fetchAndMergeUserProfile = async (supabaseUser) => {
+    if (!supabaseUser?.id) return;
+    try {
+      // Try to fetch existing profile (timeout guarded)
+      let { data: userData } = await withTimeout(
+        supabase
+          .from('user_profiles')
+          .select('*')
+          .eq('id', supabaseUser.id)
+          .single(),
+        6000
+      ).catch(() => ({ data: null }));
+
+      if (!userData) {
+        // Attempt RPC creation first (timeout guarded)
+        const { data: newProfile } = await withTimeout(
+          supabase.rpc('create_user_profile', {
+            user_id: supabaseUser.id,
+            user_email: supabaseUser.email,
+            first_name: supabaseUser.user_metadata?.first_name || '',
+            last_name: supabaseUser.user_metadata?.last_name || ''
+          }),
+          6000
+        ).catch(() => ({ data: null }));
+
+        if (newProfile) {
+          userData = newProfile;
+        } else {
+          // Fallback to direct insert (timeout guarded)
+          const { data: directProfile } = await withTimeout(
+            supabase
+              .from('user_profiles')
+              .insert({
+                id: supabaseUser.id,
+                email: supabaseUser.email,
+                first_name: supabaseUser.user_metadata?.first_name || '',
+                last_name: supabaseUser.user_metadata?.last_name || ''
+              })
+              .select()
+              .single(),
+            6000
+          ).catch(() => ({ data: null }));
+          if (directProfile) userData = directProfile;
+        }
+      }
+
+      // Merge into user state if we have any profile data
+      if (userData) {
+        setUser((prev) => ({ ...prev, ...userData }));
+      }
+    } catch (e) {
+      console.warn('[AuthProvider] fetchAndMergeUserProfile warning:', e?.message || e);
+    }
+  };
+
   // Check active session and set the user
   const checkSession = useCallback(async () => {
     console.log('[AuthProvider] checkSession: start');
@@ -34,62 +97,21 @@ export const AuthProvider = ({ children }) => {
         }
       }
       
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      
+      // Guard against network stalls
+      const timeoutMs = 8000;
+      const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ data: { session: null } }), timeoutMs));
+      const safeGetSession = Promise.race([
+        supabase.auth.getSession(),
+        timeoutPromise
+      ]);
+      const { data: { session: currentSession } } = await safeGetSession;
+
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
-      
+
+      // Fire profile fetch in background; do not block auth gating
       if (currentSession?.user) {
-        // Fetch additional user data if needed
-        let { data: userData, error: profileError } = await supabase
-          .from('user_profiles')
-          .select('*')
-          .eq('id', currentSession.user.id)
-          .single();
-          
-        // If no profile exists, try to create one using the secure function
-        if (!userData && !profileError) {
-          console.log('No user profile found, creating one...');
-          
-          // Try to create profile using RPC function
-          const { data: newProfile, error: rpcError } = await supabase
-            .rpc('create_user_profile', {
-              user_id: currentSession.user.id,
-              user_email: currentSession.user.email,
-              first_name: currentSession.user.user_metadata?.first_name || '',
-              last_name: currentSession.user.user_metadata?.last_name || ''
-            });
-            
-          if (rpcError) {
-            console.warn('RPC profile creation failed, trying direct insert:', rpcError);
-            
-            // Fallback: try direct insert
-            const { data: directProfile, error: directError } = await supabase
-              .from('user_profiles')
-              .insert({
-                id: currentSession.user.id,
-                email: currentSession.user.email,
-                first_name: currentSession.user.user_metadata?.first_name || '',
-                last_name: currentSession.user.user_metadata?.last_name || ''
-              })
-              .select()
-              .single();
-              
-            if (directError) {
-              console.warn('Direct profile creation also failed:', directError);
-              // Continue without profile data - user can still use the app
-            } else {
-              userData = directProfile;
-            }
-          } else {
-            userData = newProfile;
-          }
-        }
-          
-        setUser({
-          ...currentSession.user,
-          ...userData
-        });
+        fetchAndMergeUserProfile(currentSession.user);
       }
       
       console.log('[AuthProvider] checkSession: done, user=', Boolean(currentSession?.user));
@@ -135,89 +157,50 @@ export const AuthProvider = ({ children }) => {
       async (event, currentSession) => {
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
-        
+
         if (currentSession?.user) {
-          // Fetch additional user data if needed
-          let { data: userData, error: profileError } = await supabase
-            .from('user_profiles')
-            .select('*')
-            .eq('id', currentSession.user.id)
-            .single();
-            
-          // If no profile exists, try to create one using the secure function
-          if (!userData && !profileError) {
-            console.log('No user profile found, creating one...');
-            
-            // Try to create profile using RPC function
-            const { data: newProfile, error: rpcError } = await supabase
-              .rpc('create_user_profile', {
-                user_id: currentSession.user.id,
-                user_email: currentSession.user.email,
-                first_name: currentSession.user.user_metadata?.first_name || '',
-                last_name: currentSession.user.user_metadata?.last_name || ''
-              });
-              
-            if (rpcError) {
-              console.warn('RPC profile creation failed, trying direct insert:', rpcError);
-              
-              // Fallback: try direct insert
-              const { data: directProfile, error: directError } = await supabase
-                .from('user_profiles')
-                .insert({
-                  id: currentSession.user.id,
-                  email: currentSession.user.email,
-                  first_name: currentSession.user.user_metadata?.first_name || '',
-                  last_name: currentSession.user.user_metadata?.last_name || ''
-                })
-                .select()
-                .single();
-                
-              if (directError) {
-                console.warn('Direct profile creation also failed:', directError);
-                // Continue without profile data - user can still use the app
-              } else {
-                userData = directProfile;
-              }
-            } else {
-              userData = newProfile;
-            }
-          }
-            
-          setUser({
-            ...currentSession.user,
-            ...userData
-          });
-          
+          // Fetch profile in background (non-blocking)
+          fetchAndMergeUserProfile(currentSession.user);
+
           // Only redirect if we're on an auth page and the user is now authenticated
           const authPages = ['/login', '/signup', '/verify-email'];
           if (authPages.includes(window.location.pathname)) {
-            // Get redirect URL from query params or default to /app
             const urlParams = new URLSearchParams(window.location.search);
-            const redirectTo = urlParams.get('redirect') || '/app';
-            
-            // Ensure we don't redirect back to an auth page
-            if (!authPages.some(page => redirectTo.includes(page))) {
-              navigate(redirectTo);
+            const redirectTo = urlParams.get('redirect');
+            const isChat = window.location.hostname.startsWith('chat.');
+            const isHomeswiftMain = window.location.hostname.endsWith('homeswift.co') && !isChat;
+            const defaultAfterLogin = isHomeswiftMain ? 'https://chat.homeswift.co/' : '/';
+
+            let target = redirectTo || defaultAfterLogin;
+            if (isHomeswiftMain && target === '/app') {
+              target = 'https://chat.homeswift.co/';
+            } else if (isHomeswiftMain && target && /^https?:\/\//i.test(target) && target.includes('homeswift.co/app')) {
+              target = 'https://chat.homeswift.co/';
+            }
+            const isAbsolute = /^https?:\/\//i.test(target);
+
+            if (isAbsolute) {
+              window.location.assign(target);
+            } else if (!authPages.some(page => target.includes(page))) {
+              navigate(target);
             } else {
-              navigate('/app');
+              if (isHomeswiftMain) {
+                window.location.assign('https://chat.homeswift.co/');
+              } else {
+                navigate('/');
+              }
             }
           }
         } else {
           // Don't redirect if on root or public pages
           const publicPaths = ['/', '/login', '/signup', '/verify-email', '/reset-password'];
-          const isPublicPath = publicPaths.some(path => 
-            window.location.pathname.startsWith(path)
-          );
-          
+          const isPublicPath = publicPaths.some(path => window.location.pathname.startsWith(path));
           if (!isPublicPath) {
-            // If on chat subdomain and not authenticated, redirect to main domain login
-            if (window.location.hostname.startsWith('chat.')) {
-              window.location.href = 'https://homeswift.co/login?redirect=' + encodeURIComponent(window.location.href);
-            } else {
-              // Only redirect to login if we're not already there
-              if (window.location.pathname !== '/login') {
-                navigate(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
-              }
+            if (window.location.pathname !== '/login') {
+              const host = window.location.hostname;
+              const isHomeswiftMain = host.endsWith('homeswift.co') && !host.startsWith('chat.');
+              const target = isHomeswiftMain ? 'https://chat.homeswift.co/' : window.location.href;
+              navigate(`/login?redirect=${encodeURIComponent(target)}`);
             }
           }
         }
@@ -231,14 +214,15 @@ export const AuthProvider = ({ children }) => {
   }, [checkSession, navigate]);
 
   // Check if email already exists
-  const checkEmailExists = useCallback(async (email) => {
+  const checkEmailExists = useCallback(async (email, options = {}) => {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/check-email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: (email || '').trim().toLowerCase() }),
+        signal: options.signal,
       });
 
       const data = await response.json();
@@ -260,19 +244,30 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       setError(null);
       
-      // Remove the redundant email check - Supabase will handle duplicate email validation
+      // Basic sanitize and validation
+      const email = (userData.email || '').trim().toLowerCase();
+      const password = (userData.password || '').trim();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        throw new Error('Please enter a valid email address');
+      }
+
+      // Proceed with Supabase sign up
+      const isProd = typeof window !== 'undefined' && window.location.hostname.endsWith('homeswift.co');
+      const verifyRedirect = isProd
+        ? 'https://chat.homeswift.co/verify-email'
+        : `${window.location.origin}/verify-email`;
+
       const { data, error: signUpError } = await supabase.auth.signUp({
-        email: userData.email,
-        password: userData.password,
+        email,
+        password,
         options: {
           data: {
             first_name: userData.firstName,
             last_name: userData.lastName,
             full_name: `${userData.firstName} ${userData.lastName}`,
           },
-          emailRedirectTo: window.location.hostname.startsWith('chat.') 
-            ? 'https://chat.homeswift.co/verify-email'
-            : `${window.location.origin}/verify-email`,
+          emailRedirectTo: verifyRedirect,
         },
       });
       
@@ -304,12 +299,43 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       setError(null);
       
-      // Proceed to sign in directly
-      console.log('[AuthProvider.signIn] calling signInWithPassword');
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password: password.trim(),
-      });
+      const attemptSignIn = async (timeoutMs) => {
+        console.log('[AuthProvider.signIn] calling signInWithPassword timeout=', timeoutMs);
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Network timeout while contacting Auth service')), timeoutMs)
+        );
+        return Promise.race([
+          supabase.auth.signInWithPassword({
+            email: email.trim().toLowerCase(),
+            password: password.trim(),
+          }),
+          timeoutPromise,
+        ]);
+      };
+
+      // Try once quickly, then retry with a longer timeout if needed
+      let data, signInError;
+      try {
+        ({ data, error: signInError } = await attemptSignIn(10000));
+      } catch (err) {
+        console.warn('[AuthProvider.signIn] first attempt failed:', err?.message || err);
+        if (String(err?.message || '').includes('Network timeout')) {
+          // quick ping to auth settings endpoint for diagnosis
+          const supaUrl = import.meta.env.VITE_SUPABASE_URL;
+          try {
+            const ping = await Promise.race([
+              fetch(`${supaUrl}/auth/v1/settings`, { method: 'GET' }),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Ping timeout')), 4000))
+            ]);
+            console.log('[AuthProvider.signIn] auth settings ping status=', ping?.status);
+          } catch (e) {
+            console.warn('[AuthProvider.signIn] auth settings ping failed:', e?.message || e);
+          }
+          ({ data, error: signInError } = await attemptSignIn(20000));
+        } else {
+          throw err;
+        }
+      }
       console.log('[AuthProvider.signIn] signInWithPassword result', { hasError: !!signInError, user: !!data?.user });
       
       if (signInError) {
@@ -329,18 +355,42 @@ export const AuthProvider = ({ children }) => {
       setSession(freshSession);
       setUser(freshSession?.user ?? null);
       
-      // Get redirect URL from query params or default to /app
+      // Get redirect URL from query params or default based on domain
       const urlParams = new URLSearchParams(window.location.search);
-      const redirectTo = urlParams.get('redirect') || '/app';
+      const redirectTo = urlParams.get('redirect');
+      const isChat = window.location.hostname.startsWith('chat.');
+      const isHomeswiftMain = window.location.hostname.endsWith('homeswift.co') && !isChat;
+      const defaultAfterLogin = isHomeswiftMain ? 'https://chat.homeswift.co/' : '/';
       
       // Ensure we don't redirect back to an auth page
       const authPages = ['/login', '/signup', '/verify-email', '/reset-password'];
-      if (!authPages.some(page => redirectTo.includes(page))) {
-        console.log('[AuthProvider.signIn] navigating to', redirectTo);
-        navigate(redirectTo);
+      let target = redirectTo || defaultAfterLogin;
+      // Handle relative '/app' on main domain by sending to chat
+      if (isHomeswiftMain && target === '/app') {
+        target = 'https://chat.homeswift.co/';
+      }
+
+      // If we are on the main site and target is the chat domain, pass tokens via /auth/callback
+      const isAbsolute = /^https?:\/\//i.test(target);
+      const targetUrl = isAbsolute ? new URL(target) : null;
+      const goingToChat = !!(targetUrl && targetUrl.hostname === 'chat.homeswift.co');
+      const accessToken = freshSession?.access_token || data?.session?.access_token;
+      const refreshToken = freshSession?.refresh_token || data?.session?.refresh_token;
+
+      if (isHomeswiftMain && goingToChat && accessToken && refreshToken) {
+        const redirectPath = targetUrl.pathname + (targetUrl.search || '');
+        const callback = `https://chat.homeswift.co/auth/callback?access_token=${encodeURIComponent(accessToken)}&refresh_token=${encodeURIComponent(refreshToken)}&redirect=${encodeURIComponent(redirectPath)}`;
+        console.log('[AuthProvider.signIn] redirecting to chat callback with tokens');
+        window.location.assign(callback);
+      } else if (isAbsolute) {
+        console.log('[AuthProvider.signIn] cross-origin redirect to', target);
+        window.location.assign(target);
+      } else if (!authPages.some(page => target.includes(page))) {
+        console.log('[AuthProvider.signIn] navigating to', target);
+        navigate(target);
       } else {
-        console.log('[AuthProvider.signIn] navigating to /app');
-        navigate('/app');
+        console.log('[AuthProvider.signIn] navigating to', defaultAfterLogin);
+        navigate(defaultAfterLogin);
       }
       
       console.log('[AuthProvider.signIn] success');
@@ -357,18 +407,17 @@ export const AuthProvider = ({ children }) => {
   
   // Sign out
   const signOut = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      // Attempt to sign out from Supabase, but don't block UI on errors
+      await supabase.auth.signOut().catch((err) => {
+        console.warn('Supabase signOut warning:', err?.message || err);
+      });
+    } finally {
+      try { localStorage.removeItem('homeswift-auth-token'); } catch {}
       setUser(null);
       setSession(null);
       navigate('/login');
-    } catch (error) {
-      console.error('Sign out error:', error);
-      setError(error.message);
-      throw error;
-    } finally {
       setLoading(false);
     }
   }, [navigate]);
@@ -377,10 +426,12 @@ export const AuthProvider = ({ children }) => {
   const resetPassword = useCallback(async (email) => {
     try {
       setLoading(true);
+      const isProd = typeof window !== 'undefined' && window.location.hostname.endsWith('homeswift.co');
+      const resetRedirect = isProd
+        ? 'https://chat.homeswift.co/reset-password'
+        : `${window.location.origin}/reset-password`;
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.hostname.startsWith('chat.') 
-          ? 'https://chat.homeswift.co/reset-password'
-          : `${window.location.origin}/reset-password`,
+        redirectTo: resetRedirect,
       });
       
       if (error) throw error;
@@ -405,7 +456,7 @@ export const AuthProvider = ({ children }) => {
         type: 'signup',
         email: email,
         options: {
-          emailRedirectTo: window.location.hostname.startsWith('chat.') 
+          emailRedirectTo: (typeof window !== 'undefined' && window.location.hostname.endsWith('homeswift.co'))
             ? 'https://chat.homeswift.co/verify-email'
             : `${window.location.origin}/verify-email`
         }
