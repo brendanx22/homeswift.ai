@@ -9,9 +9,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Initialize Supabase client with service role key for server-side operations
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  SUPABASE_URL,
+  SUPABASE_SERVICE_ROLE_KEY,
   {
     auth: {
       autoRefreshToken: false,
@@ -75,9 +77,11 @@ const sendVerificationEmail = async (email, name, token) => {
 
 // Check if email exists
 export const checkEmailExists = async (req, res) => {
-  const { email } = req.body;
+  const rawEmail = req.body?.email;
+  const email = (rawEmail || '').toString().trim().toLowerCase();
 
   try {
+    // Validate input
     if (!email) {
       return res.status(400).json({
         success: false,
@@ -85,25 +89,58 @@ export const checkEmailExists = async (req, res) => {
         code: "MISSING_EMAIL",
       });
     }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid email address",
+        code: "INVALID_EMAIL",
+      });
+    }
+
+    // Validate server config
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      console.error('[checkEmailExists] Missing Supabase envs', {
+        hasUrl: !!SUPABASE_URL,
+        hasServiceRoleKey: !!SUPABASE_SERVICE_ROLE_KEY,
+      });
+      return res.status(500).json({
+        success: false,
+        message: "Server is missing Supabase credentials",
+        code: "MISSING_SERVICE_ROLE_KEY",
+      });
+    }
 
     // Use Supabase Admin API to check auth users
-    const { data, error } = await supabase.auth.admin.getUserByEmail(
-      email.toLowerCase()
-    );
+    const { data, error } = await supabase.auth.admin.getUserByEmail(email);
 
-    // If Supabase returns an error other than not-found, bubble it up
-    if (error && !/not\s*found/i.test(error.message || '')) {
+    if (error) {
+      // Unauthorized from admin API indicates invalid/missing service role key
+      const msg = (error.message || '').toLowerCase();
+      if (msg.includes('unauthorized') || msg.includes('forbidden')) {
+        console.error('[checkEmailExists] Admin API unauthorized');
+        return res.status(500).json({
+          success: false,
+          message: "Auth admin API unauthorized. Check service role key.",
+          code: "ADMIN_API_UNAUTHORIZED",
+        });
+      }
+      // If not-found, treat as available
+      if (/not\s*found/.test(error.message || '')) {
+        return res.json({ exists: false, success: true });
+      }
       throw error;
     }
 
     const exists = !!data?.user;
     return res.json({ exists, success: true });
   } catch (error) {
-    console.error("Error checking email:", error);
+    console.error("Error checking email:", error?.message || error);
     return res.status(500).json({
       success: false,
       message: "Error checking email",
-      error: error.message,
+      code: "CHECK_EMAIL_ERROR",
+      ...(process.env.NODE_ENV !== 'production' && { detail: error.message }),
     });
   }
 };
