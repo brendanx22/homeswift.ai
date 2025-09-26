@@ -5,6 +5,7 @@ import { CacheProvider } from '@emotion/react';
 import createCache from '@emotion/cache';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './contexts/AuthContext.jsx';
+import { AppProvider } from './contexts/AppContext.jsx';
 import App from './App.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import './index.css';
@@ -36,7 +37,9 @@ const Root = () => (
         <CacheProvider value={emotionCache}>
           <QueryClientProvider client={queryClient}>
             <AuthProvider>
-              <App />
+              <AppProvider>
+                <App />
+              </AppProvider>
             </AuthProvider>
           </QueryClientProvider>
         </CacheProvider>

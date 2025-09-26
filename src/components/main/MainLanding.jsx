@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useContext, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import {
   Menu,
   Plus,
@@ -25,10 +25,14 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
-  Loader2
+  Loader2,
+  Search as SearchIcon,
+  Image
 } from "lucide-react";
-import propertyService from '../../services/propertyService';
+//import propertyService from '../../services/propertyService';
+import searchService from '../../services/searchService';
 import { useAuth } from '../../contexts/AuthContext';
+import { AppContext } from '../../contexts/AppContext';
 
 export default function MainLanding() {
   // --- authentication state ---
