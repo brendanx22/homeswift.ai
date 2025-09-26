@@ -111,27 +111,24 @@ export const checkEmailExists = async (req, res) => {
 
     // Use Supabase Admin API to check auth users
     try {
-      const { data, error } = await supabase.auth.admin.getUserByEmail(email);
+      // Use the standard auth API instead of admin API
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password: 'dummy-password-to-trigger-error'
+      });
       
       if (error) {
-        // If user not found, email is available
-        if (error.message && error.message.includes('User not found')) {
-          return res.json({ 
-            exists: false, 
-            success: true 
-          });
+        // If we get an auth error, it means the email exists but password was wrong
+        if (error.status === 400) {
+          return res.json({ exists: true, success: true });
         }
-        
-        // Log the error and return a generic message
-        console.error('Supabase admin API error:', error);
-        throw new Error('Error checking email with auth service');
+        // If user not found, email is available
+        if (error.message && error.message.includes('user not found')) {
+          return res.json({ exists: false, success: true });
+        }
+        throw error;
       }
-      
-      // If we have user data, email exists
-      return res.json({ 
-        exists: !!data?.user, 
-        success: true 
-      });
+      return res.json({ exists: true, success: true });
       
     } catch (error) {
       console.error('Error checking email with Supabase:', error);
