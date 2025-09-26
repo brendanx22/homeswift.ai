@@ -117,25 +117,43 @@ export const checkEmailExists = async (req, res) => {
       });
     }
 
-    // Use Supabase Admin API to check auth users
+    // Use Supabase Admin API to check auth users with a hard timeout
     try {
-      // Use Admin API to check if user exists - using listUsers for Supabase v2+
-      const { data, error } = await supabaseAdmin.auth.admin.listUsers({
-        email: email
-      });
-      
+      const adminPromise = supabaseAdmin.auth.admin.listUsers({ email });
+      const timeoutMs = 6000; // 6 seconds max
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('REQUEST_TIMEOUT')), timeoutMs)
+      );
+
+      const result = await Promise.race([adminPromise, timeoutPromise]);
+
+      // Handle timeout explicitly
+      if (!result || result instanceof Error) {
+        const err = result || new Error('Unknown error');
+        if (err.message === 'REQUEST_TIMEOUT') {
+          console.warn('[checkEmailExists] Supabase admin request timed out');
+          return res.status(503).json({
+            success: false,
+            message: 'Email verification service is temporarily unavailable',
+            code: 'SERVICE_TIMEOUT'
+          });
+        }
+        throw err;
+      }
+
+      const { data, error } = result;
       if (error) {
         console.error('Supabase admin error:', error);
         throw error;
       }
-      
+
       // Check if any users were found with this email
       const userExists = data?.users?.length > 0;
       return res.json({ 
         exists: userExists, 
         success: true 
       });
-      
+
     } catch (error) {
       console.error('Error checking email with Supabase:', error);
       // For security, don't reveal too much about the error to the client

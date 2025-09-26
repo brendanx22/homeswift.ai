@@ -1,3 +1,14 @@
+  // Cleanup any in-flight email check requests and timers on unmount
+  useEffect(() => {
+    return () => {
+      if (emailCheckTimeoutRef.current) {
+        try { clearTimeout(emailCheckTimeoutRef.current); } catch {}
+      }
+      if (emailAbortRef.current) {
+        try { emailAbortRef.current.abort(); } catch {}
+      }
+    };
+  }, []);
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
@@ -158,11 +169,16 @@ export default function SignupPage() {
     try {
       const result = await Promise.race([
         checkEmailExists(sanitized, { signal: controller.signal }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 6000))
       ]);
       // Ignore stale responses
       const currentEmail = (formData.email || '').trim().toLowerCase();
       if (currentEmail !== lastRequestedEmailRef.current) return;
+      if (result?.error) {
+        setEmailStatus('error');
+        setEmailCheckError(result.message || 'Unable to verify email availability right now');
+        return;
+      }
       setEmailStatus(result.exists ? 'taken' : 'available');
     } catch (error) {
       // Ignore aborts; clear status only if this is the latest request

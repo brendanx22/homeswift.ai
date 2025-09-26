@@ -231,10 +231,20 @@ export const AuthProvider = ({ children }) => {
         throw new Error(data.message || 'Failed to check email');
       }
 
-      return data;
+      // Ensure we return the expected format
+      return {
+        exists: data.exists || false,
+        message: data.message,
+        code: data.code
+      };
     } catch (error) {
       console.error('Check email exists error:', error);
-      throw error;
+      // Return a default response when there's an error
+      return {
+        exists: false,
+        message: error.message || 'Failed to check email availability',
+        error: true
+      };
     }
   }, []);
 
