@@ -89,6 +89,7 @@ export const checkEmailExists = async (req, res) => {
         code: "MISSING_EMAIL",
       });
     }
+    
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return res.status(400).json({
@@ -100,40 +101,47 @@ export const checkEmailExists = async (req, res) => {
 
     // Validate server config
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      console.error('[checkEmailExists] Missing Supabase envs', {
-        hasUrl: !!SUPABASE_URL,
-        hasServiceRoleKey: !!SUPABASE_SERVICE_ROLE_KEY,
-      });
+      console.error('[checkEmailExists] Missing Supabase environment variables');
       return res.status(500).json({
         success: false,
-        message: "Server is missing Supabase credentials",
-        code: "MISSING_SERVICE_ROLE_KEY",
+        message: "Server configuration error",
+        code: "SERVER_CONFIG_ERROR"
       });
     }
 
     // Use Supabase Admin API to check auth users
-    const { data, error } = await supabase.auth.admin.getUserByEmail(email);
-
-    if (error) {
-      // Unauthorized from admin API indicates invalid/missing service role key
-      const msg = (error.message || '').toLowerCase();
-      if (msg.includes('unauthorized') || msg.includes('forbidden')) {
-        console.error('[checkEmailExists] Admin API unauthorized');
-        return res.status(500).json({
-          success: false,
-          message: "Auth admin API unauthorized. Check service role key.",
-          code: "ADMIN_API_UNAUTHORIZED",
-        });
+    try {
+      const { data, error } = await supabase.auth.admin.getUserByEmail(email);
+      
+      if (error) {
+        // If user not found, email is available
+        if (error.message && error.message.includes('User not found')) {
+          return res.json({ 
+            exists: false, 
+            success: true 
+          });
+        }
+        
+        // Log the error and return a generic message
+        console.error('Supabase admin API error:', error);
+        throw new Error('Error checking email with auth service');
       }
-      // If not-found, treat as available
-      if (/not\s*found/.test(error.message || '')) {
-        return res.json({ exists: false, success: true });
-      }
-      throw error;
+      
+      // If we have user data, email exists
+      return res.json({ 
+        exists: !!data?.user, 
+        success: true 
+      });
+      
+    } catch (error) {
+      console.error('Error checking email with Supabase:', error);
+      // For security, don't reveal too much about the error to the client
+      return res.status(500).json({
+        success: false,
+        message: "Unable to verify email at this time",
+        code: "SERVICE_UNAVAILABLE"
+      });
     }
-
-    const exists = !!data?.user;
-    return res.json({ exists, success: true });
   } catch (error) {
     console.error("Error checking email:", error?.message || error);
     return res.status(500).json({
