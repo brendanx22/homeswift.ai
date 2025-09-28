@@ -215,6 +215,7 @@ export default function SignupPage() {
           error.message || 'We could not verify your email right now. Please try again.'
         );
       }
+    }
   };
 
   const handleInputChange = (e) => {
