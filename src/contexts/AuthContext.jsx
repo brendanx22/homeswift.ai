@@ -215,35 +215,55 @@ export const AuthProvider = ({ children }) => {
 
   // Check if email already exists
   const checkEmailExists = useCallback(async (email, options = {}) => {
+    console.log('Checking email exists:', email);
+    const sanitizedEmail = (email || '').trim().toLowerCase();
+    
+    if (!sanitizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitizedEmail)) {
+      console.log('Invalid email format');
+      return { exists: false, message: 'Invalid email format', error: true };
+    }
+
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/check-email`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email: (email || '').trim().toLowerCase() }),
-        signal: options.signal,
-      });
-
-      const data = await response.json();
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: sanitizedEmail }),
+        signal: controller.signal,
+        ...options
+      }).finally(() => clearTimeout(timeoutId));
 
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to check email');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
       }
 
-      // Ensure we return the expected format
+      const data = await response.json();
+      console.log('Email check response:', data);
+      
       return {
-        exists: data.exists || false,
-        message: data.message,
-        code: data.code
+        exists: !!data.exists,
+        message: data.message || (data.exists ? 'Email is already registered' : 'Email is available'),
+        code: data.code,
+        success: true
       };
     } catch (error) {
       console.error('Check email exists error:', error);
-      // Return a default response when there's an error
+      if (error.name === 'AbortError') {
+        return {
+          exists: false,
+          message: 'Request timed out',
+          error: true,
+          code: 'TIMEOUT'
+        };
+      }
       return {
         exists: false,
         message: error.message || 'Failed to check email availability',
-        error: true
+        error: true,
+        code: 'CHECK_ERROR'
       };
     }
   }, []);

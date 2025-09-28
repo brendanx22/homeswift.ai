@@ -153,44 +153,68 @@ export default function SignupPage() {
 
   const checkEmailAvailability = async (email) => {
     const sanitized = (email || '').trim().toLowerCase();
+    
+    // Clear previous state
+    setEmailCheckError('');
+    
+    // Validate email format
     if (!emailRegex.test(sanitized)) {
       setEmailStatus('');
-      setEmailCheckError('');
       return;
     }
-    // Cancel in-flight request
+    
+    // Cancel any in-flight request
     if (emailAbortRef.current) {
       try { emailAbortRef.current.abort(); } catch {}
     }
+    
+    // Set up new request
     const controller = new AbortController();
     emailAbortRef.current = controller;
     lastRequestedEmailRef.current = sanitized;
-    setEmailCheckError('');
+    
+    // Show checking status
     setEmailStatus('checking');
+    
     try {
-      const result = await Promise.race([
-        checkEmailExists(sanitized, { signal: controller.signal }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 6000))
-      ]);
-      // Ignore stale responses
+      console.log('Starting email check for:', sanitized);
+      const result = await checkEmailExists(sanitized, { signal: controller.signal });
+      
+      // Check if this response is for the current email
       const currentEmail = (formData.email || '').trim().toLowerCase();
-      if (currentEmail !== lastRequestedEmailRef.current) return;
-      if (result?.error) {
-        setEmailStatus('error');
-        setEmailCheckError(result.message || 'Unable to verify email availability right now');
+      if (currentEmail !== sanitized) {
+        console.log('Stale response, ignoring');
         return;
       }
-      setEmailStatus(result.exists ? 'taken' : 'available');
-    } catch (error) {
-      // Ignore aborts; clear status only if this is the latest request
-      const currentEmail = (formData.email || '').trim().toLowerCase();
-      if (error?.name === 'AbortError') return;
-      if (currentEmail === lastRequestedEmailRef.current) {
-        console.error('Email check error:', error);
+      
+      console.log('Email check result:', result);
+      
+      if (result.error) {
         setEmailStatus('error');
-        setEmailCheckError('We could not verify your email right now. Please try again shortly.');
+        setEmailCheckError(result.message || 'Unable to verify email availability');
+      } else {
+        setEmailStatus(result.exists ? 'taken' : 'available');
+        if (result.message && !result.exists) {
+          setEmailCheckError('');
+        }
       }
-    }
+    } catch (error) {
+      // Ignore aborted requests
+      if (error.name === 'AbortError') {
+        console.log('Email check aborted');
+        return;
+      }
+      
+      console.error('Email check error:', error);
+      
+      // Only update state if this was for the current email
+      const currentEmail = (formData.email || '').trim().toLowerCase();
+      if (currentEmail === sanitized) {
+        setEmailStatus('error');
+        setEmailCheckError(
+          error.message || 'We could not verify your email right now. Please try again.'
+        );
+      }
   };
 
   const handleInputChange = (e) => {
