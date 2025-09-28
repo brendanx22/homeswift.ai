@@ -1,14 +1,3 @@
-  // Cleanup any in-flight email check requests and timers on unmount
-  useEffect(() => {
-    return () => {
-      if (emailCheckTimeoutRef.current) {
-        try { clearTimeout(emailCheckTimeoutRef.current); } catch {}
-      }
-      if (emailAbortRef.current) {
-        try { emailAbortRef.current.abort(); } catch {}
-      }
-    };
-  }, []);
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
@@ -51,6 +40,18 @@ export default function SignupPage() {
             : (emailStatus === 'available'
                 ? 'border-green-500 focus:border-green-400'
                 : 'border-gray-400/50 focus:border-gray-300')));
+
+  // Cleanup any in-flight email check requests and timers on unmount
+  useEffect(() => {
+    return () => {
+      if (emailCheckTimeoutRef.current) {
+        try { clearTimeout(emailCheckTimeoutRef.current); } catch {}
+      }
+      if (emailAbortRef.current) {
+        try { emailAbortRef.current.abort(); } catch {}
+      }
+    };
+  }, []);
 
   // Log auth state for debugging
   useEffect(() => {
