@@ -179,7 +179,14 @@ export default function SignupPage() {
     try {
       console.log('Starting email check for:', sanitized);
       const result = await checkEmailExists(sanitized, { signal: controller.signal });
-      
+      console.log('Email check result:', result);
+      // Defensive: log the type and keys of result
+      if (!result || typeof result !== 'object') {
+        console.error('Email check: result is not an object:', result);
+        setEmailStatus('error');
+        setEmailCheckError('Unexpected response from server');
+        return;
+      }
       // Check if this response is for the current email
       const currentEmail = (formData.email || '').trim().toLowerCase();
       if (currentEmail !== sanitized) {
@@ -187,16 +194,19 @@ export default function SignupPage() {
         return;
       }
       
-      console.log('Email check result:', result);
-      
       if (result.error) {
         setEmailStatus('error');
         setEmailCheckError(result.message || 'Unable to verify email availability');
-      } else {
+      } else if (typeof result.exists === 'boolean') {
         setEmailStatus(result.exists ? 'taken' : 'available');
         if (result.message && !result.exists) {
           setEmailCheckError('');
         }
+      } else {
+        // Defensive: handle unexpected structure
+        setEmailStatus('error');
+        setEmailCheckError('Malformed response from server');
+        console.error('Email check: malformed response:', result);
       }
     } catch (error) {
       // Ignore aborted requests
@@ -206,7 +216,6 @@ export default function SignupPage() {
       }
       
       console.error('Email check error:', error);
-      
       // Only update state if this was for the current email
       const currentEmail = (formData.email || '').trim().toLowerCase();
       if (currentEmail === sanitized) {
