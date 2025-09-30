@@ -4,8 +4,8 @@ import { BrowserRouter } from 'react-router-dom';
 import { CacheProvider } from '@emotion/react';
 import createCache from '@emotion/cache';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AppProvider } from './contexts/AppContext.jsx';
 import { AuthProvider } from './contexts/AuthContext.jsx';
+import { AppProvider } from './contexts/AppContext.jsx';
 import App from './App.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
 import './index.css';
@@ -36,11 +36,11 @@ const Root = () => (
       <BrowserRouter>
         <CacheProvider value={emotionCache}>
           <QueryClientProvider client={queryClient}>
-            <AppProvider>
-              <AuthProvider>
+            <AuthProvider>
+              <AppProvider>
                 <App />
-              </AuthProvider>
-            </AppProvider>
+              </AppProvider>
+            </AuthProvider>
           </QueryClientProvider>
         </CacheProvider>
       </BrowserRouter>

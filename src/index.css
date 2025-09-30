@@ -1,14 +1,14 @@
-@import url('https://fonts.googleapis.com/css2?family=Raleway:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Telex&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/*body {
-  @apply bg-white text-black;
-}*/
+body {
+  @apply bg-white text-[#2C3E50];
+}
 
 body, html, * {
-  font-family: 'Raleway', sans-serif !important;
+  font-family: 'Telex', sans-serif !important;
 }
 
 .hide-scrollbar::-webkit-scrollbar {
@@ -18,4 +18,36 @@ body, html, * {
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Custom Scrollbar Styles */
+.scrollbar-thin::-webkit-scrollbar,
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track,
+*::-webkit-scrollbar-track {
+  background: #f9fafb;
+  border-radius: 10px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb,
+*::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 10px;
+  border: 2px solid #f9fafb;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover,
+*::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Firefox scrollbar */
+.scrollbar-thin,
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db #f9fafb;
 }

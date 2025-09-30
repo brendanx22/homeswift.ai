@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AppProvider } from './contexts/AppContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
@@ -20,6 +19,9 @@ import NotFound from './pages/NotFound';
 import SessionChecker from './components/auth/SessionChecker';
 import AuthCallback from './components/auth/AuthCallback';
 import BrandedSpinner from './components/common/BrandedSpinner';
+import ListPropertyPage from './pages/ListProperty';
+import Dashboard from './components/Dashboard';
+import { DashboardProvider } from './contexts/DashboardContext';
 
 // Styles
 import './index.css';
@@ -108,9 +110,11 @@ const AnimatedRoutes = () => {
       <Routes location={location} key={location.pathname}>
         {/* Public Routes */}
         <Route path="/" element={
-          <AnimatedPage>
-            <Index />
-          </AnimatedPage>
+          <DashboardProvider>
+            <AnimatedPage>
+              <Index/>
+            </AnimatedPage>
+          </DashboardProvider>
         } />
         
         <Route path="/login" element={
@@ -134,6 +138,7 @@ const AnimatedRoutes = () => {
           <AnimatedPage>
             <EmailVerification />
           </AnimatedPage>
+          
         } />
         
         {/* Public Properties Route for Search */}
@@ -141,6 +146,17 @@ const AnimatedRoutes = () => {
           <AnimatedPage>
             <HouseListings />
           </AnimatedPage>
+        } />
+
+        {/* Landlord/Owner property listing page */}
+        <Route path="/list-property" element={
+          <DashboardProvider>
+            <ProtectedRoute>
+              <AnimatedPage>
+                <ListPropertyPage />
+              </AnimatedPage>
+            </ProtectedRoute>
+          </DashboardProvider>
         } />
         
         {/* Property Details Route */}
@@ -151,25 +167,37 @@ const AnimatedRoutes = () => {
         } />
         
         {/* Main App Routes - Protected */}
-        <Route path="/app" element={
+        <Route path="/main" element={
           <ProtectedRoute>
             <AnimatedPage>
               <MainLanding />
             </AnimatedPage>
           </ProtectedRoute>
-        }>
-          <Route index element={null} />
-          <Route path="search" element={<HouseListings isSearchResult={true} />} />
-          <Route path="saved" element={<HouseListings showSaved={true} />} />
-          <Route path="neighborhoods" element={<HouseListings showNeighborhoods={true} />} />
-          <Route path="gallery" element={<Gallery />} />
-          <Route path="calculator" element={<InquiryForm type="calculator" />} />
-          <Route path="tours" element={<Gallery showTours={true} />} />
-          <Route path="filters" element={<HouseListings showFilters={true} />} />
-          <Route path="recent" element={<HouseListings showRecent={true} />} />
-          <Route path="inquiry" element={<InquiryForm />} />
-          <Route path="profile" element={<div>Profile Page - Coming Soon</div>} />
-        </Route>
+        } />
+        
+        <Route path="/listings" element={
+          <AnimatedPage>
+            <HouseListings />
+          </AnimatedPage>
+        } />
+        
+        <Route path="/property/:id" element={
+          <AnimatedPage>
+            <PropertyDetails />
+          </AnimatedPage>
+        } />
+        
+        <Route path="/gallery" element={
+          <AnimatedPage>
+            <Gallery />
+          </AnimatedPage>
+        } />
+        
+        <Route path="/inquiry" element={
+          <AnimatedPage>
+            <InquiryForm />
+          </AnimatedPage>
+        } />
         
         {/* 404 Route */}
         <Route path="*" element={
@@ -234,6 +262,13 @@ const App = () => {
               <ProtectedRoute>
                 <AnimatedPage>
                   <HouseListings />
+                </AnimatedPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/list-property" element={
+              <ProtectedRoute>
+                <AnimatedPage>
+                  <ListPropertyPage />
                 </AnimatedPage>
               </ProtectedRoute>
             } />
@@ -321,6 +356,8 @@ const App = () => {
       <AppRoutes />
     </>
   );
-};
+}
+
+
 
 export default App;

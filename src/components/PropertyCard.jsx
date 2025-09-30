@@ -30,7 +30,7 @@ export const PropertyCard = ({ image, location, price, duration, type, onClick }
       </div>
       
       <div className="px-1 py-3 space-y-1">
-        <div className="flex items-center gap-2 text-gray-300 text-sm">
+        <div className="flex items-center gap-2 text-white text-xl">
           <MapPin className="h-4 w-4 text-primary" />
           <span className="truncate">{location}</span>
         </div>

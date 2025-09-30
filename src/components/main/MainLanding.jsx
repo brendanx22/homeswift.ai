@@ -1,35 +1,38 @@
-import React, { useEffect, useState, useContext, useRef } from "react";
+import React, { useEffect, useRef, useState, useContext, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate, Outlet, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import {
   Menu,
   Plus,
   Sparkles,
-  User,
-  LogOut,
-  Home,
+  ArrowUp,
+  FileUp,
+  Image as ImageUp,
   MessageSquare,
   HelpCircle,
   Settings,
-  Bell,
+  LogOut,
   X,
-  Trash2,
-  ArrowUp,
-  MapPin,
+  User,
+  Bell,
   Heart,
+  Home,
   Calculator,
+  MapPin,
   Camera,
   Filter,
   Clock,
-  ChevronRight,
+  Trash2,
   ChevronLeft,
-  FileUp,
-  Image,
-  Search as SearchIcon
+  ChevronRight,
+  Loader2,
+  Search as SearchIcon,
+  Image
 } from "lucide-react";
-import { AppContext } from '../../contexts/AppContext';
-import { useAuth } from '../../contexts/AuthContext';
+//import propertyService from '../../services/propertyService';
 import searchService from '../../services/searchService';
+import { useAuth } from '../../contexts/AuthContext';
+import { AppContext } from '../../contexts/AppContext';
 
 export default function MainLanding() {
   // --- authentication state ---
@@ -303,11 +306,9 @@ export default function MainLanding() {
       
       setIsSmUp(isTablet);
       
-      // Auto-show sidebar on desktop if not set in localStorage
-      if (isDesktop && localStorage.getItem('sidebarOpen') === null) {
-        setShowSidePanel(true);
-      } else if (!isDesktop && localStorage.getItem('sidebarOpen') === null) {
-        setShowSidePanel(false);
+      // Ensure mobile sidebar is closed by default on mobile screens
+      if (!isDesktop && localStorage.getItem('sidebarOpen') === null) {
+        setShowMobileSidebar(false);
       }
       
       // Update isDesktop state
@@ -702,7 +703,7 @@ export default function MainLanding() {
                           onMouseLeave={() => setHoveredChat(null)}
                           onClick={() => { 
                             setActiveChat(chat.id); 
-                            if (!isSmUp) setShowSidePanel(false); 
+                            if (!isSmUp) setShowMobileSidebar(false); 
                           }}
                           className={`group relative flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer transition-all duration-200 ${
                             activeChat === chat.id 
@@ -1252,8 +1253,7 @@ export default function MainLanding() {
             </motion.div>
           )}
         </AnimatePresence>
-
-      </div>
-    </motion.div>
+        </div>
+      </motion.div>
   );
 }
