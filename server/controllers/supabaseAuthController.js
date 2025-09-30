@@ -8,10 +8,20 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Initialize Supabase client with service role key for server-side operations
+// Initialize Supabase clients
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// Regular client for normal operations
 const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
+  SUPABASE_URL,
+  process.env.VITE_SUPABASE_ANON_KEY // Using anon key for regular operations
+);
+
+// Admin client for user management
+const supabaseAdmin = createClient(
+  SUPABASE_URL,
+  SUPABASE_SERVICE_ROLE_KEY,
   {
     auth: {
       autoRefreshToken: false,
@@ -75,9 +85,11 @@ const sendVerificationEmail = async (email, name, token) => {
 
 // Check if email exists
 export const checkEmailExists = async (req, res) => {
-  const { email } = req.body;
+  const rawEmail = req.body?.email;
+  const email = (rawEmail || '').toString().trim().toLowerCase();
 
   try {
+    // Validate input
     if (!email) {
       return res.status(400).json({
         success: false,
@@ -85,25 +97,61 @@ export const checkEmailExists = async (req, res) => {
         code: "MISSING_EMAIL",
       });
     }
-
-    // Use Supabase Admin API to check auth users
-    const { data, error } = await supabase.auth.admin.getUserByEmail(
-      email.toLowerCase()
-    );
-
-    // If Supabase returns an error other than not-found, bubble it up
-    if (error && !/not\s*found/i.test(error.message || '')) {
-      throw error;
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid email address",
+        code: "INVALID_EMAIL",
+      });
     }
 
-    const exists = !!data?.user;
-    return res.json({ exists, success: true });
+    // Validate server config
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      console.error('[checkEmailExists] Missing Supabase environment variables');
+      return res.status(500).json({
+        success: false,
+        message: "Server configuration error",
+        code: "SERVER_CONFIG_ERROR"
+      });
+    }
+
+    // Use Supabase Admin API to check auth users
+    try {
+      // Use Admin API to check if user exists - using listUsers for Supabase v2+
+      const { data, error } = await supabaseAdmin.auth.admin.listUsers({
+        email: email
+      });
+      
+      if (error) {
+        console.error('Supabase admin error:', error);
+        throw error;
+      }
+      
+      // Check if any users were found with this email
+      const userExists = data?.users?.length > 0;
+      return res.json({ 
+        exists: userExists, 
+        success: true 
+      });
+      
+    } catch (error) {
+      console.error('Error checking email with Supabase:', error);
+      // For security, don't reveal too much about the error to the client
+      return res.status(500).json({
+        success: false,
+        message: "Unable to verify email at this time",
+        code: "SERVICE_UNAVAILABLE"
+      });
+    }
   } catch (error) {
-    console.error("Error checking email:", error);
+    console.error("Error checking email:", error?.message || error);
     return res.status(500).json({
       success: false,
       message: "Error checking email",
-      error: error.message,
+      code: "CHECK_EMAIL_ERROR",
+      ...(process.env.NODE_ENV !== 'production' && { detail: error.message }),
     });
   }
 };
@@ -288,15 +336,20 @@ export const verifyEmail = async (req, res) => {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Mark email as verified in Supabase
-    const { data: user, error } = await supabase.auth.admin.updateUserById(
+    // Mark email as verified in Supabase v2+
+    const { data: { user }, error } = await supabase.auth.admin.updateUserById(
       decoded.sub,
-      { email_confirm: true }
+      { 
+        email_confirm: true,
+        // In v2, we need to explicitly set the email confirmation timestamp
+        email_confirmed_at: new Date().toISOString()
+      }
     );
 
     if (error) throw error;
+    if (!user) throw new Error('User not found');
 
-    // Generate auth token
+    // Generate auth token with the updated user data
     const authToken = generateToken(user);
 
     // Redirect to chat app with token

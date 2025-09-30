@@ -3,9 +3,9 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply bg-gray-100 text-gray-900;
-}
+/*body {
+  @apply bg-white text-black;
+}*/
 
 body, html, * {
   font-family: 'Raleway', sans-serif !important;

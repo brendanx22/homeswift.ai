@@ -16,7 +16,8 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [emailStatus, setEmailStatus] = useState(''); // '', 'checking', 'available', 'taken'
+  const [emailStatus, setEmailStatus] = useState(''); // '', 'checking', 'available', 'taken', 'error'
+  const [emailCheckError, setEmailCheckError] = useState('');
   const navigate = useNavigate();
   const { signUp, isAuthenticated, loading: authLoading, checkEmailExists } = useAuth();
   const emailCheckTimeoutRef = useRef(null);
@@ -142,6 +143,7 @@ export default function SignupPage() {
     const sanitized = (email || '').trim().toLowerCase();
     if (!emailRegex.test(sanitized)) {
       setEmailStatus('');
+      setEmailCheckError('');
       return;
     }
     // Cancel in-flight request
@@ -151,6 +153,7 @@ export default function SignupPage() {
     const controller = new AbortController();
     emailAbortRef.current = controller;
     lastRequestedEmailRef.current = sanitized;
+    setEmailCheckError('');
     setEmailStatus('checking');
     try {
       const result = await Promise.race([
@@ -167,7 +170,8 @@ export default function SignupPage() {
       if (error?.name === 'AbortError') return;
       if (currentEmail === lastRequestedEmailRef.current) {
         console.error('Email check error:', error);
-        setEmailStatus('');
+        setEmailStatus('error');
+        setEmailCheckError('We could not verify your email right now. Please try again shortly.');
       }
     }
   };
@@ -332,6 +336,13 @@ export default function SignupPage() {
                       </svg>
                     </div>
                   )}
+                  {emailStatus === 'error' && (
+                    <div className="w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center" title="Unable to verify">
+                      <svg className="w-3 h-3 text-black" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.72-1.36 3.485 0l6.518 11.59c.75 1.335-.213 2.99-1.742 2.99H3.48c-1.53 0-2.492-1.655-1.743-2.99l6.52-11.59zM11 13a1 1 0 10-2 0 1 1 0 002 0zm-1-2a1 1 0 01-1-1V7a1 1 0 112 0v3a1 1 0 01-1 1z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
                 </div>
               </div>
               {/* Email status message */}
@@ -346,6 +357,9 @@ export default function SignupPage() {
               )}
               {emailStatus === 'checking' && (
                 <p className="mt-1 text-sm text-gray-400">Checking email availability...</p>
+              )}
+              {emailStatus === 'error' && (
+                <p className="mt-1 text-sm text-yellow-400">{emailCheckError || 'Unable to verify email availability right now'}</p>
               )}
             </div>
 
@@ -444,6 +458,7 @@ export default function SignupPage() {
                   {!hasNames && <li>Enter your first and last name</li>}
                   {formData.email && !isEmailValid && <li>Enter a valid email address</li>}
                   {isEmailValid && emailStatus === '' && <li>Validate your email availability</li>}
+                  {emailStatus === 'error' && <li className="text-yellow-400">Email availability service is temporarily unavailable</li>}
                   {emailStatus === 'checking' && <li>Checking email availability...</li>}
                   {emailStatus === 'taken' && <li className="text-red-400">This email is already registered</li>}
                   {!passwordsMatch && <li>Passwords must match</li>}

@@ -108,7 +108,7 @@ const AnimatedRoutes = () => {
         {/* Public Routes */}
         <Route path="/" element={
           <AnimatedPage>
-            <Index />
+            <Index/>
           </AnimatedPage>
         } />
         

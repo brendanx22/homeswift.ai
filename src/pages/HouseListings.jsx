@@ -114,13 +114,15 @@ const HouseListings = ({ showSaved = false, showNeighborhoods = false, showFilte
     <div className="min-h-screen" style={{ backgroundColor: '#1E1E1E' }}>
       <Header />
       
-      <div className="px-4 sm:px-6 lg:px-8 py-8 max-w-7xl mx-auto">
+      <div className="px-4 sm:px-6 lg:px-8 py-8 max-w-8xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">{viewTitle}</h1>
+          <h1 className="text-4xl font-bold text-white mb-2">House Listing</h1>
+          <p className="text-[#BFBFBD]">Here are the houses that matches your prompt.</p>
           {searchQuery && (
             <p className="text-gray-400">
               Found {filteredProperties.length} properties matching your search
             </p>
+            
           )}
         </div>
 
@@ -143,7 +145,7 @@ const HouseListings = ({ showSaved = false, showNeighborhoods = false, showFilte
         </div>
 
         {filteredProperties.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProperties.map((property, index) => (
               <PropertyCard
                 key={`${property.id}-${index}`}
