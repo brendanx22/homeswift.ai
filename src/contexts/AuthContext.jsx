@@ -163,13 +163,14 @@ export const AuthProvider = ({ children }) => {
           fetchAndMergeUserProfile(currentSession.user);
 
           // Only redirect if we're on an auth page and the user is now authenticated
-          const authPages = ['/login', '/signup', '/verify-email'];
+          const authPages = ['/login', '/signup', '/verify-email', '/landlord-login', '/landlord-signup'];
           if (authPages.includes(window.location.pathname)) {
             const urlParams = new URLSearchParams(window.location.search);
             const redirectTo = urlParams.get('redirect');
             const isChat = window.location.hostname.startsWith('chat.');
-            const isHomeswiftMain = window.location.hostname.endsWith('homeswift.co') && !isChat;
-            const defaultAfterLogin = isHomeswiftMain ? 'https://chat.homeswift.co/' : '/';
+            const isList = window.location.hostname.startsWith('list.');
+            const isHomeswiftMain = window.location.hostname.endsWith('homeswift.co') && !isChat && !isList;
+            const defaultAfterLogin = isList ? '/dashboard' : (isHomeswiftMain ? 'https://chat.homeswift.co/' : '/');
 
             let target = redirectTo || defaultAfterLogin;
             if (isHomeswiftMain && target === '/app') {
@@ -184,7 +185,9 @@ export const AuthProvider = ({ children }) => {
             } else if (!authPages.some(page => target.includes(page))) {
               navigate(target);
             } else {
-              if (isHomeswiftMain) {
+              if (isList) {
+                navigate('/dashboard');
+              } else if (isHomeswiftMain) {
                 window.location.assign('https://chat.homeswift.co/');
               } else {
                 navigate('/');
@@ -193,12 +196,12 @@ export const AuthProvider = ({ children }) => {
           }
         } else {
           // Don't redirect if on root or public pages
-          const publicPaths = ['/', '/login', '/signup', '/verify-email', '/reset-password'];
+          const publicPaths = ['/', '/login', '/signup', '/verify-email', '/reset-password', '/list-login', '/list-signup'];
           const isPublicPath = publicPaths.some(path => window.location.pathname.startsWith(path));
           if (!isPublicPath) {
             if (window.location.pathname !== '/login') {
               const host = window.location.hostname;
-              const isHomeswiftMain = host.endsWith('homeswift.co') && !host.startsWith('chat.');
+              const isHomeswiftMain = host.endsWith('homeswift.co') && !host.startsWith('chat.') && !host.startsWith('list.');
               const target = isHomeswiftMain ? 'https://chat.homeswift.co/' : window.location.href;
               navigate(`/login?redirect=${encodeURIComponent(target)}`);
             }
@@ -272,7 +275,6 @@ export const AuthProvider = ({ children }) => {
   const signUp = useCallback(async (userData) => {
     try {
       setLoading(true);
-      setError(null);
       
       // Basic sanitize and validation
       const email = (userData.email || '').trim().toLowerCase();
@@ -296,6 +298,7 @@ export const AuthProvider = ({ children }) => {
             first_name: userData.firstName,
             last_name: userData.lastName,
             full_name: `${userData.firstName} ${userData.lastName}`,
+            user_type: userData.userType || 'renter', // Default to renter if not specified
           },
           emailRedirectTo: verifyRedirect,
         },
@@ -389,11 +392,12 @@ export const AuthProvider = ({ children }) => {
       const urlParams = new URLSearchParams(window.location.search);
       const redirectTo = urlParams.get('redirect');
       const isChat = window.location.hostname.startsWith('chat.');
-      const isHomeswiftMain = window.location.hostname.endsWith('homeswift.co') && !isChat;
-      const defaultAfterLogin = isHomeswiftMain ? 'https://chat.homeswift.co/' : '/';
+      const isList = window.location.hostname.startsWith('list.');
+      const isHomeswiftMain = window.location.hostname.endsWith('homeswift.co') && !isChat && !isList;
+      const defaultAfterLogin = isList ? '/dashboard' : (isHomeswiftMain ? 'https://chat.homeswift.co/' : '/');
       
       // Ensure we don't redirect back to an auth page
-      const authPages = ['/login', '/signup', '/verify-email', '/reset-password'];
+      const authPages = ['/login', '/signup', '/verify-email', '/reset-password', '/list-login', '/list-signup'];
       let target = redirectTo || defaultAfterLogin;
       // Handle relative '/app' on main domain by sending to chat
       if (isHomeswiftMain && target === '/app') {
@@ -401,9 +405,10 @@ export const AuthProvider = ({ children }) => {
       }
 
       // If we are on the main site and target is the chat domain, pass tokens via /auth/callback
-      const isAbsolute = /^https?:\/\//i.test(target);
+      const isAbsolute = /^https?:///i.test(target);
       const targetUrl = isAbsolute ? new URL(target) : null;
       const goingToChat = !!(targetUrl && targetUrl.hostname === 'chat.homeswift.co');
+      const goingToList = !!(targetUrl && targetUrl.hostname === 'list.homeswift.co');
       const accessToken = freshSession?.access_token || data?.session?.access_token;
       const refreshToken = freshSession?.refresh_token || data?.session?.refresh_token;
 
@@ -411,6 +416,11 @@ export const AuthProvider = ({ children }) => {
         const redirectPath = targetUrl.pathname + (targetUrl.search || '');
         const callback = `https://chat.homeswift.co/auth/callback?access_token=${encodeURIComponent(accessToken)}&refresh_token=${encodeURIComponent(refreshToken)}&redirect=${encodeURIComponent(redirectPath)}`;
         console.log('[AuthProvider.signIn] redirecting to chat callback with tokens');
+        window.location.assign(callback);
+      } else if (isHomeswiftMain && goingToList && accessToken && refreshToken) {
+        const redirectPath = targetUrl.pathname + (targetUrl.search || '');
+        const callback = `https://list.homeswift.co/auth/callback?access_token=${encodeURIComponent(accessToken)}&refresh_token=${encodeURIComponent(refreshToken)}&redirect=${encodeURIComponent(redirectPath)}`;
+        console.log('[AuthProvider.signIn] redirecting to list callback with tokens');
         window.location.assign(callback);
       } else if (isAbsolute) {
         console.log('[AuthProvider.signIn] cross-origin redirect to', target);
@@ -514,7 +524,7 @@ export const AuthProvider = ({ children }) => {
       const { data: authData, error: authError } = await supabase.auth.updateUser({
         data: {
           ...updates,
-        },
+        }
       });
       
       if (authError) throw authError;
@@ -525,8 +535,7 @@ export const AuthProvider = ({ children }) => {
         .update({
           ...updates,
           updated_at: new Date().toISOString(),
-        })
-        .eq('id', user.id);
+        }).eq('id', user.id);
         
       if (profileError) throw profileError;
       
@@ -545,6 +554,21 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     }
   }, [user?.id]);
+
+  // Check if current user is a landlord
+  const isLandlord = useCallback(() => {
+    return user?.user_metadata?.user_type === 'landlord' || user?.app_metadata?.user_type === 'landlord';
+  }, [user]);
+
+  // Check if current user is a renter
+  const isRenter = useCallback(() => {
+    return !isLandlord(); // Default to renter if not specified
+  }, [isLandlord]);
+
+  // Get user type
+  const getUserType = useCallback(() => {
+    return user?.user_metadata?.user_type || user?.app_metadata?.user_type || 'renter';
+  }, [user]);
   
   // Value to be provided by the context
   const value = {
@@ -553,6 +577,9 @@ export const AuthProvider = ({ children }) => {
     loading,
     error,
     isAuthenticated: !!user,
+    isLandlord,
+    isRenter,
+    getUserType,
     signUp,
     signIn,
     signOut,

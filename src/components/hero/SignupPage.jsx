@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, User } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Mail, Lock, Eye, EyeOff, User, Users } from 'lucide-react';
+import { useGoogleAuth } from '../../lib/googleAuth';
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -19,6 +20,8 @@ export default function SignupPage() {
   const [emailStatus, setEmailStatus] = useState(''); // '', 'checking', 'available', 'taken', 'error'
   const [emailCheckError, setEmailCheckError] = useState('');
   const navigate = useNavigate();
+  const googleAuth = useGoogleAuth();
+  const [googleLoading, setGoogleLoading] = useState(false);
   const { signUp, isAuthenticated, loading: authLoading, checkEmailExists } = useAuth();
   const emailCheckTimeoutRef = useRef(null);
   const emailAbortRef = useRef(null);
@@ -132,8 +135,22 @@ export default function SignupPage() {
     }
   };
 
-  const handleGoogleSignup = () => {
-    setError('Google Sign-Up is temporarily disabled. Please use email registration.');
+  const handleGoogleSignup = async () => {
+    setGoogleLoading(true);
+    setError('');
+
+    try {
+      await googleAuth.signInWithGoogle({
+        redirectTo: window.location.origin,
+        userType: 'renter'
+      });
+      // The redirect will happen automatically via Supabase OAuth
+    } catch (error) {
+      console.error('Google signup error:', error);
+      setError(error.message || 'Google sign-up failed. Please try again.');
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
   const handleEmailBlur = () => {
@@ -269,7 +286,7 @@ export default function SignupPage() {
       
       {/* Back Button - Top Left Corner */}
       <button
-        onClick={handleBackToHome}
+        onClick={() => navigate('/user-type')}
         className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20 flex items-center space-x-2 bg-white border border-[#2C3E50]/20 rounded-full px-4 py-2 text-[#2C3E50] hover:text-[#FF6B35] hover:border-[#FF6B35] transition-all duration-300 min-w-[44px] min-h-[44px] sm:min-w-auto sm:min-h-auto shadow-sm"
       >
         <span className="text-lg font-bold">&lt;</span>
@@ -282,18 +299,23 @@ export default function SignupPage() {
 
         {/* Signup Form */}
         <div className="bg-white/90 backdrop-blur-sm border border-[#2C3E50]/20 rounded-[2rem] px-8 py-12 min-h-[560px] md:min-h-[640px] shadow-xl">
+          <div className="text-center mb-8">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, duration: 0.5, type: "spring" }}
+              className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4"
+            >
+              <Users className="w-8 h-8 text-blue-600" />
+            </motion.div>
 
-        {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
-            {error}
+            <h1 className="text-3xl font-bold text-[#2C3E50] mb-2">
+              Renter Signup
+            </h1>
+            <p className="text-[#2C3E50]/80">
+              Create your account to start browsing properties
+            </p>
           </div>
-        )}
-
-        {success && (
-          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
-            {success}
-          </div>
-        )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Name Fields */}
@@ -338,28 +360,19 @@ export default function SignupPage() {
 
             {/* Email */}
             <div>
-              <label className="block text-gray-300 text-sm font-medium mb-2">
+              <label className="block text-[#2C3E50] text-sm font-medium mb-2">
                 Email Address
               </label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                 <input
                   type="email"
-                  name="email"
                   value={formData.email}
-                  onChange={handleInputChange}
-                  onBlur={handleEmailBlur}
-                  className={`w-full bg-transparent border ${emailBorder} rounded-[2rem] pl-12 pr-12 py-4 text-white placeholder-gray-400 focus:outline-none focus:bg-white/5 transition-all`}
-                  placeholder="Enter your email"
-                  autoComplete="email"
-                  inputMode="email"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  aria-invalid={!isEmailValid && !!formData.email}
-                  aria-live="polite"
+                  onChange={(e) => setFormData({...formData, email: e.target.value})}
+                  className="w-full bg-white/50 border border-[#2C3E50]/30 rounded-[2rem] pl-12 pr-4 py-4 text-[#2C3E50] placeholder-[#2C3E50]/60 focus:outline-none focus:border-[#FF6B35] focus:bg-white/80 transition-all"
+                  placeholder="Enter email address"
                   required
                 />
-                {/* Email status indicator */}
                 <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center">
                   {emailStatus === 'checking' && (
                     <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
@@ -371,127 +384,67 @@ export default function SignupPage() {
                       </svg>
                     </div>
                   )}
-                  {emailStatus === 'taken' && (
-                    <div className="w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
-                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </div>
-                  )}
-                  {emailStatus === 'error' && (
-                    <div className="w-5 h-5 bg-yellow-500 rounded-full flex items-center justify-center" title="Unable to verify">
-                      <svg className="w-3 h-3 text-black" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.72-1.36 3.485 0l6.518 11.59c.75 1.335-.213 2.99-1.742 2.99H3.48c-1.53 0-2.492-1.655-1.743-2.99l6.52-11.59zM11 13a1 1 0 10-2 0 1 1 0 002 0zm-1-2a1 1 0 01-1-1V7a1 1 0 112 0v3a1 1 0 01-1 1z" clipRule="evenodd" />
-                      </svg>
-                    </div>
-                  )}
                 </div>
               </div>
-              {/* Email status message */}
-              {formData.email && !isEmailValid && (
-                <p className="mt-1 text-sm text-red-400">Please enter a valid email address</p>
-              )}
-              {emailStatus === 'available' && (
-                <p className="mt-1 text-sm text-green-400">✓ Email is available</p>
-              )}
-              {emailStatus === 'taken' && (
-                <p className="mt-1 text-sm text-red-400">✗ This email is already registered</p>
-              )}
-              {emailStatus === 'checking' && (
-                <p className="mt-1 text-sm text-gray-400">Checking email availability...</p>
-              )}
-              {emailStatus === 'error' && (
-                <p className="mt-1 text-sm text-yellow-400">{emailCheckError || 'Unable to verify email availability right now'}</p>
-              )}
             </div>
 
-            {/* Password */}
             <div>
-              <label className="block text-gray-300 text-sm font-medium mb-2">
+              <label className="block text-[#2C3E50] text-sm font-medium mb-2">
                 Password
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  name="password"
                   value={formData.password}
-                  onChange={handleInputChange}
-                  className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-12 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
-                  placeholder="Create a password"
-                  autoComplete="new-password"
+                  onChange={(e) => setFormData({...formData, password: e.target.value})}
+                  className="w-full bg-white/50 border border-[#2C3E50]/30 rounded-[2rem] pl-12 pr-12 py-4 text-[#2C3E50] placeholder-[#2C3E50]/60 focus:outline-none focus:border-[#FF6B35] focus:bg-white/80 transition-all"
+                  placeholder="Create password"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-[#FF6B35] transition-colors"
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
             </div>
 
-            {/* Confirm Password */}
             <div>
-              <label className="block text-gray-300 text-sm font-medium mb-2">
+              <label className="block text-[#2C3E50] text-sm font-medium mb-2">
                 Confirm Password
               </label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
                 <input
                   type={showConfirmPassword ? 'text' : 'password'}
-                  name="confirmPassword"
                   value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-12 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
-                  placeholder="Confirm your password"
-                  autoComplete="new-password"
+                  onChange={(e) => setFormData({...formData, confirmPassword: e.target.value})}
+                  className="w-full bg-white/50 border border-[#2C3E50]/30 rounded-[2rem] pl-12 pr-12 py-4 text-[#2C3E50] placeholder-[#2C3E50]/60 focus:outline-none focus:border-[#FF6B35] focus:bg-white/80 transition-all"
+                  placeholder="Confirm password"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-[#FF6B35] transition-colors"
                 >
                   {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
               </div>
             </div>
 
-            {/* Terms and Conditions */}
-            <div className="flex items-start">
-              <input
-                type="checkbox"
-                className="w-4 h-4 text-blue-600 bg-transparent border-gray-400 rounded focus:ring-blue-500 focus:ring-2 mt-1"
-                required
-              />
-              <label className="ml-2 text-gray-300 text-sm">
-                I agree to the{' '}
-                <a href="#" className="text-blue-400 hover:text-blue-300 transition-colors">
-                  Terms of Service
-                </a>{' '}
-                and{' '}
-                <a href="#" className="text-blue-400 hover:text-blue-300 transition-colors">
-                  Privacy Policy
-                </a>
-              </label>
-            </div>
-
-            <button
+            <motion.button
               type="submit"
-              disabled={!canSubmit || loading}
-              className="w-full bg-white text-black py-4 rounded-[2rem] font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={loading}
+              className="w-full bg-[#FF6B35] text-white py-4 px-6 rounded-[2rem] font-semibold text-lg hover:bg-[#e85e2f] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
-              {loading ? (
-                <div className="flex items-center justify-center">
-                  <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin mr-2"></div>
-                  Creating Account...
-                </div>
-              ) : (
-                'Create Account'
-              )}
-            </button>
+              {loading ? 'Creating Account...' : 'Create Account'}
+            </motion.button>
 
             {/* Disabled reasons for clarity */}
             {(!canSubmit && !loading) && (
@@ -522,7 +475,8 @@ export default function SignupPage() {
           {/* Google Signup */}
           <button
             onClick={handleGoogleSignup}
-            className="w-full flex items-center justify-center space-x-3 bg-transparent border border-gray-400/50 text-white py-4 rounded-[2rem] font-medium hover:bg-white/5 transition-colors"
+            disabled={googleLoading}
+            className="w-full flex items-center justify-center space-x-3 bg-transparent border border-gray-400/50 text-[#2C3E50] py-4 rounded-[2rem] font-medium hover:bg-white/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -534,13 +488,25 @@ export default function SignupPage() {
           </button>
 
           <div className="mt-4 text-center">
-            <p className="text-gray-400">
+            <p className="text-gray-600">
               Already have an account?{' '}
-              <button 
-                onClick={() => navigate('/login')} 
-                className="text-blue-400 hover:text-blue-300 transition-colors underline"
+              <Link
+                to="/login"
+                className="text-orange-600 hover:text-orange-700 font-semibold"
               >
                 Sign in
+              </Link>
+            </p>
+          </div>
+
+          <div className="mt-4 text-center">
+            <p className="text-gray-400">
+              Need landlord tools?{' '}
+              <button 
+                onClick={() => navigate('/user-type')} 
+                className="text-blue-400 hover:text-blue-300 transition-colors underline"
+              >
+                Switch to Landlord Signup
               </button>
             </p>
           </div>

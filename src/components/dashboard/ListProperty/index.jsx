@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import ListPropertyForm from './ListPropertyForm';
-import { useDashboard } from '../../contexts/DashboardContext';
+import { useDashboard } from '../../../contexts/DashboardContext';
 
 const ListPropertyPage = () => {
   const navigate = useNavigate();

@@ -16,13 +16,16 @@ import PropertyDetails from './pages/PropertyDetails';
 import Gallery from './pages/Gallery';
 import InquiryForm from './pages/InquiryForm';
 import NotFound from './pages/NotFound';
-import Messages from './pages/Messages';
+import Messages from './components/dashboard/Messages/Messages';
 import SessionChecker from './components/auth/SessionChecker';
 import AuthCallback from './components/auth/AuthCallback';
 import BrandedSpinner from './components/common/BrandedSpinner';
-import ListPropertyPage from './pages/ListProperty';
+import ListPropertyPage from './components/dashboard/ListProperty/index';
 import Dashboard from './components/dashboard/Dashboard';
 import { DashboardProvider } from './contexts/DashboardContext';
+import UserTypeSelection from './components/UserTypeSelection';
+import LandlordLoginPage from './components/LandlordLoginPage';
+import LandlordSignupPage from './components/LandlordSignupPage';
 
 // Styles
 import './index.css';
@@ -113,7 +116,7 @@ const AnimatedRoutes = () => {
         <Route path="/" element={
           <DashboardProvider>
             <AnimatedPage>
-              <Dashboard/>
+              <Index/>
             </AnimatedPage>
           </DashboardProvider>
         } />
@@ -129,9 +132,22 @@ const AnimatedRoutes = () => {
             <SignupPage />
           </AnimatedPage>
         } />
-        <Route path="/auth/callback" element={
+        
+        <Route path="/user-type" element={
           <AnimatedPage>
-            <AuthCallback />
+            <UserTypeSelection />
+          </AnimatedPage>
+        } />
+        
+        <Route path="/list-login" element={
+          <AnimatedPage>
+            <LandlordLoginPage />
+          </AnimatedPage>
+        } />
+        
+        <Route path="/list-signup" element={
+          <AnimatedPage>
+            <LandlordSignupPage />
           </AnimatedPage>
         } />
         
@@ -179,7 +195,7 @@ const AnimatedRoutes = () => {
         } />
         
         {/* Main App Routes - Protected */}
-        <Route path="/main" element={
+        <Route path="/dashboard" element={
           <ProtectedRoute>
             <AnimatedPage>
               <MainLanding />
@@ -240,19 +256,26 @@ const App = () => {
         <Toaster position="top-right" richColors />
         <Routes>
             {/* Public auth routes on chat subdomain */}
-            <Route path="/login" element={
-              <AnimatedPage>
-                <LoginPage />
-              </AnimatedPage>
-            } />
             <Route path="/signup" element={
               <AnimatedPage>
                 <SignupPage />
               </AnimatedPage>
             } />
-            <Route path="/verify-email" element={
+            <Route path="/user-type" element={
               <AnimatedPage>
-                <EmailVerification />
+                <UserTypeSelection />
+              </AnimatedPage>
+            } />
+            
+            <Route path="/list-login" element={
+              <AnimatedPage>
+                <LandlordLoginPage />
+              </AnimatedPage>
+            } />
+            
+            <Route path="/list-signup" element={
+              <AnimatedPage>
+                <LandlordSignupPage />
               </AnimatedPage>
             } />
             <Route path="/auth/callback" element={
@@ -260,8 +283,8 @@ const App = () => {
                 <AuthCallback />
               </AnimatedPage>
             } />
-            {/* Protected main landing on chat root */}
-            <Route path="/" element={
+            {/* Protected landlord dashboard */}
+            <Route path="/dashboard" element={
               <ProtectedRoute>
                 <AnimatedPage>
                   <MainLanding />

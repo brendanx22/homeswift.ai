@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuth } from '../../contexts/AuthContext';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
-import api from '../../lib/api';
+import { Mail, Lock, Eye, EyeOff, Users } from 'lucide-react';
+import { useGoogleAuth } from '../../lib/googleAuth';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -14,6 +15,8 @@ export default function LoginPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { signIn, isAuthenticated, loading: authLoading } = useAuth();
+  const googleAuth = useGoogleAuth();
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   // Check for verification status and redirect if authenticated
   useEffect(() => {
@@ -128,11 +131,25 @@ export default function LoginPage() {
     }
   };
 
-  const handleGoogleLogin = () => {
-    setError({
-      message: 'Google Sign-In is temporarily disabled. Please use email login.',
-      needsVerification: false
-    });
+  const handleGoogleLogin = async () => {
+    setGoogleLoading(true);
+    setError({ message: '', needsVerification: false });
+
+    try {
+      await googleAuth.signInWithGoogle({
+        redirectTo: window.location.origin,
+        userType: 'renter'
+      });
+      // The redirect will happen automatically via Supabase OAuth
+    } catch (error) {
+      console.error('Google login error:', error);
+      setError({
+        message: error.message || 'Google sign-in failed. Please try again.',
+        needsVerification: false
+      });
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
   const handleBackToHome = () => {
@@ -149,11 +166,11 @@ export default function LoginPage() {
       
       {/* Back Button - Top Left Corner */}
       <button
-        onClick={handleBackToHome}
+        onClick={() => navigate('/user-type')}
         className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20 flex items-center space-x-2 bg-white border border-[#2C3E50]/20 rounded-full px-4 py-2 text-[#2C3E50] hover:text-[#FF6B35] hover:border-[#FF6B35] transition-all duration-300 min-w-[44px] min-h-[44px] sm:min-w-auto sm:min-h-auto shadow-sm"
       >
         <span className="text-lg font-bold">&lt;</span>
-        <img src="/images/logo.png" alt="HomeSwift Logo" className="w-10 h-10 rounded" />
+        <img src="/images/logo.png" alt="HomeSwift Logo" className="w-4 h-4 rounded" />
       </button>
 
 
@@ -163,14 +180,23 @@ export default function LoginPage() {
         {/* Login Form */}
         <div className="bg-white/90 backdrop-blur-sm border border-[#2C3E50]/20 rounded-[2rem] px-8 py-12 min-h-[560px] md:min-h-[640px] shadow-xl">
           <div className="text-center mb-8">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, duration: 0.5, type: "spring" }}
+              className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4"
+            >
+              <Users className="w-8 h-8 text-blue-600" />
+            </motion.div>
+
             <h1 className="text-3xl font-bold text-[#2C3E50] mb-2">
-              {isVerified ? 'Email Verified!' : 'Welcome Back'}
+              {isVerified ? 'Email Verified!' : 'Renter Login'}
             </h1>
             <p className="text-[#2C3E50]/80">
-              {isVerified ? 'Your email has been verified successfully!' : 'Sign in to continue to your account'}
+              {isVerified ? 'Your email has been verified successfully!' : 'Sign in to browse properties'}
             </p>
             {isVerified && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-600 text-sm">
                 Email verification successful! You can now log in to your account.
               </div>
             )}
@@ -209,7 +235,7 @@ export default function LoginPage() {
                   name="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-transparent border border-[#FF6B35]/50 rounded-[2rem] pl-12 pr-4 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
+                  className="w-full bg-white/50 border border-[#2C3E50]/30 rounded-[2rem] pl-12 pr-4 py-4 text-[#2C3E50] placeholder-[#2C3E50]/60 focus:outline-none focus:border-[#FF6B35] focus:bg-white/80 transition-all"
                   placeholder="Enter your email"
                   autoComplete="username"
                   inputMode="email"
@@ -231,7 +257,7 @@ export default function LoginPage() {
                   name="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-transparent border border-[#FF6B35]/50 rounded-[2rem] pl-12 pr-12 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
+                  className="w-full bg-white/50 border border-[#2C3E50]/30 rounded-[2rem] pl-12 pr-12 py-4 text-[#2C3E50] placeholder-[#2C3E50]/60 focus:outline-none focus:border-[#FF6B35] focus:bg-white/80 transition-all"
                   placeholder="Enter your password"
                   autoComplete="current-password"
                   required
@@ -239,7 +265,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-[#FF6B35] transition-colors"
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -259,10 +285,12 @@ export default function LoginPage() {
               </a>
             </div>
 
-            <button
+            <motion.button
               type="submit"
               disabled={loading}
-              className="w-full bg-white text-black py-4 rounded-[2rem] font-medium hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-[#FF6B35] text-white py-4 px-6 rounded-[2rem] font-semibold text-lg hover:bg-[#e85e2f] disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
               {loading ? (
                 <div className="flex items-center justify-center">
@@ -272,7 +300,8 @@ export default function LoginPage() {
               ) : (
                 'Sign In'
               )}
-            </button>
+            </motion.button>
+
           </form>
 
           {/* Divider */}
@@ -288,7 +317,8 @@ export default function LoginPage() {
           {/* Google Login */}
           <button
             onClick={handleGoogleLogin}
-            className="w-full flex items-center justify-center space-x-3 bg-transparent border border-gray-400/50 text-white py-4 rounded-[2rem] font-medium hover:bg-white/5 transition-colors"
+            disabled={googleLoading}
+            className="w-full flex items-center justify-center space-x-3 bg-transparent border border-gray-400/50 text-[#2C3E50] py-4 rounded-[2rem] font-medium hover:bg-white/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -300,13 +330,25 @@ export default function LoginPage() {
           </button>
 
           <div className="mt-6 text-center">
-            <p className="text-gray-400">
+            <p className="text-gray-600">
               Don't have an account?{' '}
-              <button 
-                onClick={() => navigate('/signup')} 
-                className="text-blue-400 hover:text-blue-300 transition-colors underline"
+              <Link
+                to="/signup"
+                className="text-orange-600 hover:text-orange-700 font-semibold"
               >
                 Sign up
+              </Link>
+            </p>
+          </div>
+
+          <div className="mt-6 text-center">
+            <p className="text-gray-400">
+              Looking for landlord tools?{' '}
+              <button 
+                onClick={() => navigate('/user-type')} 
+                className="text-blue-400 hover:text-blue-300 transition-colors underline"
+              >
+                Switch to Landlord Login
               </button>
             </p>
           </div>

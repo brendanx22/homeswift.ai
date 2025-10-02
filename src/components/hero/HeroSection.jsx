@@ -34,11 +34,11 @@ export default function HeroSection() {
 
 
   const handleGetStartedClick = () => {
-    navigate('/login');
+    navigate('/user-type');
   };
 
   const handleLoginClick = () => {
-    navigate('/login');
+    navigate('/user-type');
   };
 
   return (

@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
+import { useGoogleAuth } from '../../lib/googleAuth';
 
 export default function AuthCallback() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const googleAuth = useGoogleAuth();
   const [message, setMessage] = useState('Finalizing sign-in...');
 
   useEffect(() => {
@@ -12,37 +14,28 @@ export default function AuthCallback() {
 
     const finalize = async () => {
       try {
-        // 1) If we received tokens from main domain login, set session directly
+        // Check if this is a Google OAuth callback
         const access_token = searchParams.get('access_token');
         const refresh_token = searchParams.get('refresh_token');
-        let redirect = searchParams.get('redirect') || '/';
-
-        // Only allow relative redirect paths for safety
-        try {
-          if (/^https?:\/\//i.test(redirect)) {
-            const u = new URL(redirect);
-            // only permit chat.homeswift.co absolute redirects
-            if (u.hostname === 'chat.homeswift.co') {
-              redirect = u.pathname + (u.search || '');
-            } else {
-              redirect = '/';
-            }
-          }
-        } catch {}
+        const redirect = searchParams.get('redirect') || '/auth/callback';
 
         if (access_token && refresh_token) {
-          setMessage('Signing you in...');
-          const { error } = await supabase.auth.setSession({ access_token, refresh_token });
-          if (error) throw error;
+          setMessage('Setting up your session...');
 
-          // Clean URL
-          window.history.replaceState({}, document.title, '/auth/callback');
-          if (!isMounted) return;
-          navigate(redirect, { replace: true });
-          return;
+          // Use the Google auth utility to handle the callback
+          const result = await googleAuth.handleCallback(searchParams);
+
+          if (result.success) {
+            setMessage('Redirecting you...');
+            // Clean URL and redirect
+            window.history.replaceState({}, document.title, '/auth/callback');
+            if (!isMounted) return;
+            navigate(result.redirectTo, { replace: true });
+            return;
+          }
         }
 
-        // 2) Handle OAuth PKCE flows (if ever used)
+        // Handle other OAuth flows or direct Supabase auth
         const hasCode = window.location.search.includes('code=');
         const hasFragToken = window.location.hash.includes('access_token=');
         if (hasCode || hasFragToken) {
@@ -60,7 +53,7 @@ export default function AuthCallback() {
           return;
         }
 
-        // 3) Nothing to process, go home
+        // Nothing to process, go home
         navigate('/', { replace: true });
       } catch (err) {
         console.error('Auth callback error:', err);
@@ -73,7 +66,7 @@ export default function AuthCallback() {
 
     finalize();
     return () => { isMounted = false; };
-  }, [navigate, searchParams]);
+  }, [navigate, searchParams, googleAuth]);
 
   return (
     <div className="flex items-center justify-center min-h-screen">
