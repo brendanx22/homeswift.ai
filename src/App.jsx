@@ -20,7 +20,7 @@ import SessionChecker from './components/auth/SessionChecker';
 import AuthCallback from './components/auth/AuthCallback';
 import BrandedSpinner from './components/common/BrandedSpinner';
 import ListPropertyPage from './pages/ListProperty';
-import Dashboard from './components/Dashboard';
+import Dashboard from './components/dashboard/Dashboard';
 import { DashboardProvider } from './contexts/DashboardContext';
 
 // Styles

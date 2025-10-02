@@ -31,7 +31,7 @@ import {
   X
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useDashboard } from '../contexts/DashboardContext';
+import { useDashboard } from '../../contexts/DashboardContext';
 
 const Dashboard = () => {
   const navigate = useNavigate();

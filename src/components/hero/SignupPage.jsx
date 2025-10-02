@@ -262,20 +262,15 @@ export default function SignupPage() {
   return (
     <div 
       className="min-h-screen flex justify-center items-start pt-24 sm:pt-32 md:pt-40 pb-24 sm:pb-32 md:pb-40 px-6 bg-cover bg-center bg-no-repeat relative"
-      style={{ 
-        backgroundImage: 'url("/Hero Section Image.png")',
-        backgroundSize: 'cover',
-        backgroundColor: '#1a1a1a'
-      }}
+    
     >
       {/* Background overlay for better text readability */}
-      <div className="absolute inset-0 bg-black/40"></div>
-      <div className="absolute inset-0 bg-gradient-to-br from-gray-900/20 via-transparent to-gray-800/30"></div>
+      <div className="absolute inset-0 bg-white"></div>
       
       {/* Back Button - Top Left Corner */}
       <button
         onClick={handleBackToHome}
-        className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20 flex items-center space-x-2 bg-black/20 backdrop-blur-sm border border-gray-400/30 rounded-full px-3 py-2 sm:px-3 sm:py-2 text-gray-300 hover:text-white hover:bg-black/40 hover:border-gray-300/50 transition-all duration-300 min-w-[44px] min-h-[44px] sm:min-w-auto sm:min-h-auto"
+        className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20 flex items-center space-x-2 bg-white border border-[#2C3E50]/20 rounded-full px-4 py-2 text-[#2C3E50] hover:text-[#FF6B35] hover:border-[#FF6B35] transition-all duration-300 min-w-[44px] min-h-[44px] sm:min-w-auto sm:min-h-auto shadow-sm"
       >
         <span className="text-lg font-bold">&lt;</span>
         <img src="/images/logo.png" alt="HomeSwift Logo" className="w-4 h-4 rounded" />
@@ -286,23 +281,19 @@ export default function SignupPage() {
       <div className="w-full max-w-sm relative z-10">
 
         {/* Signup Form */}
-        <div className="bg-transparent border border-gray-400/50 rounded-[2rem] px-8 py-12 min-h-[560px] md:min-h-[640px]">
-          <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-white mb-1">Create Account</h1>
-            <p className="text-gray-300 text-sm">Join HomeSwift and find your dream home</p>
+        <div className="bg-white/90 backdrop-blur-sm border border-[#2C3E50]/20 rounded-[2rem] px-8 py-12 min-h-[560px] md:min-h-[640px] shadow-xl">
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
+            {error}
           </div>
+        )}
 
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-              {error}
-            </div>
-          )}
-
-          {success && (
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
-              {success}
-            </div>
-          )}
+        {success && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+            {success}
+          </div>
+        )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Name Fields */}

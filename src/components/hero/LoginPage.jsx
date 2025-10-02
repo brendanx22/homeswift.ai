@@ -142,23 +142,18 @@ export default function LoginPage() {
   return (
     <div 
       className="min-h-screen flex justify-center items-start pt-24 sm:pt-32 md:pt-40 pb-24 sm:pb-32 md:pb-40 px-6 bg-cover bg-center bg-no-repeat relative"
-      style={{ 
-        backgroundImage: 'url("/Hero Section Image.png")',
-        backgroundSize: 'cover',
-        backgroundColor: '#1a1a1a'
-      }}
+     
     >
       {/* Background overlay for better text readability */}
-      <div className="absolute inset-0 bg-black/40"></div>
-      <div className="absolute inset-0 bg-gradient-to-br from-gray-900/20 via-transparent to-gray-800/30"></div>
+      <div className="absolute inset-0 bg-white"></div>
       
       {/* Back Button - Top Left Corner */}
       <button
         onClick={handleBackToHome}
-        className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20 flex items-center space-x-2 bg-black/20 backdrop-blur-sm border border-gray-400/30 rounded-full px-3 py-2 sm:px-3 sm:py-2 text-gray-300 hover:text-white hover:bg-black/40 hover:border-gray-300/50 transition-all duration-300 min-w-[44px] min-h-[44px] sm:min-w-auto sm:min-h-auto"
+        className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20 flex items-center space-x-2 bg-white border border-[#2C3E50]/20 rounded-full px-4 py-2 text-[#2C3E50] hover:text-[#FF6B35] hover:border-[#FF6B35] transition-all duration-300 min-w-[44px] min-h-[44px] sm:min-w-auto sm:min-h-auto shadow-sm"
       >
         <span className="text-lg font-bold">&lt;</span>
-        <img src="/images/logo.png" alt="HomeSwift Logo" className="w-4 h-4 rounded" />
+        <img src="/images/logo.png" alt="HomeSwift Logo" className="w-10 h-10 rounded" />
       </button>
 
 
@@ -166,18 +161,16 @@ export default function LoginPage() {
       <div className="w-full max-w-md relative z-10">
 
         {/* Login Form */}
-        <div className="bg-transparent border border-gray-400/50 rounded-[2rem] px-8 py-12 min-h-[560px] md:min-h-[640px]">
+        <div className="bg-white/90 backdrop-blur-sm border border-[#2C3E50]/20 rounded-[2rem] px-8 py-12 min-h-[560px] md:min-h-[640px] shadow-xl">
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-white mb-2">
+            <h1 className="text-3xl font-bold text-[#2C3E50] mb-2">
               {isVerified ? 'Email Verified!' : 'Welcome Back'}
             </h1>
-            <p className="text-gray-300">
-              {isVerified 
-                ? 'Your email has been successfully verified. You can now sign in to your account.' 
-                : 'Sign in to your HomeSwift account'}
+            <p className="text-[#2C3E50]/80">
+              {isVerified ? 'Your email has been verified successfully!' : 'Sign in to continue to your account'}
             </p>
             {isVerified && (
-              <div className="mt-4 p-3 bg-green-50 text-green-700 rounded-md text-sm">
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
                 Email verification successful! You can now log in to your account.
               </div>
             )}
@@ -206,7 +199,7 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-gray-300 text-sm font-medium mb-2">
+              <label className="block text-[#2C3E50] text-sm font-medium mb-2">
                 Email Address
               </label>
               <div className="relative">
@@ -216,7 +209,7 @@ export default function LoginPage() {
                   name="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-4 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
+                  className="w-full bg-transparent border border-[#FF6B35]/50 rounded-[2rem] pl-12 pr-4 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                   placeholder="Enter your email"
                   autoComplete="username"
                   inputMode="email"
@@ -228,7 +221,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="block text-gray-300 text-sm font-medium mb-2">
+              <label className="block text-[#2C3E50] text-sm font-medium mb-2">
                 Password
               </label>
               <div className="relative">
@@ -238,7 +231,7 @@ export default function LoginPage() {
                   name="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-transparent border border-gray-400/50 rounded-[2rem] pl-12 pr-12 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
+                  className="w-full bg-transparent border border-[#FF6B35]/50 rounded-[2rem] pl-12 pr-12 py-4 text-white placeholder-gray-400 focus:outline-none focus:border-gray-300 focus:bg-white/5 transition-all"
                   placeholder="Enter your password"
                   autoComplete="current-password"
                   required
