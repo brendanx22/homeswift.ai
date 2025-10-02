@@ -163,35 +163,30 @@ export const AuthProvider = ({ children }) => {
           fetchAndMergeUserProfile(currentSession.user);
 
           // Only redirect if we're on an auth page and the user is now authenticated
-          const authPages = ['/login', '/signup', '/verify-email', '/landlord-login', '/landlord-signup'];
+          const authPages = ['/login', '/signup', '/verify-email', '/landlord-login', '/landlord-signup', '/list-login', '/list-signup'];
           if (authPages.includes(window.location.pathname)) {
             const urlParams = new URLSearchParams(window.location.search);
             const redirectTo = urlParams.get('redirect');
             const isChat = window.location.hostname.startsWith('chat.');
             const isList = window.location.hostname.startsWith('list.');
             const isHomeswiftMain = window.location.hostname.endsWith('homeswift.co') && !isChat && !isList;
-            const defaultAfterLogin = isList ? '/dashboard' : (isHomeswiftMain ? 'https://chat.homeswift.co/' : '/');
-
-            let target = redirectTo || defaultAfterLogin;
-            if (isHomeswiftMain && target === '/app') {
-              target = 'https://chat.homeswift.co/';
-            } else if (isHomeswiftMain && target && /^https?:\/\//i.test(target) && target.includes('homeswift.co/app')) {
-              target = 'https://chat.homeswift.co/';
+            // Determine user type
+            const userType = currentSession.user.user_metadata?.user_type || currentSession.user.app_metadata?.user_type || 'renter';
+            let defaultAfterLogin;
+            if (userType === 'landlord') {
+              defaultAfterLogin = 'https://list.homeswift.co/dashboard';
+            } else {
+              defaultAfterLogin = 'https://chat.homeswift.co/';
             }
+            let target = redirectTo || defaultAfterLogin;
+            // If redirectTo is present, let it take precedence
             const isAbsolute = /^https?:\/\//i.test(target);
-
             if (isAbsolute) {
               window.location.assign(target);
             } else if (!authPages.some(page => target.includes(page))) {
               navigate(target);
             } else {
-              if (isList) {
-                navigate('/dashboard');
-              } else if (isHomeswiftMain) {
-                window.location.assign('https://chat.homeswift.co/');
-              } else {
-                navigate('/');
-              }
+              window.location.assign(defaultAfterLogin);
             }
           }
         } else {
@@ -391,46 +386,25 @@ export const AuthProvider = ({ children }) => {
       // Get redirect URL from query params or default based on domain
       const urlParams = new URLSearchParams(window.location.search);
       const redirectTo = urlParams.get('redirect');
-      const isChat = window.location.hostname.startsWith('chat.');
-      const isList = window.location.hostname.startsWith('list.');
-      const isHomeswiftMain = window.location.hostname.endsWith('homeswift.co') && !isChat && !isList;
-      const defaultAfterLogin = isList ? '/dashboard' : (isHomeswiftMain ? 'https://chat.homeswift.co/' : '/');
-      
+      // Determine user type
+      const userType = freshSession?.user?.user_metadata?.user_type || freshSession?.user?.app_metadata?.user_type || 'renter';
+      let defaultAfterLogin;
+      if (userType === 'landlord') {
+        defaultAfterLogin = 'https://list.homeswift.co/dashboard';
+      } else {
+        defaultAfterLogin = 'https://chat.homeswift.co/';
+      }
+      let target = redirectTo || defaultAfterLogin;
       // Ensure we don't redirect back to an auth page
       const authPages = ['/login', '/signup', '/verify-email', '/reset-password', '/list-login', '/list-signup'];
-      let target = redirectTo || defaultAfterLogin;
-      // Handle relative '/app' on main domain by sending to chat
-      if (isHomeswiftMain && target === '/app') {
-        target = 'https://chat.homeswift.co/';
-      }
-
-      // If we are on the main site and target is the chat domain, pass tokens via /auth/callback
-      const isAbsolute = /^https?:///i.test(target);
-      const targetUrl = isAbsolute ? new URL(target) : null;
-      const goingToChat = !!(targetUrl && targetUrl.hostname === 'chat.homeswift.co');
-      const goingToList = !!(targetUrl && targetUrl.hostname === 'list.homeswift.co');
-      const accessToken = freshSession?.access_token || data?.session?.access_token;
-      const refreshToken = freshSession?.refresh_token || data?.session?.refresh_token;
-
-      if (isHomeswiftMain && goingToChat && accessToken && refreshToken) {
-        const redirectPath = targetUrl.pathname + (targetUrl.search || '');
-        const callback = `https://chat.homeswift.co/auth/callback?access_token=${encodeURIComponent(accessToken)}&refresh_token=${encodeURIComponent(refreshToken)}&redirect=${encodeURIComponent(redirectPath)}`;
-        console.log('[AuthProvider.signIn] redirecting to chat callback with tokens');
-        window.location.assign(callback);
-      } else if (isHomeswiftMain && goingToList && accessToken && refreshToken) {
-        const redirectPath = targetUrl.pathname + (targetUrl.search || '');
-        const callback = `https://list.homeswift.co/auth/callback?access_token=${encodeURIComponent(accessToken)}&refresh_token=${encodeURIComponent(refreshToken)}&redirect=${encodeURIComponent(redirectPath)}`;
-        console.log('[AuthProvider.signIn] redirecting to list callback with tokens');
-        window.location.assign(callback);
-      } else if (isAbsolute) {
-        console.log('[AuthProvider.signIn] cross-origin redirect to', target);
+      // If redirectTo is present, let it take precedence
+      const isAbsolute = /^https?:\/\//i.test(target);
+      if (isAbsolute) {
         window.location.assign(target);
       } else if (!authPages.some(page => target.includes(page))) {
-        console.log('[AuthProvider.signIn] navigating to', target);
         navigate(target);
       } else {
-        console.log('[AuthProvider.signIn] navigating to', defaultAfterLogin);
-        navigate(defaultAfterLogin);
+        window.location.assign(defaultAfterLogin);
       }
       
       console.log('[AuthProvider.signIn] success');
