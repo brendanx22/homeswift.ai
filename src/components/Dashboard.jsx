@@ -98,7 +98,7 @@ const Dashboard = () => {
       case 'pending': return 'bg-[#2C3E50]';
       default: return 'bg-[#2C3E50]';
     }
-  };
+  }; 
 
   const handleDeleteProperty = async (propertyId) => {
     if (window.confirm('Are you sure you want to delete this property?')) {
