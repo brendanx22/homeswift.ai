@@ -16,6 +16,7 @@ import PropertyDetails from './pages/PropertyDetails';
 import Gallery from './pages/Gallery';
 import InquiryForm from './pages/InquiryForm';
 import NotFound from './pages/NotFound';
+import Messages from './pages/Messages';
 import SessionChecker from './components/auth/SessionChecker';
 import AuthCallback from './components/auth/AuthCallback';
 import BrandedSpinner from './components/common/BrandedSpinner';
@@ -112,7 +113,7 @@ const AnimatedRoutes = () => {
         <Route path="/" element={
           <DashboardProvider>
             <AnimatedPage>
-              <Index/>
+              <Dashboard/>
             </AnimatedPage>
           </DashboardProvider>
         } />
@@ -146,6 +147,17 @@ const AnimatedRoutes = () => {
           <AnimatedPage>
             <HouseListings />
           </AnimatedPage>
+        } />
+
+        {/* Messages - requires authentication when used from dashboard navigation */}
+        <Route path="/messages" element={
+          <DashboardProvider>
+            <ProtectedRoute>
+              <AnimatedPage>
+                <Messages />
+              </AnimatedPage>
+            </ProtectedRoute>
+          </DashboardProvider>
         } />
 
         {/* Landlord/Owner property listing page */}
@@ -297,6 +309,13 @@ const App = () => {
               <ProtectedRoute>
                 <AnimatedPage>
                   <Gallery />
+                </AnimatedPage>
+              </ProtectedRoute>
+            } />
+            <Route path="/messages" element={
+              <ProtectedRoute>
+                <AnimatedPage>
+                  <Messages />
                 </AnimatedPage>
               </ProtectedRoute>
             } />

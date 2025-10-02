@@ -77,16 +77,18 @@ const Dashboard = () => {
   const navigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'properties', label: 'Properties', icon: Building },
-    { id: 'leads', label: 'Leads', icon: Users, badge: '3' },
+    { id: 'messages', label: 'Messages', icon: MessageSquare, badge: '3' },
     { id: 'calendar', label: 'Calendar', icon: Calendar },
-    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-    { id: 'locate', label: 'Locate', icon: MapPin }
+    // { id: 'locate', label: 'Locate', icon: MapPin }
   ];
 
   const handleNavigation = (id) => {
     setActiveTab(id);
     if (id === 'properties') {
       navigate('/list-property');
+    }
+    if (id === 'messages') { 
+      navigate('/messages');
     }
   };
 
