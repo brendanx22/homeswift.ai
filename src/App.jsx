@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -131,7 +131,7 @@ const AnimatedRoutes = () => {
         <Route path="/" element={
           <DashboardProvider>
             <AnimatedPage>
-              <Index/>
+              <Dashboard/>
             </AnimatedPage>
           </DashboardProvider>
         } />

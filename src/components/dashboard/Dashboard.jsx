@@ -78,7 +78,7 @@ const Dashboard = () => {
     { id: 'dashboard', label: 'Dashboard', icon: Home },
     { id: 'properties', label: 'Properties', icon: Building },
     { id: 'messages', label: 'Messages', icon: MessageSquare, badge: '3' },
-    { id: 'calendar', label: 'Calendar', icon: Calendar },
+    // { id: 'calendar', label: 'Calendar', icon: Calendar },
     // { id: 'locate', label: 'Locate', icon: MapPin }
   ];
 

@@ -1,6 +1,24 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Paperclip, Send, Image as ImageIcon, FileText, Download, X, Check, CheckCheck } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { 
+  Paperclip, 
+  Send, 
+  Image as ImageIcon, 
+  FileText, 
+  Download, 
+  X, 
+  Check, 
+  CheckCheck, 
+  Search,
+  Plus,
+  MoreVertical,
+  Phone,
+  Video,
+  Info,
+  ArrowLeft,
+  MessageSquare
+} from 'lucide-react';
 
 // Simple in-memory mock socket for demo
 const subscribers = new Set();
@@ -76,7 +94,93 @@ const AttachmentPreview = ({ files, onRemove }) => {
   );
 };
 
+// Mock conversation data
+const mockConversations = [
+  {
+    id: 1,
+    name: 'Divine Edike',
+    avatar: 'DE',
+    lastMessage: 'I\'m interested in scheduling a viewing this weekend',
+    timestamp: '2 min ago',
+    unreadCount: 2,
+    online: true,
+    propertyTitle: '3-Bedroom Apartment in Victoria Island'
+  },
+  {
+    id: 2,
+    name: 'Nwanze Brendan',
+    avatar: 'NB',
+    lastMessage: 'Is the monthly rent including utilities?',
+    timestamp: '15 min ago',
+    unreadCount: 1,
+    online: false,
+    propertyTitle: '2-Bedroom Flat in Lekki'
+  },
+  {
+    id: 3,
+    name: 'Sarah Johnson',
+    avatar: 'SJ',
+    lastMessage: 'Thank you for the quick response!',
+    timestamp: '1 hour ago',
+    unreadCount: 0,
+    online: true,
+    propertyTitle: 'Studio Apartment in Ikoyi'
+  },
+  {
+    id: 4,
+    name: 'Michael Chen',
+    avatar: 'MC',
+    lastMessage: 'Can we schedule a virtual tour?',
+    timestamp: '3 hours ago',
+    unreadCount: 0,
+    online: false,
+    propertyTitle: '4-Bedroom Duplex in Ajah'
+  }
+];
+
+const ConversationItem = ({ conversation, isActive, onClick }) => (
+  <motion.div
+    onClick={onClick}
+    className={`p-4 cursor-pointer border-b border-gray-100 hover:bg-gray-50 transition-colors ${
+      isActive ? 'bg-[#FF6B35]/5 border-r-2 border-r-[#FF6B35]' : ''
+    }`}
+    whileHover={{ x: 2 }}
+  >
+    <div className="flex items-start space-x-3">
+      <div className="relative">
+        <div className="w-12 h-12 bg-[#FF6B35] rounded-full flex items-center justify-center text-white font-medium">
+          {conversation.avatar}
+        </div>
+        {conversation.online && (
+          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-1">
+          <h4 className="font-semibold text-[#2C3E50] text-sm truncate">{conversation.name}</h4>
+          <span className="text-xs text-gray-500 flex-shrink-0">{conversation.timestamp}</span>
+        </div>
+        <p className="text-xs text-gray-600 mb-1 truncate">{conversation.propertyTitle}</p>
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-gray-600 truncate">{conversation.lastMessage}</p>
+          {conversation.unreadCount > 0 && (
+            <span className="bg-[#FF6B35] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center ml-2">
+              {conversation.unreadCount}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  </motion.div>
+);
+
 const Messages = () => {
+  const navigate = useNavigate();
+  const [activeConversation, setActiveConversation] = useState(1);
+  const [isMobileView, setIsMobileView] = useState(false);
+  const [showConversationList, setShowConversationList] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  
   const [messages, setMessages] = React.useState(() => {
     const seed = [
       { id: 'm1', sender: 'other', text: 'Hi! I saw your listing. Is the apartment still available?', createdAt: Date.now() - 1000 * 60 * 20 },
@@ -89,6 +193,29 @@ const Messages = () => {
   const [isTyping, setIsTyping] = React.useState(false);
   const inputRef = React.useRef(null);
   const scrollerRef = React.useRef(null);
+
+  // Handle responsive behavior
+  React.useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobileView(mobile);
+      if (mobile) {
+        setShowConversationList(false);
+      } else {
+        setShowConversationList(true);
+      }
+    };
+    
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const activeConversationData = mockConversations.find(c => c.id === activeConversation);
+  const filteredConversations = mockConversations.filter(conv =>
+    conv.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    conv.propertyTitle.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   React.useEffect(() => {
     const cb = (m) => setMessages((prev) => [...prev, m]);
@@ -187,82 +314,222 @@ const Messages = () => {
       {/* Header aligned with dashboard style */}
       <header className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-bold text-[#FF6B35]">Messages</h1>
-          <div className="text-sm text-gray-600">Mock Agent • Online</div>
+          <div className="flex items-center space-x-4">
+            {/* Back to Dashboard Button */}
+            <button
+              onClick={() => navigate('/')}
+              className="flex items-center space-x-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors group"
+            >
+              <ArrowLeft className="w-4 h-4 text-[#2C3E50] group-hover:text-[#FF6B35] transition-colors" />
+              <span className="text-sm font-medium text-[#2C3E50] group-hover:text-[#FF6B35] transition-colors">
+                Back to Dashboard
+              </span>
+            </button>
+            
+            {/* Mobile conversation list toggle */}
+            {isMobileView && !showConversationList && (
+              <button
+                onClick={() => setShowConversationList(true)}
+                className="p-2 rounded-lg hover:bg-gray-100 transition-colors lg:hidden"
+              >
+                <ArrowLeft className="w-5 h-5 text-[#2C3E50]" />
+              </button>
+            )}
+            <h1 className="text-xl font-bold text-[#FF6B35]">Messages</h1>
+          </div>
+          {activeConversationData && !showConversationList && (
+            <div className="flex items-center space-x-3">
+              <div className="text-sm">
+                <div className="font-medium text-[#2C3E50]">{activeConversationData.name}</div>
+                <div className="text-gray-500">{activeConversationData.online ? 'Online' : 'Offline'}</div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                  <Phone className="w-5 h-5 text-[#2C3E50]" />
+                </button>
+                <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                  <Video className="w-5 h-5 text-[#2C3E50]" />
+                </button>
+                <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                  <Info className="w-5 h-5 text-[#2C3E50]" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
       <div className="flex-1 pt-[72px]">
-        <main className="max-w-5xl mx-auto h-[calc(100vh-72px)] px-4 sm:px-6">
-          <div className="h-full grid grid-rows-[1fr_auto]">
-            {/* Messages area */}
-            <div ref={scrollerRef} className="overflow-y-auto border-x border-t border-gray-200 rounded-t-2xl p-4 bg-gray-50" onDrop={onDrop} onDragOver={onDragOver}>
-              <div className="max-w-3xl mx-auto">
-                {/* Day divider example */}
-                <div className="text-center text-xs text-gray-500 my-2">Today</div>
-                {messages.map((m) => (
-                  <MessageBubble key={m.id} message={m} />
-                ))}
-                {isTyping && (
-                  <div className="flex justify-start mb-3">
-                    <div className="bg-white border border-gray-200 rounded-2xl px-4 py-2 shadow-sm">
-                      <div className="flex gap-1">
-                        <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{animationDelay: '0ms'}} />
-                        <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{animationDelay: '100ms'}} />
-                        <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{animationDelay: '200ms'}} />
+        <div className="h-[calc(100vh-72px)] flex">
+          {/* Conversation List Panel */}
+          <div className={`${
+            isMobileView 
+              ? showConversationList ? 'w-full' : 'hidden' 
+              : 'w-80'
+          } bg-white border-r border-gray-200 flex flex-col`}>
+            {/* Search and New Conversation */}
+            <div className="p-4 border-b border-gray-200">
+              <div className="flex items-center space-x-2 mb-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <input
+                    type="text"
+                    placeholder="Search conversations..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF6B35] focus:border-transparent text-sm"
+                  />
+                </div>
+                <button className="p-2 bg-[#FF6B35] text-white rounded-lg hover:brightness-95 transition-colors">
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Conversations List */}
+            <div className="flex-1 overflow-y-auto">
+              {filteredConversations.length === 0 ? (
+                <div className="p-8 text-center">
+                  <div className="text-gray-500 text-sm">No conversations found</div>
+                </div>
+              ) : (
+                filteredConversations.map((conversation) => (
+                  <ConversationItem
+                    key={conversation.id}
+                    conversation={conversation}
+                    isActive={activeConversation === conversation.id}
+                    onClick={() => {
+                      setActiveConversation(conversation.id);
+                      if (isMobileView) {
+                        setShowConversationList(false);
+                      }
+                    }}
+                  />
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Chat Window */}
+          <div className={`${
+            isMobileView 
+              ? showConversationList ? 'hidden' : 'w-full' 
+              : 'flex-1'
+          } flex flex-col`}>
+            {activeConversationData ? (
+              <>
+                {/* Chat Header - Desktop Only */}
+                {!isMobileView && (
+                  <div className="p-4 border-b border-gray-200 bg-white">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="relative">
+                          <div className="w-10 h-10 bg-[#FF6B35] rounded-full flex items-center justify-center text-white font-medium">
+                            {activeConversationData.avatar}
+                          </div>
+                          {activeConversationData.online && (
+                            <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-[#2C3E50]">{activeConversationData.name}</h3>
+                          <p className="text-sm text-gray-600">{activeConversationData.propertyTitle}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                          <Phone className="w-5 h-5 text-[#2C3E50]" />
+                        </button>
+                        <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                          <Video className="w-5 h-5 text-[#2C3E50]" />
+                        </button>
+                        <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors">
+                          <MoreVertical className="w-5 h-5 text-[#2C3E50]" />
+                        </button>
                       </div>
                     </div>
                   </div>
                 )}
-              </div>
-            </div>
 
-            {/* Composer */}
-            <div className="border border-gray-200 rounded-b-2xl bg-white">
-              <AttachmentPreview files={attachments} onRemove={removeAttachment} />
-              <div className="flex items-end gap-2 p-3">
-                <label className="cursor-pointer text-gray-600 hover:text-[#FF6B35] p-2 rounded-lg hover:bg-gray-100">
-                  <input type="file" className="hidden" multiple onChange={(e) => onFiles(e.target.files || [])} />
-                  <Paperclip className="h-5 w-5" />
-                </label>
-                <label className="cursor-pointer text-gray-600 hover:text-[#FF6B35] p-2 rounded-lg hover:bg-gray-100">
-                  <input type="file" accept="image/*" className="hidden" multiple onChange={(e) => onFiles(e.target.files || [])} />
-                  <ImageIcon className="h-5 w-5" />
-                </label>
-                <div className="flex-1">
-                  <textarea
-                    ref={inputRef}
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') send();
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        send();
-                      }
-                    }}
-                    onPaste={handlePaste}
-                    rows={1}
-                    placeholder="Write a message..."
-                    className="w-full resize-none outline-none rounded-lg border border-gray-200 p-2 text-sm focus:ring-2 focus:ring-[#FF6B35]"
-                  />
+                {/* Messages Area */}
+                <div ref={scrollerRef} className="flex-1 overflow-y-auto p-4 bg-gray-50" onDrop={onDrop} onDragOver={onDragOver}>
+                  <div className="max-w-3xl mx-auto">
+                    <div className="text-center text-xs text-gray-500 my-2">Today</div>
+                    {messages.map((m) => (
+                      <MessageBubble key={m.id} message={m} />
+                    ))}
+                    {isTyping && (
+                      <div className="flex justify-start mb-3">
+                        <div className="bg-white border border-gray-200 rounded-2xl px-4 py-2 shadow-sm">
+                          <div className="flex gap-1">
+                            <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{animationDelay: '0ms'}} />
+                            <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{animationDelay: '100ms'}} />
+                            <span className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{animationDelay: '200ms'}} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <button
-                  onClick={send}
-                  disabled={!text.trim() && attachments.length === 0}
-                  className="inline-flex items-center gap-2 bg-[#FF6B35] text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50 hover:brightness-95"
-                  aria-label="Send message"
-                >
-                  <Send className="h-4 w-4" />
-                  <span className="hidden sm:inline">Send</span>
-                </button>
+
+                {/* Message Composer */}
+                <div className="border-t border-gray-200 bg-white">
+                  <AttachmentPreview files={attachments} onRemove={removeAttachment} />
+                  <div className="flex items-end gap-2 p-3">
+                    <label className="cursor-pointer text-gray-600 hover:text-[#FF6B35] p-2 rounded-lg hover:bg-gray-100">
+                      <input type="file" className="hidden" multiple onChange={(e) => onFiles(e.target.files || [])} />
+                      <Paperclip className="h-5 w-5" />
+                    </label>
+                    <label className="cursor-pointer text-gray-600 hover:text-[#FF6B35] p-2 rounded-lg hover:bg-gray-100">
+                      <input type="file" accept="image/*" className="hidden" multiple onChange={(e) => onFiles(e.target.files || [])} />
+                      <ImageIcon className="h-5 w-5" />
+                    </label>
+                    <div className="flex-1">
+                      <textarea
+                        ref={inputRef}
+                        value={text}
+                        onChange={(e) => setText(e.target.value)}
+                        onKeyDown={(e) => {
+                          if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') send();
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            send();
+                          }
+                        }}
+                        onPaste={handlePaste}
+                        rows={1}
+                        placeholder="Write a message..."
+                        className="w-full resize-none outline-none rounded-lg border border-gray-200 p-2 text-sm focus:ring-2 focus:ring-[#FF6B35]"
+                      />
+                    </div>
+                    <button
+                      onClick={send}
+                      disabled={!text.trim() && attachments.length === 0}
+                      className="inline-flex items-center gap-2 bg-[#FF6B35] text-white px-4 py-2 rounded-lg font-semibold disabled:opacity-50 hover:brightness-95"
+                      aria-label="Send message"
+                    >
+                      <Send className="h-4 w-4" />
+                      <span className="hidden sm:inline">Send</span>
+                    </button>
+                  </div>
+                  <div className="px-3 pb-3 text-[11px] text-gray-500">
+                    Press Enter to send • Shift+Enter for new line • Ctrl/Cmd+Enter also sends
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="flex-1 flex items-center justify-center bg-gray-50">
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <MessageSquare className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-[#2C3E50] mb-2">Select a conversation</h3>
+                  <p className="text-gray-600">Choose a conversation from the list to start messaging</p>
+                </div>
               </div>
-              <div className="px-3 pb-3 text-[11px] text-gray-500">
-                Press Enter to send • Shift+Enter for new line • Ctrl/Cmd+Enter also sends
-              </div>
-            </div>
+            )}
           </div>
-        </main>
+        </div>
       </div>
     </div>
   );
