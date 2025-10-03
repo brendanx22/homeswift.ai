@@ -36,33 +36,48 @@ import './index.css';
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   const location = useLocation();
-  const [loadingStuck, setLoadingStuck] = React.useState(false);
+  const [initialLoad, setInitialLoad] = React.useState(true);
+  const [lastAuthCheck, setLastAuthCheck] = React.useState(0);
+  const navigate = useNavigate();
 
-  React.useEffect(() => {
-    if (loading) {
-      const t = setTimeout(() => setLoadingStuck(true), 9000);
-      return () => clearTimeout(t);
-    } else {
-      setLoadingStuck(false);
-    }
-  }, [loading]);
-
-  if (typeof window !== 'undefined') {
+  // Only log in production or when needed for debugging
+  if (process.env.NODE_ENV === 'development') {
     console.log('[ProtectedRoute] path=', location.pathname, 'authLoading=', loading, 'isAuthenticated=', isAuthenticated);
   }
 
-  if (loading) {
-    if (loadingStuck) {
-      const target = typeof window !== 'undefined' ? `/login?redirect=${encodeURIComponent(window.location.href)}` : '/login';
-      return <Navigate to={target} replace />;
+  React.useEffect(() => {
+    const now = Date.now();
+    
+    // Prevent rapid re-renders and navigation loops
+    if (now - lastAuthCheck < 2000) { // 2 second cooldown
+      return;
     }
+    
+    setLastAuthCheck(now);
+    
+    if (!loading && !isAuthenticated) {
+      // Only redirect if we're not already on a login/signup page
+      const isAuthPage = ['/login', '/signup', '/auth', '/list-login', '/list-signup'].some(
+        path => location.pathname.startsWith(path)
+      );
+      
+      if (!isAuthPage) {
+        const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search);
+        navigate(`/login?redirect=${redirectUrl}`, { replace: true });
+      }
+    } else if (!loading && isAuthenticated && initialLoad) {
+      setInitialLoad(false);
+    }
+  }, [isAuthenticated, loading, location.pathname, navigate, lastAuthCheck, initialLoad]);
+
+  // Show loading state
+  if (loading) {
     return <BrandedSpinner message="Checking your session..." />;
   }
 
+  // If not authenticated, we'll handle the redirect in the effect
   if (!isAuthenticated) {
-    // Preserve the full URL so the login page can redirect back (works for chat and main domain)
-    const target = typeof window !== 'undefined' ? `/login?redirect=${encodeURIComponent(window.location.href)}` : '/login';
-    return <Navigate to={target} replace />;
+    return <BrandedSpinner message="Redirecting to login..." />;
   }
 
   return children;

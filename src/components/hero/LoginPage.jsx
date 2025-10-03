@@ -20,39 +20,38 @@ export default function LoginPage() {
 
   // Check for verification status and redirect if authenticated
   useEffect(() => {
-    console.log('LoginPage - isAuthenticated:', isAuthenticated, 'authLoading:', authLoading);
-    
     // Only proceed if we're done loading
     if (authLoading) return;
     
-    // Check for verification success in URL params
-    const verified = searchParams.get('verified') === 'true';
     const redirectPath = searchParams.get('redirect');
+    const verified = searchParams.get('verified') === 'true';
+    const host = window.location.hostname;
     
+    // Handle email verification success
     if (verified) {
       setIsVerified(true);
       // Clear the URL params
       const cleanUrl = window.location.pathname;
       window.history.replaceState({}, document.title, cleanUrl);
+      return; // Don't proceed with further redirects
     }
     
-    // If already authenticated, redirect to main or the specified path
+    // Only handle redirect if we're authenticated
     if (isAuthenticated) {
-      console.log('Already authenticated');
-      if (redirectPath) {
-        if (/^https?:\/\//i.test(redirectPath)) {
-          window.location.assign(redirectPath);
-        } else {
+      // Small delay to prevent rapid navigation
+      const timer = setTimeout(() => {
+        if (redirectPath && !redirectPath.startsWith('/login') && !redirectPath.startsWith('/signup')) {
+          // Ensure we're not redirecting to an auth page
           navigate(redirectPath, { replace: true });
-        }
-      } else {
-        const host = window.location.hostname;
-        if (host.endsWith('homeswift.co') && !host.startsWith('chat.')) {
+        } else if (host.endsWith('homeswift.co') && !host.startsWith('chat.')) {
           window.location.assign('https://chat.homeswift.co/');
         } else {
+          // Default redirect
           navigate('/', { replace: true });
         }
-      }
+      }, 100);
+      
+      return () => clearTimeout(timer);
     }
   }, [isAuthenticated, authLoading, navigate, searchParams]);
 
