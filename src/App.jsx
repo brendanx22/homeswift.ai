@@ -34,48 +34,60 @@ import './index.css';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading, user } = useAuth();
   const location = useLocation();
-  const [initialLoad, setInitialLoad] = React.useState(true);
-  const [lastAuthCheck, setLastAuthCheck] = React.useState(0);
+  const [authChecked, setAuthChecked] = React.useState(false);
   const navigate = useNavigate();
 
-  // Only log in production or when needed for debugging
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[ProtectedRoute] path=', location.pathname, 'authLoading=', loading, 'isAuthenticated=', isAuthenticated);
-  }
-
+  // Log auth state for debugging
   React.useEffect(() => {
-    const now = Date.now();
-    
-    // Prevent rapid re-renders and navigation loops
-    if (now - lastAuthCheck < 2000) { // 2 second cooldown
-      return;
-    }
-    
-    setLastAuthCheck(now);
-    
-    if (!loading && !isAuthenticated) {
-      // Only redirect if we're not already on a login/signup page
-      const isAuthPage = ['/login', '/signup', '/auth', '/list-login', '/list-signup'].some(
-        path => location.pathname.startsWith(path)
-      );
+    console.log('[ProtectedRoute] Auth state:', { 
+      loading, 
+      isAuthenticated, 
+      path: location.pathname,
+      user: user ? 'User exists' : 'No user'
+    });
+  }, [loading, isAuthenticated, location.pathname, user]);
+
+  // Handle authentication state changes
+  React.useEffect(() => {
+    // Skip if still loading
+    if (loading) return;
+
+    // After loading completes, mark as checked
+    setAuthChecked(true);
+
+    // If not authenticated, redirect to login
+    if (!isAuthenticated) {
+      console.log('[ProtectedRoute] Not authenticated, redirecting to login');
+      const isAuthPage = [
+        '/login', 
+        '/signup', 
+        '/auth', 
+        '/list-login', 
+        '/list-signup',
+        '/verify-email',
+        '/reset-password'
+      ].some(path => location.pathname.startsWith(path));
       
       if (!isAuthPage) {
-        const redirectUrl = encodeURIComponent(window.location.pathname + window.location.search);
+        const redirectUrl = encodeURIComponent(location.pathname + location.search);
         navigate(`/login?redirect=${redirectUrl}`, { replace: true });
       }
-    } else if (!loading && isAuthenticated && initialLoad) {
-      setInitialLoad(false);
+      return;
     }
-  }, [isAuthenticated, loading, location.pathname, navigate, lastAuthCheck, initialLoad]);
 
-  // Show loading state
-  if (loading) {
+    // If we get here, user is authenticated
+    console.log('[ProtectedRoute] User is authenticated');
+
+  }, [isAuthenticated, loading, location, navigate]);
+
+  // Show loading state while checking auth
+  if (loading || !authChecked) {
     return <BrandedSpinner message="Checking your session..." />;
   }
 
-  // If not authenticated, we'll handle the redirect in the effect
+  // If not authenticated, show a message (should be redirected by the effect)
   if (!isAuthenticated) {
     return <BrandedSpinner message="Redirecting to login..." />;
   }
