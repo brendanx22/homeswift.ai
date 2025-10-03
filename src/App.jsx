@@ -283,7 +283,17 @@ const App = () => {
                 <AuthCallback />
               </AnimatedPage>
             } />
-            {/* Protected landlord dashboard */}
+            
+            {/* Root path - redirect to dashboard if authenticated, otherwise to login */}
+            <Route path="/" element={
+              <ProtectedRoute>
+                <AnimatedPage>
+                  <MainLanding />
+                </AnimatedPage>
+              </ProtectedRoute>
+            } />
+            
+            {/* Protected routes */}
             <Route path="/dashboard" element={
               <ProtectedRoute>
                 <AnimatedPage>

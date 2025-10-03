@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, User, Users } from 'lucide-react';
 import { useGoogleAuth } from '../../lib/googleAuth';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -278,7 +279,7 @@ export default function SignupPage() {
 
   return (
     <div 
-      className="min-h-screen flex justify-center items-start pt-24 sm:pt-32 md:pt-40 pb-24 sm:pb-32 md:pb-40 px-6 bg-cover bg-center bg-no-repeat relative"
+      className="min-h-screen flex justify-center items-start pt-24 sm:pt-32 md:pt-40 pb-24 sm:pb-32 md:pb-40 px-6 bg-cover bg-center bg-no-repeat relative w-full"
     
     >
       {/* Background overlay for better text readability */}
@@ -295,10 +296,10 @@ export default function SignupPage() {
 
 
       
-      <div className="w-full max-w-sm relative z-10">
+      <div className="w-full max-w-md relative z-10">
 
         {/* Signup Form */}
-        <div className="bg-white/90 backdrop-blur-sm border border-[#2C3E50]/20 rounded-[2rem] px-8 py-12 min-h-[560px] md:min-h-[640px] shadow-xl">
+        <div className="bg-white/90 backdrop-blur-sm border border-[#2C3E50]/20 rounded-[2rem] px-10 py-12 min-h-[560px] md:min-h-[640px] shadow-xl w-full">
           <div className="text-center mb-8">
             <motion.div
               initial={{ scale: 0 }}

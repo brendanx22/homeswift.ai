@@ -139,13 +139,29 @@ const LandlordSignupPage = () => {
     }
   };
 
+  const handleBackToHome = () => {
+    navigate('/user-type');
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 flex items-center justify-center p-4">
+    <div className="min-h-screen flex justify-center items-start pt-24 sm:pt-32 md:pt-40 pb-24 sm:pb-32 md:pb-40 px-6 bg-cover bg-center bg-no-repeat relative">
+      {/* Background overlay for better text readability */}
+      <div className="absolute inset-0 bg-white"></div>
+      
+      {/* Back Button - Top Left Corner */}
+      <button
+        onClick={handleBackToHome}
+        className="absolute top-4 left-4 sm:top-6 sm:left-6 z-20 flex items-center space-x-2 bg-white border border-[#2C3E50]/20 rounded-full px-4 py-2 text-[#2C3E50] hover:text-[#FF6B35] hover:border-[#FF6B35] transition-all duration-300 min-w-[44px] min-h-[44px] sm:min-w-auto sm:min-h-auto shadow-sm"
+      >
+        <span className="text-lg font-bold">&lt;</span>
+        <img src="/images/logo.png" alt="HomeSwift Logo" className="w-4 h-4 rounded" />
+      </button>
+
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="max-w-md w-full"
+        className="w-full max-w-md relative z-10"
       >
 
         {/* Signup Form */}
@@ -174,7 +190,7 @@ const LandlordSignupPage = () => {
             </p>
           </div>
           {errors.general && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="bg-white/90 backdrop-blur-sm border border-[#2C3E50]/20 rounded-[2rem] px-8 py-12 min-h-[560px] md:min-h-[640px] shadow-xl">
               <p className="text-red-600 text-sm">{errors.general}</p>
             </div>
           )}
