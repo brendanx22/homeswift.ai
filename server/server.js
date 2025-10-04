@@ -232,7 +232,7 @@ app.get("/favicon.ico", (req, res) => {
 });
 
 // Handle chat subdomain requests
-app.get('*', (req, res, next) => {
+app.use((req, res, next) => {
   if (req.hostname === 'chat.homeswift.co') {
     // Serve the frontend for chat subdomain
     return res.sendFile(path.join(__dirname, '../dist/index.html'));
