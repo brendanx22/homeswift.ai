@@ -14,50 +14,28 @@
       }
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "/server/server.js"
+      "source": "/api/(.*)",
+      "destination": "/server/server.js"
     },
     {
-      "src": "/_next/static/(.*)",
-      "dest": "/_next/static/$1"
-    },
-    {
-      "src": "/static/(.*)",
-      "dest": "/static/$1"
-    },
-    {
-      "src": "/assets/(.*)",
-      "dest": "/assets/$1"
-    },
-    {
-      "src": "/favicon.ico",
-      "dest": "/favicon.ico"
-    },
-    {
-      "src": "/robots.txt",
-      "dest": "/robots.txt"
-    },
-    {
-      "src": "/sitemap.xml",
-      "dest": "/sitemap.xml"
-    },
-    {
-      "src": "/(.*)",
+      "source": "/(.*)",
       "has": [
         {
           "type": "host",
           "value": "chat.homeswift.co"
         }
       ],
-      "dest": "/index.html"
+      "destination": "/"
     },
     {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/(.*)",
+      "destination": "/"
     }
   ],
+  "output": "standalone",
+  "cleanUrls": true,
   "headers": [
     {
       "source": "/(.*)",
