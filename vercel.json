@@ -38,6 +38,16 @@
     },
     {
       "src": "^/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "chat.homeswift.co"
+        }
+      ],
+      "dest": "/index.html"
+    },
+    {
+      "src": "^/(.*)",
       "dest": "/index.html"
     }
   ],

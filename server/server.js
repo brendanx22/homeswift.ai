@@ -231,14 +231,23 @@ app.get("/favicon.ico", (req, res) => {
   res.status(204).end();
 });
 
-app.get("/favicon.png", (req, res) => {
-  res.status(204).end();
+// Handle chat subdomain requests
+app.get('*', (req, res, next) => {
+  if (req.hostname === 'chat.homeswift.co') {
+    // Serve the frontend for chat subdomain
+    return res.sendFile(path.join(__dirname, '../dist/index.html'));
+  }
+  next();
+});
+
+// 404 Handler
+app.use((req, res) => {
+  res.status(404).json({ message: 'Not Found' });
 });
 
 // API Routes
 app.get("/api/properties", async (req, res) => {
   try {
-    const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
     const filters = {
       listing_type: req.query.listing_type,
