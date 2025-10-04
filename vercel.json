@@ -10,7 +10,7 @@
       "use": "@vercel/static-build", 
       "config": { 
         "distDir": "dist",
-        "buildCommand": "npm run build:chat"
+        "buildCommand": "npm run build -- --mode chat"
       }
     }
   ],
