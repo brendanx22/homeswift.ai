@@ -291,6 +291,11 @@ const App = () => {
         <Toaster position="top-right" richColors />
         <Routes>
             {/* Public auth routes on chat subdomain */}
+            <Route path="/login" element={
+              <AnimatedPage>
+                <LoginPage />
+              </AnimatedPage>
+            } />
             <Route path="/signup" element={
               <AnimatedPage>
                 <SignupPage />
