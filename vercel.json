@@ -11,61 +11,47 @@
       "config": { 
         "distDir": "dist/chat",
         "buildCommand": "npm run build:chat"
-      },
-      "routes": [
-        {
-          "src": "^/api/(.*)",
-          "dest": "/server/server.js"
-        },
-        {
-          "src": "/static/(.*)",
-          "dest": "/static/$1"
-        },
-        {
-          "src": "/assets/(.*)",
-          "dest": "/assets/$1"
-        },
-        {
-          "src": "/favicon.ico",
-          "dest": "/favicon.ico"
-        },
-        {
-          "src": "/robots.txt",
-          "dest": "/robots.txt"
-        },
-        {
-          "src": "/sitemap.xml",
-          "dest": "/sitemap.xml"
-        },
-        {
-          "src": "/(.*)",
-          "has": [
-            {
-              "type": "host",
-              "value": "chat.homeswift.co"
-            }
-          ],
-          "dest": "/index.html"
-        }
-      ]
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "^/api/(.*)",
+      "dest": "/server/server.js"
     },
-    { 
-      "src": "package.json", 
-      "use": "@vercel/static-build", 
-      "config": { 
-        "distDir": "dist",
-        "buildCommand": "npm run build"
-      },
-      "routes": [
+    {
+      "src": "/static/(.*)",
+      "dest": "/static/$1"
+    },
+    {
+      "src": "/assets/(.*)",
+      "dest": "/assets/$1"
+    },
+    {
+      "src": "/favicon.ico",
+      "dest": "/favicon.ico"
+    },
+    {
+      "src": "/robots.txt",
+      "dest": "/robots.txt"
+    },
+    {
+      "src": "/sitemap.xml",
+      "dest": "/sitemap.xml"
+    },
+    {
+      "src": "/(.*)",
+      "has": [
         {
-          "src": "^/api/(.*)",
-          "dest": "/server/server.js"
-        },
-        {
-          "src": "/(.*)",
-          "dest": "/index.html"
+          "type": "host",
+          "value": "chat.homeswift.co"
         }
-      ]
+      ],
+      "dest": "/index.html"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ],
   "headers": [
