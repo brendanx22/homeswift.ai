@@ -43,12 +43,10 @@ export default function HeroSection() {
 
   return (
     <div 
-      className="min-h-screen relative overflow-hidden"
+      className="min-h-screen relative overflow-hidden bg-center bg-no-repeat bg-contain md:bg-bottom"
       style={{
         backgroundImage: 'url("/Illustration.png")',
-        backgroundSize: 'contain',
-        backgroundPosition: 'center bottom',
-        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'center 100%',
         backgroundColor: '#ffffff'
       }}
       onMouseMove={(e) => {

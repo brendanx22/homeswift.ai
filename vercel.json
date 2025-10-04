@@ -8,9 +8,9 @@
     { 
       "src": "package.json", 
       "use": "@vercel/static-build", 
-      "config": { 
-        "distDir": "dist",
-        "buildCommand": "npm run build -- --mode chat"
+      "config": {
+        "distDir": "dist/chat",
+        "buildCommand": "npm run build:chat"
       }
     }
   ],
@@ -28,6 +28,16 @@
       "destination": "/assets/$1"
     },
     {
+      "source": "/(.*)",
+      "has": [
+        {
+          "type": "host",
+          "value": "chat.homeswift.co"
+        }
+      ],
+      "destination": "/index.html"
+    },
+    {
       "source": "/favicon.ico",
       "destination": "/favicon.ico"
     },
@@ -38,6 +48,10 @@
     {
       "source": "/sitemap.xml",
       "destination": "/sitemap.xml"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     },
     {
       "source": "/(.*)",

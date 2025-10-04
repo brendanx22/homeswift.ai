@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:chat": "vite build --config vite.chat.config.js --mode chat",
+    "build:chat": "vite build --config vite.chat.config.js --mode chat --outDir dist/chat",
     "lint": "eslint .",
     "preview": "vite preview",
     "setup-supabase": "node setup-supabase.js",
