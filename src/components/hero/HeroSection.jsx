@@ -55,6 +55,14 @@ export default function HeroSection() {
         mouseY.set(e.clientY - rect.top - rect.height / 2);
       }}
     >
+       {/* Mobile-specific background positioning */}
+       <style jsx>{`
+        @media (max-width: 768px) {
+          div {
+            background-position: center 60% !important;
+          }
+        }
+      `}</style>
       {/* Header */}
       <motion.header
         className="relative z-10 flex items-center justify-between px-6 py-6 lg:px-12"
