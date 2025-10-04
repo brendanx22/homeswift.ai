@@ -9,8 +9,8 @@
       "src": "package.json", 
       "use": "@vercel/static-build", 
       "config": {
-        "distDir": "dist/chat",
-        "buildCommand": "npm run build:chat"
+        "distDir": "dist",
+        "buildCommand": "npm run build"
       }
     }
   ],
