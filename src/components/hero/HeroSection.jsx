@@ -44,6 +44,13 @@ export default function HeroSection() {
   return (
     <div 
       className="min-h-screen relative overflow-hidden"
+      style={{
+        backgroundImage: 'url("/Illustration.png")',
+        backgroundSize: 'contain',
+        backgroundPosition: 'center bottom',
+        backgroundRepeat: 'no-repeat',
+        backgroundColor: '#ffffff'
+      }}
       onMouseMove={(e) => {
         const rect = e.currentTarget.getBoundingClientRect();
         mouseX.set(e.clientX - rect.left - rect.width / 2);
