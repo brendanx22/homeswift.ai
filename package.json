@@ -4,14 +4,20 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
+    "dev:chat": "vite --config vite.chat.config.js --mode chat --host",
     "build": "vite build",
     "build:chat": "vite build --config vite.chat.config.js --mode chat --outDir dist/chat",
-    "lint": "eslint .",
-    "preview": "vite preview",
+    "build:landing": "vite build --mode production --outDir dist/landing",
+    "preview": "vite preview --port 3000 --host",
+    "lint": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
+    "typecheck": "tsc --noEmit",
     "setup-supabase": "node setup-supabase.js",
     "setup-db": "node setup-database.js",
-    "server": "cd server && node server.js"
+    "server": "node server/server.js",
+    "start": "vite preview --port 3000 --host",
+    "deploy": "vercel --prod",
+    "deploy:chat": "vercel --prod --env CHAT_MODE=true"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

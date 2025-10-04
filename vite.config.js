@@ -1,25 +1,26 @@
-import { defineConfig, loadEnv } from "vite";
-import react from "@vitejs/plugin-react";
-import path from "path";
+import { defineConfig, loadEnv } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
 
 // https://vite.dev/config/
 export default ({ mode }) => {
   // Load app-level env vars to node's process.env
-  process.env = { ...process.env, ...loadEnv(mode, process.cwd(), "") };
+  process.env = { ...process.env, ...loadEnv(mode, process.cwd(), '') };
 
-  const isProduction = mode === "production";
+  const isProduction = mode === 'production';
+  const isChat = mode === 'chat';
 
   return defineConfig({
     plugins: [
       react({
-        jsxImportSource: "@emotion/react",
+        jsxImportSource: '@emotion/react',
         babel: {
           plugins: [
             [
-              "@emotion/babel-plugin",
+              '@emotion/babel-plugin',
               {
-                autoLabel: "dev-only",
-                labelFormat: "[local]",
+                autoLabel: 'dev-only',
+                labelFormat: '[local]',
                 cssPropOptimization: true,
               },
             ],
@@ -28,24 +29,33 @@ export default ({ mode }) => {
       }),
     ],
     esbuild: {
-      logOverride: { "this-is-undefined-in-esm": "silent" },
+      logOverride: { 'this-is-undefined-in-esm': 'silent' },
     },
-    base: "/",
+    base: isProduction ? '/' : '/',
     define: {
-      "process.env": {},
+      'process.env': {},
     },
     // Ensure Vite handles environment variables correctly
-    envPrefix: "VITE_",
+    envPrefix: 'VITE_',
+    server: {
+      port: 3000,
+      open: true,
+      cors: true,
+      headers: {
+        'Content-Security-Policy': isProduction 
+          ? "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://vercel.live; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.homeswift.co https://*.vercel.app https://tproaiqvkohrlxjmkgxt.supabase.co https://*.supabase.co wss://*.supabase.co https://vercel.live; frame-src 'self' https://*.supabase.co https://vercel.live; worker-src 'self' blob:;"
+          : "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:;"
+      }
+    },
     resolve: {
       alias: [
         {
           find: /^hoist-non-react-statics(\/.*)?$/,
-          replacement:
-            "hoist-non-react-statics/dist/hoist-non-react-statics.cjs.js",
+          replacement: 'hoist-non-react-statics/dist/hoist-non-react-statics.cjs.js',
         },
         {
-          find: "@",
-          replacement: path.resolve(__dirname, "./src"),
+          find: '@',
+          replacement: path.resolve(__dirname, './src'),
         },
         {
           find: "@/",

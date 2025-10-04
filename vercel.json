@@ -2,39 +2,39 @@
   "version": 2,
   "builds": [
     { 
-      "src": "server/server.js", 
-      "use": "@vercel/node" 
-    },
-    { 
       "src": "package.json", 
-      "use": "@vercel/static-build", 
+      "use": "@vercel/static-build",
       "config": { 
         "distDir": "dist",
         "buildCommand": "npm run build"
       }
+    },
+    { 
+      "src": "server/server.js", 
+      "use": "@vercel/node"
     }
   ],
-  "rewrites": [
+  "routes": [
+    { "handle": "filesystem" },
     {
-      "source": "/api/(.*)",
-      "destination": "/server/server.js"
+      "src": "/api/(.*)",
+      "dest": "/server/server.js"
     },
     {
-      "source": "/(.*)",
+      "src": "/(.*)",
       "has": [
         {
           "type": "host",
           "value": "chat.homeswift.co"
         }
       ],
-      "destination": "/index.html"
+      "dest": "/index.html"
     },
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "src": "/(.*)",
+      "dest": "/index.html"
     }
   ],
-  "cleanUrls": true,
   "headers": [
     {
       "source": "/(.*)",
@@ -45,7 +45,7 @@
         },
         {
           "key": "X-Frame-Options",
-          "value": "DENY"
+          "value": "SAMEORIGIN"
         },
         {
           "key": "X-XSS-Protection",
@@ -57,7 +57,7 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://vercel.live https://vercel.live/_next_live/feedback/; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com 'unsafe-hashes' 'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='; style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.homeswift.co https://*.vercel.app https://tproaiqvkohrlxjmkgxt.supabase.co https://*.supabase.co wss://*.supabase.co https://vercel.live; frame-src 'self' https://*.supabase.co https://vercel.live;"
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://vercel.live https://vercel.live/_next-live/; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.homeswift.co https://*.vercel.app https://tproaiqvkohrlxjmkgxt.supabase.co https://*.supabase.co wss://*.supabase.co https://vercel.live; frame-src 'self' https://*.supabase.co https://vercel.live; worker-src 'self' blob:;"
         },
         {
           "key": "Permissions-Policy",
@@ -65,7 +65,7 @@
         },
         {
           "key": "Access-Control-Allow-Origin",
-          "value": "https://homeswift.co"
+          "value": "https://homeswift.co https://chat.homeswift.co"
         },
         {
           "key": "Access-Control-Allow-Methods",
@@ -77,13 +77,5 @@
         }
       ]
     }
-  ],
-  "env": {
-    "NODE_ENV": "production",
-    "FRONTEND_URL": "https://homeswift.co",
-    "NEXT_TELEPHONE_DISABLED": "1",
-    "VITE_SUPABASE_URL": "https://tproaiqvkohrlxjmkgxt.supabase.co",
-    "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRwcm9haXF2a29ocmx4am1rZ3h0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc0MjUwNDksImV4cCI6MjA3MzAwMTA0OX0.RoOBMaKyPXi0BXfWOhLpAAj89sKYxWEE-Zz5iu3kTEI",
-    "SUPABASE_URL": "https://tproaiqvkohrlxjmkgxt.supabase.co"
-  }
+  ]
 }
