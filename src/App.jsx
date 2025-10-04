@@ -287,7 +287,7 @@ const App = () => {
   // If on chat subdomain, only show MainLanding with its routes
   if (isChatSubdomain) {
     return (
-      <>
+      <AuthProvider>
         <Toaster position="top-right" richColors />
         <Routes>
             {/* Public auth routes on chat subdomain */}
@@ -437,7 +437,7 @@ const App = () => {
             {/* Catch-all on chat to avoid blank pages */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
-      </>
+      </AuthProvider>
     );
   }
 
