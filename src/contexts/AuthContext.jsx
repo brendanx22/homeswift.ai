@@ -1,37 +1,41 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 
 // Create auth context
 const AuthContext = createContext(undefined);
 
-// Auth Provider Component
+// Helper: debug logging only in development
+const debug = (...args) => {
+  if (process.env.NODE_ENV === 'development') {
+    // eslint-disable-next-line no-console
+    console.log('[AuthContext]', ...args);
+  }
+};
+
+// Small helper to guard long network waits
+const withTimeout = (promise, ms = 8000) =>
+  Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)),
+  ]);
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [initialCheckComplete, setInitialCheckComplete] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  // Small helper to guard long network waits
-  const withTimeout = (promise, ms = 8000) =>
-    Promise.race([
-      promise,
-      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
-    ]);
-
   // Fetch user profile without blocking auth gating
-  const fetchAndMergeUserProfile = async (supabaseUser) => {
+  const fetchAndMergeUserProfile = useCallback(async (supabaseUser) => {
     if (!supabaseUser?.id) return;
     try {
       // Try to fetch existing profile (timeout guarded)
       let { data: userData } = await withTimeout(
-        supabase
-          .from('user_profiles')
-          .select('*')
-          .eq('id', supabaseUser.id)
-          .single(),
-        6000
+        supabase.from('user_profiles').select('*').eq('id', supabaseUser.id).single(),
+        6000,
       ).catch(() => ({ data: null }));
 
       if (!userData) {
@@ -41,9 +45,9 @@ export const AuthProvider = ({ children }) => {
             user_id: supabaseUser.id,
             user_email: supabaseUser.email,
             first_name: supabaseUser.user_metadata?.first_name || '',
-            last_name: supabaseUser.user_metadata?.last_name || ''
+            last_name: supabaseUser.user_metadata?.last_name || '',
           }),
-          6000
+          6000,
         ).catch(() => ({ data: null }));
 
         if (newProfile) {
@@ -57,12 +61,13 @@ export const AuthProvider = ({ children }) => {
                 id: supabaseUser.id,
                 email: supabaseUser.email,
                 first_name: supabaseUser.user_metadata?.first_name || '',
-                last_name: supabaseUser.user_metadata?.last_name || ''
+                last_name: supabaseUser.user_metadata?.last_name || '',
               })
               .select()
               .single(),
-            6000
+            6000,
           ).catch(() => ({ data: null }));
+
           if (directProfile) userData = directProfile;
         }
       }
@@ -72,67 +77,126 @@ export const AuthProvider = ({ children }) => {
         setUser((prev) => ({ ...prev, ...userData }));
       }
     } catch (e) {
+      // Non-fatal: log but don't break auth
       console.warn('[AuthProvider] fetchAndMergeUserProfile warning:', e?.message || e);
     }
-  };
+  }, []);
 
   // Check active session and set the user
   const checkSession = useCallback(async () => {
-    console.log('[AuthProvider] checkSession: start');
+    debug('checkSession: Starting session check');
+    let currentSession = null;
+
     try {
       setLoading(true);
-      
+
       // First check if there's a session in localStorage
       const storedSession = localStorage.getItem('homeswift-auth-token');
       if (storedSession) {
         try {
+          debug('Found stored session in localStorage');
           const parsedSession = JSON.parse(storedSession);
           if (parsedSession.currentSession) {
-            setSession(parsedSession.currentSession);
-            setUser(parsedSession.currentSession?.user ?? null);
-            return parsedSession.currentSession;
+            debug('Valid session found in localStorage');
+            currentSession = parsedSession.currentSession;
+            setSession(currentSession);
+            setUser(currentSession?.user ?? null);
+            // Don't return here; we'll still verify with Supabase
           }
         } catch (e) {
-          console.log('No valid stored session found');
+          debug('Error parsing stored session:', e);
+          localStorage.removeItem('homeswift-auth-token');
         }
       }
-      
-      // Guard against network stalls
-      const timeoutMs = 8000;
-      const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ data: { session: null } }), timeoutMs));
-      const safeGetSession = Promise.race([
-        supabase.auth.getSession(),
-        timeoutPromise
-      ]);
-      const { data: { session: currentSession } } = await safeGetSession;
 
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
+      // Always verify with Supabase, but don't block on it
+      try {
+        debug('Checking session with Supabase...');
+        const { data: { session: supabaseSession }, error: sessionError } = await supabase.auth.getSession();
 
-      // Fire profile fetch in background; do not block auth gating
-      if (currentSession?.user) {
-        fetchAndMergeUserProfile(currentSession.user);
+        if (sessionError) {
+          debug('Error getting session from Supabase:', sessionError);
+          throw sessionError;
+        }
+
+        if (supabaseSession) {
+          debug('Valid session from Supabase');
+          currentSession = supabaseSession;
+          setSession(currentSession);
+          setUser(currentSession.user ?? null);
+
+          // Update localStorage with fresh session
+          try {
+            localStorage.setItem('homeswift-auth-token', JSON.stringify({ currentSession: supabaseSession }));
+          } catch (e) {
+            debug('Failed to write session to localStorage', e);
+          }
+        } else if (currentSession) {
+          // We had a session in localStorage but not in Supabase - clear it
+          debug('Session in localStorage but not in Supabase, clearing');
+          setSession(null);
+          setUser(null);
+          localStorage.removeItem('homeswift-auth-token');
+          currentSession = null;
+        }
+      } catch (err) {
+        console.error('Error verifying session with Supabase:', err);
+        // Don't throw — continue with the session we have (if any)
       }
-      
-      console.log('[AuthProvider] checkSession: done, user=', Boolean(currentSession?.user));
+
+      // Fetch user profile in background if we have a session
+      if (currentSession?.user) {
+        debug('Fetching user profile in background');
+        fetchAndMergeUserProfile(currentSession.user).catch((e) => {
+          console.error('Error fetching user profile:', e);
+        });
+      }
+
+      debug('Session check complete', { hasSession: !!currentSession });
       return currentSession;
     } catch (error) {
-      console.error('Error checking session:', error);
+      console.error('Error in checkSession:', error);
       setError(error.message);
       return null;
     } finally {
       setLoading(false);
+      setInitialCheckComplete(true);
     }
-  }, []);
+  }, [fetchAndMergeUserProfile]);
 
-  // Handle auth state changes
+  // Redirect helper used on sign-in / auth change
+  const redirectAfterLogin = useCallback((sess) => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const redirectTo = urlParams.get('redirect');
+      const userType = sess?.user?.user_metadata?.user_type || sess?.user?.app_metadata?.user_type || 'renter';
+      const defaultAfterLogin = userType === 'landlord' ? 'https://list.homeswift.co/dashboard' : 'https://chat.homeswift.co/';
+      let target = redirectTo || defaultAfterLogin;
+
+      const authPages = ['/login', '/signup', '/verify-email', '/reset-password', '/list-login', '/list-signup'];
+      const isAbsolute = /^https?:\/\//i.test(target);
+
+      if (isAbsolute) {
+        window.location.assign(target);
+      } else if (!authPages.some((page) => target.includes(page))) {
+        navigate(target);
+      } else {
+        window.location.assign(defaultAfterLogin);
+      }
+    } catch (e) {
+      console.warn('redirectAfterLogin failed:', e);
+    }
+  }, [navigate]);
+
+  // Single useEffect to initialize auth, listen to auth changes, and sync storage
   useEffect(() => {
-    // Check session on mount
-    checkSession();
-    
-    // Listen for storage changes (cross-domain session sync)
+    let mounted = true;
+    let subscription = null;
+
     const handleStorageChange = (e) => {
+      if (!mounted) return;
       if (e.key === 'homeswift-auth-token') {
+        debug('Storage event detected, updating session from storage');
         if (e.newValue) {
           try {
             const parsedSession = JSON.parse(e.newValue);
@@ -140,8 +204,8 @@ export const AuthProvider = ({ children }) => {
               setSession(parsedSession.currentSession);
               setUser(parsedSession.currentSession?.user ?? null);
             }
-          } catch (error) {
-            console.log('Error parsing stored session:', error);
+          } catch (err) {
+            console.error('Error parsing stored session on storage event:', err);
           }
         } else {
           setSession(null);
@@ -149,88 +213,86 @@ export const AuthProvider = ({ children }) => {
         }
       }
     };
-    
-    window.addEventListener('storage', handleStorageChange);
-    
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
 
-        if (currentSession?.user) {
-          // Fetch profile in background (non-blocking)
-          fetchAndMergeUserProfile(currentSession.user);
+    const initialize = async () => {
+      debug('Initializing auth...');
+      try {
+        await checkSession();
 
-          // Only redirect if we're on an auth page and the user is now authenticated
-          const authPages = ['/login', '/signup', '/verify-email', '/landlord-login', '/landlord-signup', '/list-login', '/list-signup'];
-          if (authPages.includes(window.location.pathname)) {
-            const urlParams = new URLSearchParams(window.location.search);
-            const redirectTo = urlParams.get('redirect');
-            const isChat = window.location.hostname.startsWith('chat.');
-            const isList = window.location.hostname.startsWith('list.');
-            const isHomeswiftMain = window.location.hostname.endsWith('homeswift.co') && !isChat && !isList;
-            // Determine user type
-            const userType = currentSession.user.user_metadata?.user_type || currentSession.user.app_metadata?.user_type || 'renter';
-            let defaultAfterLogin;
-            if (userType === 'landlord') {
-              defaultAfterLogin = 'https://list.homeswift.co/dashboard';
-            } else {
-              defaultAfterLogin = 'https://chat.homeswift.co/';
+        const { data } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+          if (!mounted) return;
+
+          debug('Auth state changed:', event);
+
+          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+            debug('User signed in / session refreshed');
+            setSession(newSession);
+            setUser(newSession?.user ?? null);
+
+            if (newSession) {
+              try {
+                localStorage.setItem('homeswift-auth-token', JSON.stringify({ currentSession: newSession }));
+              } catch (e) {
+                debug('Failed to write session to localStorage on auth change', e);
+              }
+
+              if (newSession.user) {
+                // Fetch user profile in background
+                fetchAndMergeUserProfile(newSession.user).catch(console.error);
+              }
+
+              // Only redirect if we are on an auth page
+              const authPages = ['/login', '/signup', '/verify-email', '/landlord-login', '/landlord-signup', '/list-login', '/list-signup'];
+              if (authPages.includes(window.location.pathname)) {
+                redirectAfterLogin(newSession);
+              }
             }
-            let target = redirectTo || defaultAfterLogin;
-            // If redirectTo is present, let it take precedence
-            const isAbsolute = /^https?:\/\//i.test(target);
-            if (isAbsolute) {
-              window.location.assign(target);
-            } else if (!authPages.some(page => target.includes(page))) {
-              navigate(target);
-            } else {
-              window.location.assign(defaultAfterLogin);
-            }
+          } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+            debug('User signed out');
+            setSession(null);
+            setUser(null);
+            try { localStorage.removeItem('homeswift-auth-token'); } catch (e) { debug('LocalStorage remove failed', e); }
           }
-        } else {
-          // Don't redirect if on root or public pages
-          const publicPaths = ['/', '/login', '/signup', '/verify-email', '/reset-password', '/list-login', '/list-signup'];
-          const isPublicPath = publicPaths.some(path => window.location.pathname.startsWith(path));
-          if (!isPublicPath) {
-            if (window.location.pathname !== '/login') {
-              const host = window.location.hostname;
-              const isHomeswiftMain = host.endsWith('homeswift.co') && !host.startsWith('chat.') && !host.startsWith('list.');
-              const target = isHomeswiftMain ? 'https://chat.homeswift.co/' : window.location.href;
-              navigate(`/login?redirect=${encodeURIComponent(target)}`);
-            }
-          }
-        }
+        });
+
+        subscription = data?.subscription;
+
+        window.addEventListener('storage', handleStorageChange);
+      } catch (err) {
+        console.error('Error initializing auth:', err);
+        setError(err.message);
+        setLoading(false);
+        setInitialCheckComplete(true);
       }
-    );
-    
+    };
+
+    initialize();
+
     return () => {
-      subscription?.unsubscribe();
+      mounted = false;
+      try { subscription?.unsubscribe(); } catch (e) { debug('Subscription cleanup error', e); }
       window.removeEventListener('storage', handleStorageChange);
     };
-  }, [checkSession, navigate]);
+  }, [checkSession, fetchAndMergeUserProfile, redirectAfterLogin]);
 
   // Check if email already exists
   const checkEmailExists = useCallback(async (email, options = {}) => {
-    console.log('Checking email exists:', email);
     const sanitizedEmail = (email || '').trim().toLowerCase();
-    
+
     if (!sanitizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitizedEmail)) {
-      console.log('Invalid email format');
       return { exists: false, message: 'Invalid email format', error: true };
     }
 
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 6000);
-      
+
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/check-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: sanitizedEmail }),
         signal: controller.signal,
-        ...options
+        ...options,
       }).finally(() => clearTimeout(timeoutId));
 
       if (!response.ok) {
@@ -239,30 +301,19 @@ export const AuthProvider = ({ children }) => {
       }
 
       const data = await response.json();
-      console.log('Email check response:', data);
-      
+
       return {
         exists: !!data.exists,
         message: data.message || (data.exists ? 'Email is already registered' : 'Email is available'),
         code: data.code,
-        success: true
+        success: true,
       };
-    } catch (error) {
-      console.error('Check email exists error:', error);
-      if (error.name === 'AbortError') {
-        return {
-          exists: false,
-          message: 'Request timed out',
-          error: true,
-          code: 'TIMEOUT'
-        };
+    } catch (err) {
+      console.error('Check email exists error:', err);
+      if (err.name === 'AbortError') {
+        return { exists: false, message: 'Request timed out', error: true, code: 'TIMEOUT' };
       }
-      return {
-        exists: false,
-        message: error.message || 'Failed to check email availability',
-        error: true,
-        code: 'CHECK_ERROR'
-      };
+      return { exists: false, message: err.message || 'Failed to check email availability', error: true, code: 'CHECK_ERROR' };
     }
   }, []);
 
@@ -270,20 +321,15 @@ export const AuthProvider = ({ children }) => {
   const signUp = useCallback(async (userData) => {
     try {
       setLoading(true);
-      
-      // Basic sanitize and validation
+      setError(null);
+
       const email = (userData.email || '').trim().toLowerCase();
       const password = (userData.password || '').trim();
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        throw new Error('Please enter a valid email address');
-      }
+      if (!emailRegex.test(email)) throw new Error('Please enter a valid email address');
 
-      // Proceed with Supabase sign up
       const isProd = typeof window !== 'undefined' && window.location.hostname.endsWith('homeswift.co');
-      const verifyRedirect = isProd
-        ? 'https://chat.homeswift.co/verify-email'
-        : `${window.location.origin}/verify-email`;
+      const verifyRedirect = isProd ? 'https://chat.homeswift.co/verify-email' : `${window.location.origin}/verify-email`;
 
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
@@ -293,67 +339,54 @@ export const AuthProvider = ({ children }) => {
             first_name: userData.firstName,
             last_name: userData.lastName,
             full_name: `${userData.firstName} ${userData.lastName}`,
-            user_type: userData.userType || 'renter', // Default to renter if not specified
+            user_type: userData.userType || 'renter',
           },
           emailRedirectTo: verifyRedirect,
         },
       });
-      
-      console.log('Signup response:', { data, error: signUpError });
-      
+
       if (signUpError) {
-        // Handle specific error cases
-        if (signUpError.message.includes('already registered')) {
+        if (String(signUpError.message).includes('already registered')) {
           throw new Error('An account with this email already exists. Please try logging in instead.');
         }
         throw signUpError;
       }
-      
-      console.log('User account created successfully. Please check your email to verify your account.');
-      return data.user;
-    } catch (error) {
-      console.error('Sign up error:', error);
-      setError(error.message);
-      throw error;
+
+      return data?.user ?? null;
+    } catch (err) {
+      console.error('Sign up error:', err);
+      setError(err.message || 'Sign up failed');
+      throw err;
     } finally {
       setLoading(false);
     }
   }, []);
-  
+
   // Sign in with email and password
   const signIn = useCallback(async (email, password) => {
     try {
-      console.log('[AuthProvider.signIn] start', { email });
       setLoading(true);
       setError(null);
-      
+
       const attemptSignIn = async (timeoutMs) => {
-        console.log('[AuthProvider.signIn] calling signInWithPassword timeout=', timeoutMs);
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Network timeout while contacting Auth service')), timeoutMs)
-        );
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Network timeout while contacting Auth service')), timeoutMs));
         return Promise.race([
-          supabase.auth.signInWithPassword({
-            email: email.trim().toLowerCase(),
-            password: password.trim(),
-          }),
+          supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password: password.trim() }),
           timeoutPromise,
         ]);
       };
 
-      // Try once quickly, then retry with a longer timeout if needed
       let data, signInError;
       try {
         ({ data, error: signInError } = await attemptSignIn(10000));
       } catch (err) {
         console.warn('[AuthProvider.signIn] first attempt failed:', err?.message || err);
         if (String(err?.message || '').includes('Network timeout')) {
-          // quick ping to auth settings endpoint for diagnosis
           const supaUrl = import.meta.env.VITE_SUPABASE_URL;
           try {
             const ping = await Promise.race([
               fetch(`${supaUrl}/auth/v1/settings`, { method: 'GET' }),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('Ping timeout')), 4000))
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Ping timeout')), 4000)),
             ]);
             console.log('[AuthProvider.signIn] auth settings ping status=', ping?.status);
           } catch (e) {
@@ -364,97 +397,58 @@ export const AuthProvider = ({ children }) => {
           throw err;
         }
       }
-      console.log('[AuthProvider.signIn] signInWithPassword result', { hasError: !!signInError, user: !!data?.user });
-      
+
       if (signInError) {
-        // Handle specific error cases
-        if (signInError.message.includes('Invalid login credentials')) {
-          throw new Error('Invalid email or password');
-        }
-        if (signInError.message.includes('Email not confirmed')) {
-          throw new Error('Please verify your email before logging in');
-        }
+        if (String(signInError.message).includes('Invalid login credentials')) throw new Error('Invalid email or password');
+        if (String(signInError.message).includes('Email not confirmed')) throw new Error('Please verify your email before logging in');
         throw signInError;
       }
-      
+
       // Force a session refresh to ensure we have the latest data
-      const { data: { session: freshSession } } = await supabase.auth.getSession();
-      console.log('[AuthProvider.signIn] getSession', { hasSession: !!freshSession });
-      setSession(freshSession);
-      setUser(freshSession?.user ?? null);
-      
-      // Get redirect URL from query params or default based on domain
-      const urlParams = new URLSearchParams(window.location.search);
-      const redirectTo = urlParams.get('redirect');
-      // Determine user type
-      const userType = freshSession?.user?.user_metadata?.user_type || freshSession?.user?.app_metadata?.user_type || 'renter';
-      let defaultAfterLogin;
-      if (userType === 'landlord') {
-        defaultAfterLogin = 'https://list.homeswift.co/dashboard';
-      } else {
-        defaultAfterLogin = 'https://chat.homeswift.co/';
-      }
-      let target = redirectTo || defaultAfterLogin;
-      // Ensure we don't redirect back to an auth page
-      const authPages = ['/login', '/signup', '/verify-email', '/reset-password', '/list-login', '/list-signup'];
-      // If redirectTo is present, let it take precedence
-      const isAbsolute = /^https?:\/\//i.test(target);
-      if (isAbsolute) {
-        window.location.assign(target);
-      } else if (!authPages.some(page => target.includes(page))) {
-        navigate(target);
-      } else {
-        window.location.assign(defaultAfterLogin);
-      }
-      
-      console.log('[AuthProvider.signIn] success');
-      return data.user;
-    } catch (error) {
-      console.error('Sign in error:', error);
-      setError(error.message || 'An error occurred during sign in');
-      throw error;
+      const { data: { session: freshSession } = {} } = await supabase.auth.getSession();
+      setSession(freshSession ?? data?.session ?? null);
+      setUser((freshSession ?? data?.session)?.user ?? null);
+
+      // Redirect after login
+      redirectAfterLogin(freshSession ?? data?.session ?? null);
+
+      return (data?.user) || (freshSession?.user) || null;
+    } catch (err) {
+      console.error('Sign in error:', err);
+      setError(err.message || 'An error occurred during sign in');
+      throw err;
     } finally {
-      console.log('[AuthProvider.signIn] finish');
       setLoading(false);
     }
-  }, []);
-  
+  }, [redirectAfterLogin]);
+
   // Sign out
   const signOut = useCallback(async () => {
     setLoading(true);
     try {
-      // Attempt to sign out from Supabase, but don't block UI on errors
-      await supabase.auth.signOut().catch((err) => {
-        console.warn('Supabase signOut warning:', err?.message || err);
-      });
+      await supabase.auth.signOut().catch((err) => debug('Supabase signOut warning:', err?.message || err));
     } finally {
-      try { localStorage.removeItem('homeswift-auth-token'); } catch {}
+      try { localStorage.removeItem('homeswift-auth-token'); } catch (e) { debug('remove localstorage failed', e); }
       setUser(null);
       setSession(null);
       navigate('/login');
       setLoading(false);
     }
   }, [navigate]);
-  
+
   // Reset password
   const resetPassword = useCallback(async (email) => {
     try {
       setLoading(true);
       const isProd = typeof window !== 'undefined' && window.location.hostname.endsWith('homeswift.co');
-      const resetRedirect = isProd
-        ? 'https://chat.homeswift.co/reset-password'
-        : `${window.location.origin}/reset-password`;
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: resetRedirect,
-      });
-      
-      if (error) throw error;
-      
+      const resetRedirect = isProd ? 'https://chat.homeswift.co/reset-password' : `${window.location.origin}/reset-password`;
+      const { error: err } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: resetRedirect });
+      if (err) throw err;
       return true;
-    } catch (error) {
-      console.error('Password reset error:', error);
-      setError(error.message);
-      throw error;
+    } catch (err) {
+      console.error('Password reset error:', err);
+      setError(err.message);
+      throw err;
     } finally {
       setLoading(false);
     }
@@ -465,92 +459,74 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
-      
       const { error } = await supabase.auth.resend({
         type: 'signup',
-        email: email,
+        email,
         options: {
           emailRedirectTo: (typeof window !== 'undefined' && window.location.hostname.endsWith('homeswift.co'))
             ? 'https://chat.homeswift.co/verify-email'
-            : `${window.location.origin}/verify-email`
-        }
+            : `${window.location.origin}/verify-email`,
+        },
       });
-      
       if (error) throw error;
-      
       return true;
-    } catch (error) {
-      console.error('Resend verification error:', error);
-      setError(error.message);
-      throw error;
+    } catch (err) {
+      console.error('Resend verification error:', err);
+      setError(err.message);
+      throw err;
     } finally {
       setLoading(false);
     }
   }, []);
-  
+
   // Update user profile
   const updateProfile = useCallback(async (updates) => {
+    if (!user?.id) throw new Error('No active user to update');
     try {
       setLoading(true);
       setError(null);
-      
+
       // Update auth user data
-      const { data: authData, error: authError } = await supabase.auth.updateUser({
-        data: {
-          ...updates,
-        }
-      });
-      
+      const { data: authData, error: authError } = await supabase.auth.updateUser({ data: { ...updates } });
       if (authError) throw authError;
-      
+
       // Update user profile in database
       const { error: profileError } = await supabase
         .from('user_profiles')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString(),
-        }).eq('id', user.id);
-        
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', user.id);
       if (profileError) throw profileError;
-      
+
       // Update local user state
-      setUser(prev => ({
-        ...prev,
-        ...updates,
-      }));
-      
-      return authData.user;
-    } catch (error) {
-      console.error('Update profile error:', error);
-      setError(error.message);
-      throw error;
+      setUser((prev) => ({ ...prev, ...updates }));
+
+      return authData?.user ?? null;
+    } catch (err) {
+      console.error('Update profile error:', err);
+      setError(err.message || 'Failed to update profile');
+      throw err;
     } finally {
       setLoading(false);
     }
   }, [user?.id]);
 
-  // Check if current user is a landlord
+  // Role helpers
   const isLandlord = useCallback(() => {
     return user?.user_metadata?.user_type === 'landlord' || user?.app_metadata?.user_type === 'landlord';
   }, [user]);
 
-  // Check if current user is a renter
-  const isRenter = useCallback(() => {
-    return !isLandlord(); // Default to renter if not specified
-  }, [isLandlord]);
+  const isRenter = useCallback(() => !isLandlord(), [isLandlord]);
 
-  // Get user type
-  const getUserType = useCallback(() => {
-    return user?.user_metadata?.user_type || user?.app_metadata?.user_type || 'renter';
-  }, [user]);
-  
-  // Value to be provided by the context
-  const value = {
+  const getUserType = useCallback(() => user?.user_metadata?.user_type || user?.app_metadata?.user_type || 'renter', [user]);
+
+  // Memoize context value to avoid unnecessary re-renders
+  const value = useMemo(() => ({
     user,
     session,
     loading,
     error,
-    isAuthenticated: !!user,
+    initialCheckComplete,
+    isAuthenticated: !!session?.user,
     isLandlord,
     isRenter,
     getUserType,
@@ -562,13 +538,9 @@ export const AuthProvider = ({ children }) => {
     checkEmailExists,
     updateProfile,
     checkSession,
-  };
-  
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  }), [user, session, loading, error, initialCheckComplete, isLandlord, isRenter, getUserType, signUp, signIn, signOut, resetPassword, resendVerification, checkEmailExists, updateProfile, checkSession]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 // Custom hook to use the auth context
@@ -577,8 +549,8 @@ export const useAuth = () => {
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
+
   return context;
 };
 
-// Export the context for direct use
 export { AuthContext };

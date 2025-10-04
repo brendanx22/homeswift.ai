@@ -34,62 +34,70 @@ import './index.css';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading, user } = useAuth();
+  const { isAuthenticated, loading, user, initialCheckComplete } = useAuth();
   const location = useLocation();
-  const [authChecked, setAuthChecked] = React.useState(false);
   const navigate = useNavigate();
+  const [redirecting, setRedirecting] = useState(false);
 
   // Log auth state for debugging
   React.useEffect(() => {
     console.log('[ProtectedRoute] Auth state:', { 
       loading, 
       isAuthenticated, 
+      initialCheckComplete,
       path: location.pathname,
       user: user ? 'User exists' : 'No user'
     });
-  }, [loading, isAuthenticated, location.pathname, user]);
+  }, [loading, isAuthenticated, initialCheckComplete, location.pathname, user]);
 
   // Handle authentication state changes
-  React.useEffect(() => {
-    // Skip if still loading
-    if (loading) return;
+  useEffect(() => {
+    // Skip if still loading or already redirecting
+    if (loading || redirecting || !initialCheckComplete) return;
 
-    // After loading completes, mark as checked
-    setAuthChecked(true);
+    // Check if we're on a public path
+    const publicPaths = [
+      '/login', 
+      '/signup', 
+      '/auth', 
+      '/list-login', 
+      '/list-signup',
+      '/verify-email',
+      '/reset-password',
+      '/',
+      ''
+    ];
 
-    // If not authenticated, redirect to login
-    if (!isAuthenticated) {
+    const isPublicPath = publicPaths.some(path => 
+      location.pathname === path || location.pathname.startsWith(`${path}/`)
+    );
+
+    // If not authenticated and not on a public path, redirect to login
+    if (!isAuthenticated && !isPublicPath) {
       console.log('[ProtectedRoute] Not authenticated, redirecting to login');
-      const isAuthPage = [
-        '/login', 
-        '/signup', 
-        '/auth', 
-        '/list-login', 
-        '/list-signup',
-        '/verify-email',
-        '/reset-password'
-      ].some(path => location.pathname.startsWith(path));
-      
-      if (!isAuthPage) {
-        const redirectUrl = encodeURIComponent(location.pathname + location.search);
-        navigate(`/login?redirect=${redirectUrl}`, { replace: true });
-      }
+      setRedirecting(true);
+      const redirectUrl = encodeURIComponent(location.pathname + location.search);
+      navigate(`/login?redirect=${redirectUrl}`, { replace: true });
       return;
     }
 
-    // If we get here, user is authenticated
-    console.log('[ProtectedRoute] User is authenticated');
-
-  }, [isAuthenticated, loading, location, navigate]);
+    // If authenticated and on a login/signup page, redirect to dashboard
+    if (isAuthenticated && (location.pathname === '/login' || location.pathname === '/signup')) {
+      console.log('[ProtectedRoute] Already authenticated, redirecting to dashboard');
+      setRedirecting(true);
+      navigate('/dashboard', { replace: true });
+      return;
+    }
+  }, [isAuthenticated, loading, location, navigate, initialCheckComplete, redirecting]);
 
   // Show loading state while checking auth
-  if (loading || !authChecked) {
+  if (loading || !initialCheckComplete) {
     return <BrandedSpinner message="Checking your session..." />;
   }
 
-  // If not authenticated, show a message (should be redirected by the effect)
-  if (!isAuthenticated) {
-    return <BrandedSpinner message="Redirecting to login..." />;
+  // If redirecting, show a loading message
+  if (redirecting) {
+    return <BrandedSpinner message="Redirecting..." />;
   }
 
   return children;
