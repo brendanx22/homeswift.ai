@@ -27,14 +27,13 @@
           "value": "chat.homeswift.co"
         }
       ],
-      "destination": "/"
+      "destination": "/index.html"
     },
     {
       "source": "/(.*)",
-      "destination": "/"
+      "destination": "/index.html"
     }
   ],
-  "output": "standalone",
   "cleanUrls": true,
   "headers": [
     {
