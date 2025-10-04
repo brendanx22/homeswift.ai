@@ -14,27 +14,21 @@
       "use": "@vercel/node"
     }
   ],
-  "routes": [
-    { "handle": "filesystem" },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/server/server.js" },
     {
-      "src": "/api/(.*)",
-      "dest": "/server/server.js"
-    },
-    {
-      "src": "/(.*)",
+      "source": "/(.*)",
       "has": [
         {
           "type": "host",
           "value": "chat.homeswift.co"
         }
       ],
-      "dest": "/index.html"
+      "destination": "/index.html"
     },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
+    { "source": "/(.*)", "destination": "/index.html" }
   ],
+  "cleanUrls": true,
   "headers": [
     {
       "source": "/(.*)",
