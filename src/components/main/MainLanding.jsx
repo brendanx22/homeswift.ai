@@ -32,15 +32,12 @@ import {
 //import propertyService from '../../services/propertyService';
 import searchService from '../../services/searchService';
 import { useAuth } from '../../contexts/AuthContext';
-import { AppContext } from '../../contexts/AppContext';
 
 export default function MainLanding() {
   // --- authentication state ---
   const navigate = useNavigate();
   const location = useLocation();
-  const { user: appUser } = useContext(AppContext);
-  const { user: authUser, signOut: contextSignOut, isAuthenticated, loading: authLoading } = useAuth();
-  const user = authUser || appUser;
+  const { user, signOut: contextSignOut, isAuthenticated, loading: authLoading } = useAuth();
   
   // Only show search interface on the landing path per domain
   const isChat = typeof window !== 'undefined' && window.location.hostname.startsWith('chat.');
