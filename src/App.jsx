@@ -142,6 +142,11 @@ const AnimatedRoutes = () => {
             <TestConnection />
           </AnimatedPage>
         } />
+        <Route path="/user-type" element={
+          <AnimatedPage>
+            <UserTypeSelection />
+          </AnimatedPage>
+        } />
         
         {/* Protected routes */}
         <Route path="/dashboard" element={
