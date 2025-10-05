@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host",
+    "dev": "vite --host --port 0",
     "dev:chat": "vite --config vite.chat.config.js --mode chat --host",
     "build": "vite build",
     "build:chat": "vite build --config vite.chat.config.js --mode chat --outDir dist/chat",

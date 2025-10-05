@@ -17,6 +17,11 @@ export default ({ mode }) => {
   console.log('Supabase URL:', env.VITE_SUPABASE_URL);
 
   return defineConfig({
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+      },
+    },
     plugins: [
       react({
         jsxImportSource: '@emotion/react',
@@ -44,36 +49,16 @@ export default ({ mode }) => {
     // Ensure Vite handles environment variables correctly
     envPrefix: 'VITE_',
     server: {
-      port: 3000,
+      host: true,
+      port: 3000, // Will be overridden by portfinder if in use
+      strictPort: false, // Allow port to be changed if in use
       open: true,
       cors: true,
       headers: {
         'Content-Security-Policy': isProduction 
           ? "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://vercel.live; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.homeswift.co https://*.vercel.app https://tproaiqvkohrlxjmkgxt.supabase.co https://*.supabase.co wss://*.supabase.co https://vercel.live; frame-src 'self' https://*.supabase.co https://vercel.live; worker-src 'self' blob:;"
           : "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:;"
-      }
-    },
-    resolve: {
-      alias: [
-        {
-          find: /^hoist-non-react-statics(\/.*)?$/,
-          replacement: 'hoist-non-react-statics/dist/hoist-non-react-statics.cjs.js',
-        },
-        {
-          find: '@',
-          replacement: path.resolve(__dirname, './src'),
-        },
-        {
-          find: "@/",
-          replacement: path.resolve(__dirname, "./src/"), // Add this for @/ imports
-        },
-      ],
-    },
-    
-    server: {
-      host: true,
-      port: 3000,
-      strictPort: true,
+      },
       proxy: {
         "/api": {
           target: process.env.VITE_API_BASE_URL?.replace("/api", "") || "http://localhost:5002",
