@@ -1,57 +1,59 @@
-import express from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
-import morgan from 'morgan';
-import dotenv from 'dotenv';
-import rateLimit from 'express-rate-limit';
-import cookieParser from 'cookie-parser';
-import session from 'express-session';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import winston from 'winston';
-import { createClient } from '@supabase/supabase-js';
-import { createRequire } from 'module';
-import { rememberMe, loadUser } from './middleware/authMiddleware.js';
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import morgan from "morgan";
+import dotenv from "dotenv";
+import rateLimit from "express-rate-limit";
+import cookieParser from "cookie-parser";
+import session from "express-session";
+import path from "path";
+import { fileURLToPath } from "url";
+import winston from "winston";
+import { createClient } from "@supabase/supabase-js";
+import { createRequire } from "module";
+import { rememberMe, loadUser } from "./middleware/authMiddleware.js";
 const require = createRequire(import.meta.url);
 
 // Import routes
-import authRoutes from './routes/auth.js';
-import propertyRoutes from './routes/propertyRoutes.js';
-import searchRoutes from './routes/search.js';
-import usersRoutes from './routes/users.js';
-import userRoutes from './routes/userRoutes.js';
+import authRoutes from "./routes/auth.js";
+import propertyRoutes from "./routes/propertyRoutes.js";
+import searchRoutes from "./routes/search.js";
+import usersRoutes from "./routes/users.js";
+import userRoutes from "./routes/userRoutes.js";
 
 // Initialize environment variables
 dotenv.config();
 
 // Configure logger
 const logger = winston.createLogger({
-  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',  // Log 'info' and below in production, 'debug' and below in development
+  level: process.env.NODE_ENV === "production" ? "info" : "debug", // Log 'info' and below in production, 'debug' and below in development
   format: winston.format.combine(
     winston.format.timestamp({
-      format: 'YYYY-MM-DD HH:mm:ss'
+      format: "YYYY-MM-DD HH:mm:ss",
     }),
     winston.format.errors({ stack: true }),
     winston.format.splat(),
     winston.format.json()
   ),
-  defaultMeta: { service: 'homeswift-backend' },
+  defaultMeta: { service: "homeswift-backend" },
   transports: [
     // Write all logs with importance level of 'error' or less to 'error.log'
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    new winston.transports.File({ filename: "logs/error.log", level: "error" }),
     // Write all logs with importance level of 'info' or less to 'combined.log'
-    new winston.transports.File({ filename: 'logs/combined.log' })
-  ]
+    new winston.transports.File({ filename: "logs/combined.log" }),
+  ],
 });
 
 // If we're not in production, log to the console as well
-if (process.env.NODE_ENV !== 'production') {
-  logger.add(new winston.transports.Console({
-    format: winston.format.combine(
-      winston.format.colorize(),
-      winston.format.simple()
-    )
-  }));
+if (process.env.NODE_ENV !== "production") {
+  logger.add(
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.colorize(),
+        winston.format.simple()
+      ),
+    })
+  );
 }
 
 // ES Modules fix for __dirname
@@ -86,12 +88,10 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    // Production whitelist
+    // Production whitelist - only allow the canonical domain
     const allowedOrigins = [
       "https://homeswift.co",
-      "https://www.homeswift.co",
       "https://api.homeswift.co",
-      "https://chat.homeswift.co",
       // Development and testing
       "https://homeswift-ai.vercel.app",
       "https://homeswift-ai-backend.vercel.app",
@@ -99,6 +99,11 @@ const corsOptions = {
       /^https?:\/\/homeswift-.*\.vercel\.app$/,
       /^https?:\/\/homeswift-ai-[a-z0-9]+\-brendanx22s-projects\.vercel\.app$/,
     ];
+
+    // Block requests from www subdomain
+    if (origin && origin.includes('www.homeswift.co')) {
+      return callback(new Error("Please use the canonical domain: https://homeswift.co"));
+    }
 
     if (
       !origin ||
@@ -120,8 +125,8 @@ const corsOptions = {
     "Accept",
     "Origin",
     "X-CSRF-Token",
-    "X-Requested-With",
     "X-Session-Id",
+    "Cookie",
   ],
   exposedHeaders: [
     "Content-Range",
@@ -132,33 +137,31 @@ const corsOptions = {
     "X-CSRF-Token",
   ],
   maxAge: 86400,
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
 };
 
 // Apply CORS with preflight options
+app.use(cors(corsOptions));
+
+// Handle preflight requests
+app.options("*", cors(corsOptions));
+
+// Additional CORS headers for non-preflight requests
 app.use((req, res, next) => {
-  // Set CORS headers
-  res.header("Access-Control-Allow-Origin", req.headers.origin || "*");
-  res.header(
-    "Access-Control-Allow-Methods",
-    "GET, POST, PUT, DELETE, PATCH, OPTIONS, HEAD"
-  );
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Content-Type, Authorization, X-Requested-With"
-  );
-  res.header("Access-Control-Allow-Credentials", "true");
-
-  // Handle preflight requests
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
+  // Only set headers for non-OPTIONS requests
+  if (req.method !== "OPTIONS") {
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header(
+      "Access-Control-Expose-Headers",
+      "Set-Cookie, X-Total-Count, Content-Range"
+    );
   }
-
   next();
 });
 
 // Trust first proxy (important for secure cookies in production)
-app.set('trust proxy', 1);
-
+app.set("trust proxy", 1);
 // Cookie parser middleware
 app.use(cookieParser(process.env.SESSION_SECRET));
 
@@ -171,10 +174,20 @@ const sessionConfig = {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    sameSite: 'none', // Required for cross-domain cookies with HTTPS
+    domain: process.env.NODE_ENV === 'production' ? 'homeswift.co' : undefined // No leading dot
   },
-  name: 'homeswift.sid'
+  name: 'homeswift.sid',
+  proxy: process.env.NODE_ENV === 'production' // Trust the reverse proxy in production
 };
+
+// Enforce canonical domain (redirect www to non-www)
+app.use((req, res, next) => {
+  if (req.hostname === 'www.homeswift.co') {
+    return res.redirect(301, `https://homeswift.co${req.originalUrl}`);
+  }
+  next();
+});
 
 // Use session middleware
 app.use(session(sessionConfig));
@@ -208,13 +221,13 @@ app.use(loadUser);
  * @apiSuccess {String} environment Current environment
  * @apiSuccess {String} version API version
  */
-app.get('/health', (req, res) => {
+app.get("/health", (req, res) => {
   res.status(200).json({
-    status: 'ok',
-    message: 'Server is running',
+    status: "ok",
+    message: "Server is running",
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development',
-    version: process.env.npm_package_version || '1.0.0'
+    environment: process.env.NODE_ENV || "development",
+    version: process.env.npm_package_version || "1.0.0",
   });
 });
 
@@ -223,29 +236,29 @@ app.get('/health', (req, res) => {
 // ======================
 
 // Authentication routes
-app.use('/api/auth', authRoutes);
+app.use("/api/auth", authRoutes);
 
 // Property routes (using the Supabase implementation with Swagger docs)
-app.use('/api/properties', propertyRoutes);
+app.use("/api/properties", propertyRoutes);
 
 // Search functionality
-app.use('/api/search', searchRoutes);
+app.use("/api/search", searchRoutes);
 
 // User profile and preferences
-app.use('/api/users', usersRoutes);
+app.use("/api/users", usersRoutes);
 
 // User management (admin)
-app.use('/api/users', userRoutes);
+app.use("/api/users", userRoutes);
 
 // Test endpoints (development only)
-if (process.env.NODE_ENV !== 'production') {
-  app.use('/api/test', testRoutes);
+if (process.env.NODE_ENV !== "production") {
+  app.use("/api/test", testRoutes);
 }
 
 // ======================
 // API Documentation
 // ======================
-app.get('/api-docs', (req, res) => {
+app.get("/api-docs", (req, res) => {
   res.send(`
     <html>
       <head>
@@ -348,16 +361,16 @@ app.get("/favicon.ico", (req, res) => {
 
 // Handle chat subdomain requests
 app.use((req, res, next) => {
-  if (req.hostname === 'chat.homeswift.co') {
+  if (req.hostname === "chat.homeswift.co") {
     // Serve the frontend for chat subdomain
-    return res.sendFile(path.join(__dirname, '../dist/index.html'));
+    return res.sendFile(path.join(__dirname, "../dist/index.html"));
   }
   next();
 });
 
 // 404 Handler
 app.use((req, res) => {
-  res.status(404).json({ message: 'Not Found' });
+  res.status(404).json({ message: "Not Found" });
 });
 
 // API Routes
@@ -497,9 +510,9 @@ async function testConnection() {
   try {
     // If using Sequelize, you can test with:
     // await sequelize.authenticate();
-    console.log('✅ Database connection has been established successfully.');
+    console.log("✅ Database connection has been established successfully.");
   } catch (error) {
-    console.error('❌ Unable to connect to the database:', error);
+    console.error("❌ Unable to connect to the database:", error);
     throw error;
   }
 }
@@ -508,7 +521,7 @@ async function testConnection() {
 async function startServer() {
   try {
     // Test database connection if needed
-    if (process.env.NODE_ENV !== 'test') {
+    if (process.env.NODE_ENV !== "test") {
       await testConnection();
     }
 
