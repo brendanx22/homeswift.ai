@@ -4,15 +4,31 @@ services:
     env: node
     region: oregon  # Choose the region closest to your users
     buildCommand: |
-      # Install server dependencies
-      cd server
-      npm install --production
+      # Install all dependencies including devDependencies
+      npm install
+      
+      # Install express-validator explicitly to ensure it's available
+      npm install express-validator@7.0.1
       
       # Run database migrations
       npm run migrate
       
+      # Verify express-validator is installed
+      if [ ! -d "node_modules/express-validator" ]; then
+        echo "ERROR: express-validator not found after installation"
+        exit 1
+      fi
+      
+      echo "Build completed successfully!"
+      
     startCommand: |
-      cd server
+      # Verify we have the required dependencies
+      if [ ! -d "node_modules/express-validator" ]; then
+        echo "ERROR: express-validator not found in node_modules"
+        exit 1
+      fi
+      
+      # Start the server
       NODE_ENV=production node --experimental-specifier-resolution=node server.js
     envVars:
       - key: NODE_ENV

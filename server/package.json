@@ -12,7 +12,8 @@
     "setup-db": "npm run migrate && npm run seed",
     "lint": "eslint .",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "npm install --production && npm run migrate"
+    "build": "npm install && npm run migrate",
+    "prestart": "node -e \"if (!require.resolve('express-validator')) { console.error('express-validator not found!'); process.exit(1); }\""
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
