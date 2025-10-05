@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "package.json",
+      "src": "vercel-build.sh",
       "use": "@vercel/static-build",
       "config": {
         "distDir": "dist",
@@ -10,7 +10,7 @@
       }
     },
     {
-      "src": "vite.chat.config.js",
+      "src": "vercel-build-chat.sh",
       "use": "@vercel/static-build",
       "config": {
         "distDir": "dist/chat",
