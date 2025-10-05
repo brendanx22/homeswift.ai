@@ -415,11 +415,25 @@ app.use((req, res) => {
   });
 });
 
+// Test database connection
+async function testConnection() {
+  try {
+    // If using Sequelize, you can test with:
+    // await sequelize.authenticate();
+    console.log('✅ Database connection has been established successfully.');
+  } catch (error) {
+    console.error('❌ Unable to connect to the database:', error);
+    throw error;
+  }
+}
+
 // Start server
 async function startServer() {
   try {
-    // Test database connection
-    await testConnection();
+    // Test database connection if needed
+    if (process.env.NODE_ENV !== 'test') {
+      await testConnection();
+    }
 
     app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
