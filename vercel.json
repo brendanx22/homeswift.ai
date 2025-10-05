@@ -50,16 +50,6 @@
       "destination": "/index.html" 
     }
   ],
-  "redirects": [
-    {
-      "source": "/",
-      "has": [
-        { "type": "host", "value": "www.homeswift.co" }
-      ],
-      "destination": "https://homeswift.co",
-      "permanent": true
-    }
-  ],
   "cleanUrls": true,
   "headers": [
     {
