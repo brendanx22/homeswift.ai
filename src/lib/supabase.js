@@ -33,6 +33,30 @@ const storage = {
     typeof window !== "undefined" ? localStorage.removeItem(key) : null,
 };
 
+// Custom logger that filters out verbose logs in production
+const customLogger = (message, ...args) => {
+  // Skip certain verbose messages in production
+  const skipInProduction = [
+    '#_acquireLock',
+    '#_useSession',
+    '#__loadSession',
+    '#getSession',
+    '#_recoverAndRefresh',
+    'auto refresh token',
+    'INITIAL_SESSION',
+    '#onAuthStateChange'
+  ];
+  
+  const shouldSkip = isProduction && skipInProduction.some(term => 
+    typeof message === 'string' && message.includes(term)
+  );
+  
+  if (!shouldSkip) {
+    const level = isProduction ? 'log' : 'debug';
+    console[level](`[Supabase] ${message}`, ...args);
+  }
+};
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
@@ -40,7 +64,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true,
     storage: storage,
     flowType: 'pkce',
-    debug: !isProduction,
+    debug: false, // Disable default debug logging
+    logger: {
+      error: (message, ...args) => console.error(`[Supabase Error]`, message, ...args),
+      warn: (message, ...args) => console.warn(`[Supabase Warn]`, message, ...args),
+      log: customLogger,
+      debug: customLogger
+    },
     storageKey: "homeswift-auth-token",
     cookieOptions: {
       name: 'sb-homeswift',

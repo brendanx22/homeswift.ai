@@ -43,7 +43,7 @@ export default function HeroSection() {
 
   return (
     <div 
-      className="min-h-screen relative overflow-hidden bg-center bg-no-repeat bg-contain md:bg-bottom"
+      className="min-h-screen relative overflow-hidden bg-center bg-no-repeat bg-contain md:bg-bottom hero-container"
       style={{
         backgroundImage: 'url("/Illustration.png")',
         backgroundPosition: 'center 100%',
@@ -55,10 +55,9 @@ export default function HeroSection() {
         mouseY.set(e.clientY - rect.top - rect.height / 2);
       }}
     >
-       {/* Mobile-specific background positioning */}
-       <style jsx>{`
+      <style>{`
         @media (max-width: 768px) {
-          div {
+          .hero-container {
             background-position: center 60% !important;
           }
         }
