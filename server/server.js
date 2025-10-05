@@ -14,7 +14,7 @@ const require = createRequire(import.meta.url);
 // Import routes
 import authRoutes from './routes/auth.js';
 import propertiesRoutes from './routes/properties.js';
-import { router as propertyRoutes } from './routes/propertyRoutes.js';
+import propertyRoutes from './routes/propertyRoutes.js';
 import searchRoutes from './routes/search.js';
 import usersRoutes from './routes/users.js';
 import testRoutes from './routes/test.js';
