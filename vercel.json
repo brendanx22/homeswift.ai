@@ -5,7 +5,16 @@
       "src": "package.json",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "dist"
+        "distDir": "dist",
+        "buildCommand": "npm run build"
+      }
+    },
+    {
+      "src": "vite.chat.config.js",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist/chat",
+        "buildCommand": "npm run build:chat"
       }
     },
     {

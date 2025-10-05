@@ -1,0 +1,49 @@
+services:
+  - type: web
+    name: homeswift-backend
+    env: node
+    region: oregon  # Choose the region closest to your users
+    buildCommand: npm install
+    startCommand: node --experimental-specifier-resolution=node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: NODE_VERSION
+        value: 18.x
+      - key: CORS_ORIGIN
+        value: https://homeswift.co,https://www.homeswift.co,https://api.homeswift.co,https://chat.homeswift.co
+      - key: BASE_URL
+        value: https://api.homeswift.co
+
+# Database configuration (if using Render's managed database)
+databases:
+  - name: homeswift-db
+    databaseName: homeswift
+    user: homeswift_user
+    plan: free  # or paid plan for production
+
+# Custom domains
+customDomains:
+  - name: api.homeswift.co
+    type: apex
+    redirects:
+      - from: www.api.homeswift.co
+        to: api.homeswift.co
+        type: subdomain
+
+# Environment variables for production
+envVars:
+  - key: NODE_ENV
+    value: production
+  - key: PORT
+    value: 10000
+  - key: JWT_SECRET
+    generateValue: true
+  - key: CORS_ORIGIN
+    value: https://homeswift.co,https://www.homeswift.co,https://api.homeswift.co,https://chat.homeswift.co
+  - key: BASE_URL
+    value: https://api.homeswift.co

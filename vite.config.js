@@ -5,10 +5,16 @@ import path from 'path';
 // https://vite.dev/config/
 export default ({ mode }) => {
   // Load app-level env vars to node's process.env
-  process.env = { ...process.env, ...loadEnv(mode, process.cwd(), '') };
+  const env = loadEnv(mode, process.cwd(), '');
+  process.env = { ...process.env, ...env };
 
   const isProduction = mode === 'production';
   const isChat = mode === 'chat';
+
+  // Log environment variables for debugging
+  console.log('Vite Config - Mode:', mode);
+  console.log('API Base URL:', env.VITE_API_BASE_URL);
+  console.log('Supabase URL:', env.VITE_SUPABASE_URL);
 
   return defineConfig({
     plugins: [

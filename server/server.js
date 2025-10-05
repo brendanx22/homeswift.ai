@@ -1,21 +1,56 @@
-import express from "express";
-import cors from "cors";
-import helmet from "helmet";
-import morgan from "morgan";
-import dotenv from "dotenv";
-import rateLimit from "express-rate-limit";
-import cookieParser from "cookie-parser";
-import path from "path";
-import { fileURLToPath } from "url";
-import supabase, { testConnection, dbUtils } from "./config/supabase-db.js";
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import dotenv from 'dotenv';
+import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import winston from 'winston';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
 
 // Import routes
-import authRoutes from "./routes/auth.js";
+import authRoutes from './routes/auth.js';
 // import propertiesRoutes from './routes/properties.js';
 // import propertyRoutes from './routes/propertyRoutes.js';
 // import searchRoutes from './routes/search.js';
 // import usersRoutes from './routes/users.js';
 // import testRoutes from './routes/test.js';
+
+// Initialize environment variables
+dotenv.config();
+
+// Configure logger
+const logger = winston.createLogger({
+  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',  // Log 'info' and below in production, 'debug' and below in development
+  format: winston.format.combine(
+    winston.format.timestamp({
+      format: 'YYYY-MM-DD HH:mm:ss'
+    }),
+    winston.format.errors({ stack: true }),
+    winston.format.splat(),
+    winston.format.json()
+  ),
+  defaultMeta: { service: 'homeswift-backend' },
+  transports: [
+    // Write all logs with importance level of 'error' or less to 'error.log'
+    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
+    // Write all logs with importance level of 'info' or less to 'combined.log'
+    new winston.transports.File({ filename: 'logs/combined.log' })
+  ]
+});
+
+// If we're not in production, log to the console as well
+if (process.env.NODE_ENV !== 'production') {
+  logger.add(new winston.transports.Console({
+    format: winston.format.combine(
+      winston.format.colorize(),
+      winston.format.simple()
+    )
+  }));
+}
 
 // ES Modules fix for __dirname
 const __filename = fileURLToPath(import.meta.url);
@@ -53,9 +88,12 @@ const corsOptions = {
     const allowedOrigins = [
       "https://homeswift.co",
       "https://www.homeswift.co",
+      "https://api.homeswift.co",
       "https://chat.homeswift.co",
+      // Development and testing
       "https://homeswift-ai.vercel.app",
       "https://homeswift-ai-backend.vercel.app",
+      "http://localhost:3000", // For local development
       /^https?:\/\/homeswift-.*\.vercel\.app$/,
       /^https?:\/\/homeswift-ai-[a-z0-9]+\-brendanx22s-projects\.vercel\.app$/,
     ];

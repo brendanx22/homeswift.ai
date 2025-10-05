@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -26,6 +26,7 @@ import { DashboardProvider } from './contexts/DashboardContext';
 import UserTypeSelection from './components/UserTypeSelection';
 import LandlordLoginPage from './components/LandlordLoginPage';
 import LandlordSignupPage from './components/LandlordSignupPage';
+import TestConnection from './pages/TestConnection';
 
 // Styles
 import './index.css';
@@ -48,56 +49,23 @@ const ProtectedRoute = ({ children }) => {
       path: location.pathname,
       user: user ? 'User exists' : 'No user'
     });
-  }, [loading, isAuthenticated, initialCheckComplete, location.pathname, user]);
 
-  // Handle authentication state changes
-  useEffect(() => {
-    // Skip if still loading or already redirecting
-    if (loading || redirecting || !initialCheckComplete) return;
-
-    // Check if we're on a public path
-    const publicPaths = [
-      '/login', 
-      '/signup', 
-      '/auth', 
-      '/list-login', 
-      '/list-signup',
-      '/verify-email',
-      '/reset-password',
-      '/',
-      ''
-    ];
-
-    const isPublicPath = publicPaths.some(path => 
-      location.pathname === path || location.pathname.startsWith(`${path}/`)
-    );
-
-    // If not authenticated and not on a public path, redirect to login
-    if (!isAuthenticated && !isPublicPath) {
+    if (!loading && !isAuthenticated && initialCheckComplete) {
       console.log('[ProtectedRoute] Not authenticated, redirecting to login');
-      setRedirecting(true);
-      const redirectUrl = encodeURIComponent(location.pathname + location.search);
-      navigate(`/login?redirect=${redirectUrl}`, { replace: true });
-      return;
+      navigate('/login', { state: { from: location }, replace: true });
     }
+  }, [isAuthenticated, loading, initialCheckComplete, location, navigate]);
 
-    // If authenticated and on a login/signup page, redirect to dashboard
-    if (isAuthenticated && (location.pathname === '/login' || location.pathname === '/signup')) {
-      console.log('[ProtectedRoute] Already authenticated, redirecting to dashboard');
-      setRedirecting(true);
-      navigate('/dashboard', { replace: true });
-      return;
-    }
-  }, [isAuthenticated, loading, location, navigate, initialCheckComplete, redirecting]);
-
-  // Show loading state while checking auth
   if (loading || !initialCheckComplete) {
-    return <BrandedSpinner message="Checking your session..." />;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <BrandedSpinner size="lg" />
+      </div>
+    );
   }
 
-  // If redirecting, show a loading message
-  if (redirecting) {
-    return <BrandedSpinner message="Redirecting..." />;
+  if (!isAuthenticated) {
+    return null; // Redirect will happen in the effect
   }
 
   return children;
@@ -109,17 +77,17 @@ const variants = {
   enter: { 
     opacity: 1, 
     y: 0,
-    transition: {
-      duration: 0.3,
-      ease: [0.4, 0, 0.2, 1]
+    transition: { 
+      duration: 0.5,
+      ease: [0.16, 1, 0.3, 1]
     }
   },
   exit: { 
     opacity: 0, 
     y: -20,
-    transition: {
+    transition: { 
       duration: 0.2,
-      ease: [0.4, 0, 0.2, 1]
+      ease: [0.16, 1, 0.3, 1]
     }
   }
 };
@@ -131,8 +99,7 @@ const AnimatedPage = ({ children }) => (
     animate="enter"
     exit="exit"
     variants={variants}
-    className="min-h-screen w-full"
-    style={{ position: 'relative' }}
+    className="min-h-screen"
   >
     {children}
   </motion.div>
@@ -140,126 +107,91 @@ const AnimatedPage = ({ children }) => (
 
 const AnimatedRoutes = () => {
   const location = useLocation();
-  useEffect(() => {
-    console.log('[Routes] Navigated to', location.pathname);
-  }, [location.pathname]);
   
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
-        {/* Public Routes */}
+        {/* Public routes */}
         <Route path="/" element={
-          <DashboardProvider>
-            <AnimatedPage>
-              <Index/>
-            </AnimatedPage>
-          </DashboardProvider>
+          <AnimatedPage>
+            <Index />
+          </AnimatedPage>
         } />
-        
         <Route path="/login" element={
           <AnimatedPage>
             <LoginPage />
           </AnimatedPage>
         } />
-        
         <Route path="/signup" element={
           <AnimatedPage>
             <SignupPage />
           </AnimatedPage>
         } />
-        
-        <Route path="/user-type" element={
-          <AnimatedPage>
-            <UserTypeSelection />
-          </AnimatedPage>
-        } />
-        
-        <Route path="/list-login" element={
-          <AnimatedPage>
-            <LandlordLoginPage />
-          </AnimatedPage>
-        } />
-        
-        <Route path="/list-signup" element={
-          <AnimatedPage>
-            <LandlordSignupPage />
-          </AnimatedPage>
-        } />
-        
         <Route path="/verify-email" element={
           <AnimatedPage>
             <EmailVerification />
           </AnimatedPage>
-          
         } />
-        
-        {/* Public Properties Route for Search */}
-        <Route path="/properties" element={
+        <Route path="/auth/callback" element={
           <AnimatedPage>
-            <HouseListings />
+            <AuthCallback />
+          </AnimatedPage>
+        } />
+        <Route path="/test-connection" element={
+          <AnimatedPage>
+            <TestConnection />
           </AnimatedPage>
         } />
 
-        {/* Messages - requires authentication when used from dashboard navigation */}
-        <Route path="/messages" element={
-          <DashboardProvider>
-            <ProtectedRoute>
-              <AnimatedPage>
-                <Messages />
-              </AnimatedPage>
-            </ProtectedRoute>
-          </DashboardProvider>
-        } />
-
-        {/* Landlord/Owner property listing page */}
-        <Route path="/list-property" element={
-          <DashboardProvider>
-            <ProtectedRoute>
-              <AnimatedPage>
-                <ListPropertyPage />
-              </AnimatedPage>
-            </ProtectedRoute>
-          </DashboardProvider>
-        } />
-        
-        {/* Property Details Route */}
-        <Route path="/properties/:id" element={
-          <AnimatedPage>
-            <PropertyDetails />
-          </AnimatedPage>
-        } />
-        
-        {/* Main App Routes - Protected */}
+        {/* Protected routes */}
         <Route path="/dashboard" element={
           <ProtectedRoute>
             <AnimatedPage>
-              <MainLanding />
+              <Dashboard />
             </AnimatedPage>
           </ProtectedRoute>
         } />
-        
-        <Route path="/listings" element={
-          <AnimatedPage>
-            <HouseListings />
-          </AnimatedPage>
+        <Route path="/properties" element={
+          <ProtectedRoute>
+            <AnimatedPage>
+              <HouseListings />
+            </AnimatedPage>
+          </ProtectedRoute>
         } />
-        
-        <Route path="/property/:id" element={
-          <AnimatedPage>
-            <PropertyDetails />
-          </AnimatedPage>
+        <Route path="/properties/:id" element={
+          <ProtectedRoute>
+            <AnimatedPage>
+              <PropertyDetails />
+            </AnimatedPage>
+          </ProtectedRoute>
         } />
-        
         <Route path="/gallery" element={
-          <AnimatedPage>
-            <Gallery />
-          </AnimatedPage>
+          <ProtectedRoute>
+            <AnimatedPage>
+              <Gallery />
+            </AnimatedPage>
+          </ProtectedRoute>
         } />
-        
         <Route path="/inquiry" element={
-          <AnimatedPage>
-            <InquiryForm />
-          </AnimatedPage>
+          <ProtectedRoute>
+            <AnimatedPage>
+              <InquiryForm />
+            </AnimatedPage>
+          </ProtectedRoute>
+        } />
+        <Route path="/messages" element={
+          <ProtectedRoute>
+            <AnimatedPage>
+              <Messages />
+            </AnimatedPage>
+          </ProtectedRoute>
+        } />
+        <Route path="/list-property" element={
+          <ProtectedRoute>
+            <AnimatedPage>
+              <ListPropertyPage />
+            </AnimatedPage>
+          </ProtectedRoute>
         } />
         
         {/* 404 Route */}
