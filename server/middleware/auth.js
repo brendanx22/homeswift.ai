@@ -1,240 +1,243 @@
-import jwt from 'jsonwebtoken';
-import { supabase } from '../lib/supabase.js';
-import dotenv from 'dotenv';
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+import crypto from "crypto";
+import { supabase } from "../lib/supabaseClient.js"; // Ensure this file exports a configured Supabase client
 
 dotenv.config();
 
-// Session-based authentication middleware
+// ===============================
+// 🔐 REQUIRE AUTH (session-based)
+// ===============================
 export const requireAuth = async (req, res, next) => {
   try {
-    // Check if user is logged in via session
-    if (!req.session.userId) {
-      return res.status(401).json({ error: 'Authentication required' });
+    if (!req.session?.user) {
+      return res.status(401).json({ error: "Authentication required" });
     }
 
-    // Get user from Supabase
     const { data: user, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', req.session.userId)
+      .from("users")
+      .select("*")
+      .eq("id", req.session.user.id)
       .single();
-    
-    if (error) throw error;
-    if (!user) {
+
+    if (error || !user) {
       req.session.destroy();
-      return res.status(401).json({ error: 'User not found' });
+      return res
+        .status(401)
+        .json({ error: "User not found or session invalid" });
     }
 
     req.user = user;
     next();
-  } catch (error) {
-    console.error('Auth middleware error:', error);
-    res.status(500).json({ error: 'Authentication error' });
+  } catch (err) {
+    console.error("Auth middleware error:", err);
+    res.status(500).json({ error: "Authentication error" });
   }
 };
 
-// Optional authentication (doesn't require login)
+// ===================================
+// 🟢 OPTIONAL AUTH (non-mandatory)
+// ===================================
 export const optionalAuth = async (req, res, next) => {
   try {
-    if (req.session.userId) {
+    if (req.session?.user) {
       const { data: user, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', req.session.userId)
+        .from("users")
+        .select("*")
+        .eq("id", req.session.user.id)
         .single();
-      
+
       if (user && !error) {
         req.user = user;
       }
     }
     next();
-  } catch (error) {
-    console.error('Optional auth error:', error);
+  } catch (err) {
+    console.error("Optional auth error:", err);
     next();
   }
 };
 
-// Middleware to check if user is guest (not authenticated)
+// ===================================
+// 🚫 REQUIRE GUEST (no active session)
+// ===================================
 export const requireGuest = (req, res, next) => {
-  if (req.user || (req.session && req.session.userId)) {
-    return res.status(400).json({ error: 'Already authenticated' });
+  if (req.session?.user) {
+    return res.status(403).json({ error: "Already authenticated" });
   }
   next();
 };
 
-// Middleware to check remember me token
-export const checkRememberToken = async (req, res, next) => {
-  // If already authenticated via session or JWT
-  if (req.user || (req.session && req.session.userId)) {
-    return next();
-  }
+// ===================================
+// 💾 REMEMBER ME HANDLER
+// ===================================
+export const checkRememberMe = async (req, res, next) => {
+  try {
+    // Skip if already authenticated
+    if (req.user || (req.session && req.session.userId)) {
+      return next();
+    }
 
-  const { remember_token: rememberToken, remember_user: rememberUser } = req.cookies || {};
-  
-  if (rememberToken && rememberUser) {
-    try {
+    const { remember_token: rememberToken, remember_user: rememberUser } =
+      req.cookies || {};
+
+    if (rememberToken && rememberUser) {
       const { data: user, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', rememberUser)
-        .eq('remember_token', rememberToken)
+        .from("users")
+        .select("*")
+        .eq("id", rememberUser)
+        .eq("remember_token", rememberToken)
         .single();
 
       if (user && !error) {
-        // Set session
+        // Set new session
         req.session.userId = user.id;
         req.session.role = user.role;
         req.user = user;
-        
-        // Generate new remember token
-        const newToken = crypto.randomBytes(32).toString('hex');
-        
-        // Update user with new token in Supabase
+
+        // Generate new token for security
+        const newToken = crypto.randomBytes(32).toString("hex");
         await supabase
-          .from('users')
+          .from("users")
           .update({ remember_token: newToken })
-          .eq('id', user.id);
-        
-        // Update the cookie
+          .eq("id", user.id);
+
         const thirtyDays = 30 * 24 * 60 * 60 * 1000;
-        res.cookie('remember_token', newToken, { 
-          maxAge: thirtyDays, 
+        res.cookie("remember_token", newToken, {
+          maxAge: thirtyDays,
           httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'strict'
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "strict",
         });
+      } else {
+        // Clear invalid cookies
+        res.clearCookie("remember_token");
+        res.clearCookie("remember_user");
       }
-    } catch (error) {
-      console.error('Remember me error:', error);
-      // Clear invalid cookies
-      res.clearCookie('remember_token');
-      res.clearCookie('remember_user');
     }
+    next();
+  } catch (err) {
+    console.error("Remember me error:", err);
+    res.clearCookie("remember_token");
+    res.clearCookie("remember_user");
+    next();
   }
-  
-  next();
 };
 
-// Middleware to load user from JWT or session
+// ===================================
+// 🔍 LOAD USER FROM JWT OR SESSION
+// ===================================
 export const loadUser = async (req, res, next) => {
   try {
-    // If user is already loaded, skip
     if (req.user) return next();
-    
-    // Check for JWT in Authorization header
+
+    // 1️⃣ Try JWT
     const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.split(' ')[1];
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.split(" ")[1];
       try {
-        // Verify JWT using Supabase
-        const { data: { user }, error } = await supabase.auth.getUser(token);
-        
-        if (user && !error) {
-          req.user = user;
-          // Update session for backward compatibility
-          req.session.userId = user.id;
-          req.session.role = user.role;
+        const { data, error } = await supabase.auth.getUser(token);
+        if (data?.user && !error) {
+          req.user = data.user;
+          req.session.userId = data.user.id;
+          req.session.role = data.user.role || "user";
           return next();
         }
       } catch (err) {
-        console.error('JWT verification error in loadUser:', err);
-        // Continue to check session if JWT is invalid
+        console.error("JWT verification error:", err);
       }
     }
-    
-    // Try to load from session if no valid JWT
-    if (req.session.userId) {
+
+    // 2️⃣ Try session
+    if (req.session?.userId) {
       const { data: user, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', req.session.userId)
+        .from("users")
+        .select("*")
+        .eq("id", req.session.userId)
         .single();
-      
+
       if (user && !error) {
         req.user = user;
       } else {
-        // Clear invalid session
         req.session.destroy();
       }
     }
-    
+
     next();
-  } catch (error) {
-    console.error('Error loading user:', error);
-    next(error);
+  } catch (err) {
+    console.error("Error loading user:", err);
+    next(err);
   }
 };
 
-// Middleware to check user roles
+// ===================================
+// 🧭 ROLE AUTHORIZATION
+// ===================================
 export const authorizeRoles = (...roles) => {
   return async (req, res, next) => {
     if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        error: 'Authentication required'
-      });
+      return res
+        .status(401)
+        .json({ success: false, error: "Authentication required" });
     }
 
-    // Get fresh user data to ensure roles are up to date
     const { data: user, error } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', req.user.id)
+      .from("users")
+      .select("role")
+      .eq("id", req.user.id)
       .single();
 
     if (error || !user) {
-      return res.status(401).json({
-        success: false,
-        error: 'User not found'
-      });
+      return res.status(401).json({ success: false, error: "User not found" });
     }
 
     if (!roles.includes(user.role)) {
-      return res.status(403).json({
-        success: false,
-        error: 'Insufficient permissions'
-      });
+      return res
+        .status(403)
+        .json({ success: false, error: "Insufficient permissions" });
     }
 
-    // Update the user role in the request
     req.user.role = user.role;
     next();
   };
 };
 
-// JWT Authentication Middleware
+// ===================================
+// 🔒 AUTHENTICATE JWT
+// ===================================
 export const authenticateJWT = (req, res, next) => {
   const authHeader = req.headers.authorization;
 
-  if (authHeader) {
-    const token = authHeader.split(' ')[1];
+  if (!authHeader)
+    return res
+      .status(401)
+      .json({ message: "Authorization header is required" });
 
-    if (!token) {
-      return res.status(401).json({ message: 'No token provided' });
-    }
-
-    jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', (err, user) => {
+  const token = authHeader.split(" ")[1];
+  jwt.verify(
+    token,
+    process.env.JWT_SECRET || "your-secret-key",
+    (err, user) => {
       if (err) {
-        return res.status(403).json({ message: 'Invalid or expired token' });
+        return res.status(403).json({ message: "Invalid or expired token" });
       }
-
       req.user = user;
       next();
-    });
-  } else {
-    res.status(401).json({ message: 'Authorization header is required' });
-  }
+    }
+  );
 };
 
-// Admin role check middleware
+// ===================================
+// 🧑‍💼 ADMIN CHECK
+// ===================================
 export const isAdmin = (req, res, next) => {
   if (!req.user) {
-    return res.status(401).json({ message: 'Authentication required' });
+    return res.status(401).json({ message: "Authentication required" });
   }
-
-  if (req.user.role === 'admin') {
-    next();
-  } else {
-    res.status(403).json({ message: 'Access denied: Admin privileges required' });
+  if (req.user.role !== "admin") {
+    return res
+      .status(403)
+      .json({ message: "Access denied: Admin privileges required" });
   }
+  next();
 };

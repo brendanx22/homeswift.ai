@@ -5,19 +5,20 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
+import session from 'express-session';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import winston from 'winston';
+import { createClient } from '@supabase/supabase-js';
 import { createRequire } from 'module';
+import { rememberMe, loadUser } from './middleware/authMiddleware.js';
 const require = createRequire(import.meta.url);
 
 // Import routes
 import authRoutes from './routes/auth.js';
-import propertiesRoutes from './routes/properties.js';
 import propertyRoutes from './routes/propertyRoutes.js';
 import searchRoutes from './routes/search.js';
 import usersRoutes from './routes/users.js';
-import testRoutes from './routes/test.js';
 import userRoutes from './routes/userRoutes.js';
 
 // Initialize environment variables
@@ -155,11 +156,44 @@ app.use((req, res, next) => {
   next();
 });
 
-// Trust first proxy (important for secure cookies)
-app.set("trust proxy", 1);
+// Trust first proxy (important for secure cookies in production)
+app.set('trust proxy', 1);
 
 // Cookie parser middleware
 app.use(cookieParser(process.env.SESSION_SECRET));
+
+// Session configuration
+const sessionConfig = {
+  secret: process.env.SESSION_SECRET || 'your-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  },
+  name: 'homeswift.sid'
+};
+
+// Use session middleware
+app.use(session(sessionConfig));
+
+// Initialize Supabase client
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
+);
+
+// Attach Supabase client to requests
+app.use((req, res, next) => {
+  req.supabase = supabase;
+  next();
+});
+
+// Auth middleware
+app.use(rememberMe);
+app.use(loadUser);
 
 // Rate limiting
 // Health check endpoint
