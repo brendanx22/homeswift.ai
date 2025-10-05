@@ -1,461 +1,321 @@
-import { Op } from 'sequelize';
-import models from '../models/index.js';
+import { supabase } from "../lib/supabase.js";
 
 const propertyController = {
-  // Enhanced search with filters
+  // 🔍 Search properties
   async searchProperties(req, res) {
     try {
-      console.log('Search request received with query:', req.query);
-      
       const {
-        q, 
-        minPrice, 
-        maxPrice, 
+        q,
+        minPrice,
+        maxPrice,
         bedrooms,
         propertyType,
         location,
-        status = 'active',
-        sortBy = 'createdAt',
-        sortOrder = 'DESC',
+        status = "active",
+        sortBy = "created_at",
+        sortOrder = "desc",
         limit = 12,
-        page = 1
+        page = 1,
       } = req.query;
 
-      const whereClause = { status: status };
-      
-      // Debug log
-      console.log('Initial whereClause:', JSON.stringify(whereClause, null, 2));
+      let query = supabase
+        .from("properties")
+        .select("*, agent:users(*), images:property_images(*)", {
+          count: "exact",
+        })
+        .eq("status", status);
 
-      // Text search (search in title, description, address, city, state, zipcode)
+      // Search text
       if (q) {
-        whereClause[Op.or] = [
-          { title: { [Op.iLike]: `%${q}%` } },
-          { description: { [Op.iLike]: `%${q}%` } },
-          { address: { [Op.iLike]: `%${q}%` } },
-          { city: { [Op.iLike]: `%${q}%` } },
-          { state: { [Op.iLike]: `%${q}%` } },
-          { zipcode: { [Op.iLike]: `%${q}%` } }
-        ];
+        query = query.or(
+          `title.ilike.%${q}%,description.ilike.%${q}%,address.ilike.%${q}%,city.ilike.%${q}%,state.ilike.%${q}%,zipcode.ilike.%${q}%`
+        );
       }
 
-      // Location search (city, state, or zipcode)
-      if (location) {
-        whereClause[Op.or] = [
-          { city: { [Op.iLike]: `%${location}%` } },
-          { state: { [Op.iLike]: `%${location}%` } },
-          { zipcode: { [Op.iLike]: `%${location}%` } }
-        ];
-      }
-
-      // Price range
-      if (minPrice || maxPrice) {
-        whereClause.price = {};
-        if (minPrice) whereClause.price[Op.gte] = parseFloat(minPrice);
-        if (maxPrice) whereClause.price[Op.lte] = parseFloat(maxPrice);
-      }
-
-      // Bedrooms (exact match or greater than)
+      // Filters
+      if (minPrice) query = query.gte("price", parseFloat(minPrice));
+      if (maxPrice) query = query.lte("price", parseFloat(maxPrice));
       if (bedrooms) {
-        if (bedrooms.endsWith('+')) {
-          whereClause.bedrooms = { [Op.gte]: parseInt(bedrooms) };
-        } else {
-          whereClause.bedrooms = parseInt(bedrooms);
-        }
+        if (bedrooms.endsWith("+"))
+          query = query.gte("bedrooms", parseInt(bedrooms));
+        else query = query.eq("bedrooms", parseInt(bedrooms));
       }
-
-      // Property type (exact match)
-      // Property type (exact match, case insensitive)
       if (propertyType) {
-        whereClause.propertyType = { [Op.iLike]: propertyType };
-        console.log('Added propertyType filter:', propertyType);
+        if (Array.isArray(propertyType))
+          query = query.in("property_type", propertyType);
+        else query = query.eq("property_type", propertyType);
+      }
+      if (location) {
+        query = query.or(
+          `address.ilike.%${location}%,city.ilike.%${location}%,state.ilike.%${location}%,zipcode.ilike.%${location}%`
+        );
       }
 
-      // Order by
-      const order = [];
-      const validSortFields = ['price', 'bedrooms', 'bathrooms', 'area_sqft', 'year_built', 'created_at'];
-      
-      // Map any camelCase sort fields to snake_case
+      // Sorting
       const sortFieldMap = {
-        squareFeet: 'area_sqft',
-        areaSqft: 'area_sqft',
-        yearBuilt: 'year_built',
-        createdAt: 'created_at',
-        updatedAt: 'updated_at'
+        price: "price",
+        bedrooms: "bedrooms",
+        bathrooms: "bathrooms",
+        areaSqft: "area_sqft",
+        yearBuilt: "year_built",
+        createdAt: "created_at",
+        updatedAt: "updated_at",
       };
-      
-      const dbSortField = sortFieldMap[sortBy] || sortBy;
-      
-      if (dbSortField && validSortFields.includes(dbSortField)) {
-        order.push([dbSortField, sortOrder.toUpperCase()]);
-      } else {
-        order.push(['created_at', 'DESC']);
-      }
+      const dbSortField = sortFieldMap[sortBy] || "created_at";
+      const ascending = sortOrder?.toLowerCase() === "asc";
 
-      // Include property images
-      const include = [{
-        model: models.PropertyImage,
-        as: 'propertyImages',
-        attributes: ['id', 'image_url', 'is_primary'],
-        required: false // Use LEFT JOIN instead of INNER JOIN
-      }];
-
-      // Calculate pagination
-      const pageSize = parseInt(limit) || 12;
-      const currentPage = parseInt(page) || 1;
+      // Pagination
+      const pageSize = Math.min(parseInt(limit) || 12, 100);
+      const currentPage = Math.max(parseInt(page) || 1, 1);
       const offset = (currentPage - 1) * pageSize;
 
-      // Debug final query
-      console.log('Final query:', {
-        where: whereClause,
-        order,
-        limit: pageSize,
-        offset,
-        include
-      });
+      // Execute
+      const { data, error, count } = await query
+        .order(dbSortField, { ascending })
+        .range(offset, offset + pageSize - 1);
 
-      const result = await models.Property.findAndCountAll({
-        where: whereClause,
-        order,
-        limit: pageSize,
-        offset: offset,
-        include,
-        distinct: true
-      });
-      
-      const { count, rows: properties } = result;
-      console.log(`Found ${properties.length} of ${count} total properties`);
+      if (error) throw error;
 
       res.json({
         success: true,
-        count: properties.length,
-        total: count,
+        total: count || 0,
         page: currentPage,
-        totalPages: Math.ceil(count / pageSize),
-        data: properties
+        totalPages: Math.ceil((count || 0) / pageSize),
+        data: data || [],
       });
     } catch (error) {
-      console.error('Search error:', error);
-      console.error('Error stack:', error.stack);
-      
-      // Log the specific error if it's a database error
-      if (error.original) {
-        console.error('Database error:', error.original);
-      }
-      
+      console.error("Search error:", error);
       res.status(500).json({
         success: false,
-        error: 'Failed to search properties',
-        details: process.env.NODE_ENV === 'development' ? {
-          message: error.message,
-          stack: error.stack,
-          originalError: error.original ? error.original.message : null
-        } : undefined
+        error: "Failed to search properties",
+        details: error.message,
       });
     }
   },
 
-  // Get all properties with filters
+  // 📦 Get all properties
   async getProperties(req, res) {
-    console.log('GET /api/properties - Query params:', req.query);
-    
-    // Wrap the entire function in a try-catch to prevent server crashes
     try {
-      const { 
-        minPrice, 
-        maxPrice, 
-        bedrooms, 
+      const {
+        minPrice,
+        maxPrice,
+        bedrooms,
         minBathrooms,
         maxBathrooms,
-        propertyType, 
+        propertyType,
         city,
         state,
         minSqft,
         maxSqft,
         yearBuilt,
-        sortBy = 'created_at',
-        sortOrder = 'DESC',
+        sortBy = "created_at",
+        sortOrder = "desc",
         limit = 10,
-        offset = 0
+        page = 1,
       } = req.query;
 
-      const whereClause = {};
+      let query = supabase
+        .from("properties")
+        .select("*, agent:users(*), images:property_images(*)", {
+          count: "exact",
+        });
 
-      // Apply filters
-      if (minPrice || maxPrice) {
-        whereClause.price = {};
-        if (minPrice) whereClause.price[Op.gte] = parseFloat(minPrice);
-        if (maxPrice) whereClause.price[Op.lte] = parseFloat(maxPrice);
-      }
-      
-      // Ensure we're using snake_case for all database column names
-
+      if (minPrice) query = query.gte("price", parseFloat(minPrice));
+      if (maxPrice) query = query.lte("price", parseFloat(maxPrice));
       if (bedrooms) {
-        if (bedrooms.endsWith('+')) {
-          whereClause.bedrooms = { [Op.gte]: parseInt(bedrooms) };
-        } else {
-          whereClause.bedrooms = parseInt(bedrooms);
-        }
+        if (bedrooms.endsWith("+"))
+          query = query.gte("bedrooms", parseInt(bedrooms));
+        else query = query.eq("bedrooms", parseInt(bedrooms));
       }
-
-      if (minBathrooms || maxBathrooms) {
-        whereClause.bathrooms = {};
-        if (minBathrooms) whereClause.bathrooms[Op.gte] = parseFloat(minBathrooms);
-        if (maxBathrooms) whereClause.bathrooms[Op.lte] = parseFloat(maxBathrooms);
-      }
-
+      if (minBathrooms)
+        query = query.gte("bathrooms", parseFloat(minBathrooms));
+      if (maxBathrooms)
+        query = query.lte("bathrooms", parseFloat(maxBathrooms));
       if (propertyType) {
-        whereClause.property_type = Array.isArray(propertyType) 
-          ? { [Op.in]: propertyType }
-          : propertyType;
-        console.log('Filtering by property type:', whereClause.property_type);
+        if (Array.isArray(propertyType))
+          query = query.in("property_type", propertyType);
+        else query = query.eq("property_type", propertyType);
       }
+      if (city) query = query.ilike("city", `%${city}%`);
+      if (state) query = query.ilike("state", `%${state}%`);
+      if (minSqft) query = query.gte("area_sqft", parseInt(minSqft));
+      if (maxSqft) query = query.lte("area_sqft", parseInt(maxSqft));
+      if (yearBuilt) query = query.gte("year_built", parseInt(yearBuilt));
 
-      if (city) whereClause.city = { [Op.iLike]: `%${city}%` };
-      if (state) whereClause.state = { [Op.iLike]: `%${state}%` };
-
-      if (minSqft || maxSqft) {
-        whereClause.square_feet = {};
-        if (minSqft) whereClause.square_feet[Op.gte] = parseInt(minSqft);
-        if (maxSqft) whereClause.square_feet[Op.lte] = parseInt(maxSqft);
-      }
-
-      if (yearBuilt) {
-        whereClause.year_built = { [Op.gte]: parseInt(yearBuilt) };
-      }
-
-      // Order by
-      const order = [];
-      const validSortFields = ['price', 'bedrooms', 'bathrooms', 'area_sqft', 'year_built', 'created_at'];
-      
-      // Map any camelCase sort fields to snake_case
       const sortFieldMap = {
-        squareFeet: 'area_sqft',
-        areaSqft: 'area_sqft',
-        yearBuilt: 'year_built',
-        createdAt: 'created_at',
-        updatedAt: 'updated_at'
+        price: "price",
+        bedrooms: "bedrooms",
+        bathrooms: "bathrooms",
+        areaSqft: "area_sqft",
+        yearBuilt: "year_built",
+        createdAt: "created_at",
+        updatedAt: "updated_at",
       };
-      
-      const dbSortField = sortFieldMap[sortBy] || sortBy;
-      
-      if (dbSortField && validSortFields.includes(dbSortField)) {
-        order.push([dbSortField, sortOrder.toUpperCase()]);
-      } else {
-        order.push(['created_at', 'DESC']);
-      }
+      const dbSortField = sortFieldMap[sortBy] || "created_at";
+      const ascending = sortOrder?.toLowerCase() === "asc";
 
-      // Include property images
-      const include = [{
-        model: models.PropertyImage,
-        as: 'propertyImages',
-        attributes: ['id', 'image_url', 'is_primary'],
-        required: false // Use LEFT JOIN instead of INNER JOIN
-      }];
-      
-      console.log('Querying with whereClause:', JSON.stringify(whereClause, null, 2));
+      const pageSize = Math.min(parseInt(limit) || 10, 100);
+      const currentPage = Math.max(parseInt(page) || 1, 1);
+      const offset = (currentPage - 1) * pageSize;
 
-      const { count, rows: properties } = await models.Property.findAndCountAll({
-        where: whereClause,
-        include,
-        limit: Math.min(parseInt(limit), 50),
-        offset: parseInt(offset),
-        order,
-        distinct: true
-      });
+      const { data, error, count } = await query
+        .order(dbSortField, { ascending })
+        .range(offset, offset + pageSize - 1);
+
+      if (error) throw error;
 
       res.json({
         success: true,
-        count: properties.length,
-        total: count,
-        data: properties
+        total: count || 0,
+        page: currentPage,
+        totalPages: Math.ceil((count || 0) / pageSize),
+        data: data || [],
       });
     } catch (error) {
-      console.error('❌ Error in getProperties:', error);
-      
-      // Log detailed error information
-      if (error.name === 'SequelizeDatabaseError') {
-        console.error('Database error details:', error.original);
-        console.error('SQL:', error.sql);
-      } else if (error.name === 'SequelizeValidationError') {
-        console.error('Validation errors:', error.errors.map(e => e.message));
-      }
-      
-      // Always return a JSON response, even for errors
+      console.error("Error fetching properties:", error);
       res.status(500).json({
         success: false,
-        error: 'Failed to fetch properties',
-        message: error.message,
-        ...(process.env.NODE_ENV === 'development' && {
-          stack: error.stack,
-          name: error.name,
-          details: error.errors || error.original?.message,
-          sql: error.sql
-        })
+        error: "Failed to fetch properties",
+        details: error.message,
       });
-      
-      // Re-throw the error for development (will be caught by Express error handler)
-      if (process.env.NODE_ENV === 'development') {
-        throw error;
-      }
     }
   },
 
-  // Get featured properties
+  // 🌟 Get featured properties
   async getFeaturedProperties(req, res) {
     try {
-      const properties = await models.Property.findAll({
-        where: {
-          is_featured: true
-        },
-        include: [{
-          model: models.PropertyImage,
-          as: 'propertyImages',
-          where: { is_primary: true },
-          required: false
-        }],
-        limit: 6,
-        order: [['updatedAt', 'DESC']]
-      });
+      const { data, error } = await supabase
+        .from("properties")
+        .select("*, agent:users(*), images:property_images(*)")
+        .eq("is_featured", true)
+        .limit(6);
 
-      res.json({
-        success: true,
-        count: properties.length,
-        data: properties
-      });
+      if (error) throw error;
+
+      res.json({ success: true, data });
     } catch (error) {
-      console.error('Error fetching featured properties:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to fetch featured properties',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
+      console.error("Error fetching featured properties:", error);
+      res.status(500).json({ success: false, error: error.message });
     }
   },
 
-  // Get property by ID
+  // 🏡 Get single property
   async getPropertyById(req, res) {
     try {
       const { id } = req.params;
-      const property = await models.Property.findByPk(id, {
-        include: [{
-          model: models.PropertyImage,
-          as: 'propertyImages'
-        }]
-      });
 
-      if (!property) {
-        return res.status(404).json({
-          success: false,
-          error: 'Property not found'
-        });
-      }
+      const { data: property, error } = await supabase
+        .from("properties")
+        .select(
+          "*, agent:users(*), images:property_images(*), reviews:reviews(*, user:users(id,name,avatar))"
+        )
+        .eq("id", id)
+        .single();
 
-      res.json({
-        success: true,
-        data: property
-      });
+      if (error) throw error;
+      if (!property)
+        return res
+          .status(404)
+          .json({ success: false, error: "Property not found" });
+
+      res.json({ success: true, data: property });
     } catch (error) {
-      console.error('Error fetching property:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to fetch property',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
+      res.status(500).json({ success: false, error: error.message });
     }
   },
 
-  // Create a new property (admin only)
+  // ➕ Create new property
   async createProperty(req, res) {
     try {
-      const propertyData = req.body;
-      const newProperty = await models.Property.create(propertyData, {
-        include: [{
-          model: models.PropertyImage,
-          as: 'propertyImages'
-        }]
-      });
+      const {
+        title,
+        description,
+        price,
+        bedrooms,
+        bathrooms,
+        area,
+        address,
+        city,
+        state,
+        zipcode,
+        propertyType,
+        features,
+        status = "draft",
+      } = req.body;
 
-      res.status(201).json({
-        success: true,
-        data: newProperty
-      });
+      const { data, error } = await supabase
+        .from("properties")
+        .insert([
+          {
+            title,
+            description,
+            price: parseFloat(price),
+            bedrooms: parseInt(bedrooms),
+            bathrooms: parseFloat(bathrooms),
+            area_sqft: parseInt(area),
+            address,
+            city,
+            state,
+            zipcode,
+            property_type: propertyType,
+            features: features || {},
+            status,
+            agent_id: req.user?.id || null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      res.status(201).json({ success: true, data });
     } catch (error) {
-      console.error('Error creating property:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to create property',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
+      console.error("Error creating property:", error);
+      res.status(500).json({ success: false, error: error.message });
     }
   },
 
-  // Update a property (admin only)
+  // ✏️ Update property
   async updateProperty(req, res) {
     try {
       const { id } = req.params;
       const updates = req.body;
+      updates.updated_at = new Date().toISOString();
 
-      const [updated] = await models.Property.update(updates, {
-        where: { id },
-        returning: true
-      });
+      const { data, error } = await supabase
+        .from("properties")
+        .update(updates)
+        .eq("id", id)
+        .select()
+        .single();
 
-      if (!updated) {
-        return res.status(404).json({
-          success: false,
-          error: 'Property not found'
-        });
-      }
+      if (error) throw error;
+      if (!data)
+        return res
+          .status(404)
+          .json({ success: false, error: "Property not found" });
 
-      const updatedProperty = await models.Property.findByPk(id, {
-        include: [{
-          model: models.PropertyImage,
-          as: 'propertyImages'
-        }]
-      });
-      
-      res.json({
-        success: true,
-        data: updatedProperty
-      });
+      res.json({ success: true, data });
     } catch (error) {
-      console.error('Error updating property:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to update property',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
+      res.status(500).json({ success: false, error: error.message });
     }
   },
 
-  // Delete a property (admin only)
+  // 🗑️ Delete property
   async deleteProperty(req, res) {
     try {
       const { id } = req.params;
-      const deleted = await models.Property.destroy({
-        where: { id }
-      });
+      await supabase.from("property_images").delete().eq("property_id", id);
+      const { error } = await supabase.from("properties").delete().eq("id", id);
+      if (error) throw error;
 
-      if (!deleted) {
-        return res.status(404).json({
-          success: false,
-          error: 'Property not found'
-        });
-      }
-
-      res.json({
-        success: true,
-        message: 'Property deleted successfully'
-      });
+      res.json({ success: true, message: "Property deleted successfully" });
     } catch (error) {
-      console.error('Error deleting property:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to delete property',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
+      res.status(500).json({ success: false, error: error.message });
     }
-  }
+  },
 };
 
 export default propertyController;
