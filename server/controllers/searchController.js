@@ -1,5 +1,4 @@
-import { Op } from 'sequelize';
-import models from '../models/index.js';
+import { supabase } from '../lib/supabase.js';
 
 const searchController = {
   // Search properties with filters
@@ -16,78 +15,57 @@ const searchController = {
         status = 'for_sale' // Default to 'for_sale' if not specified
       } = filters;
 
-      // Build search conditions
-      const where = {
-        [Op.and]: []
-      };
+      // Start building the Supabase query
+      let queryBuilder = supabase
+        .from('properties')
+        .select('*, images:property_images(*)', { count: 'exact' });
 
       // Add text search conditions
       if (query) {
-        const searchConditions = [
-          { title: { [Op.iLike]: `%${query}%` } },
-          { description: { [Op.iLike]: `%${query}%` } },
-          { address: { [Op.iLike]: `%${query}%` } },
-          { city: { [Op.iLike]: `%${query}%` } },
-          { state: { [Op.iLike]: `%${query}%` } },
-          { postal_code: { [Op.iLike]: `%${query}%` } },
-          { features: { [Op.contains]: [query] } }
-        ];
-        where[Op.and].push({
-          [Op.or]: searchConditions
-        });
+        queryBuilder = queryBuilder.or(
+          `title.ilike.%${query}%,` +
+          `description.ilike.%${query}%,` +
+          `address.ilike.%${query}%,` +
+          `city.ilike.%${query}%,` +
+          `state.ilike.%${query}%,` +
+          `postal_code.ilike.%${query}%`
+        );
       }
 
       // Add price filter
-      if (minPrice || maxPrice) {
-        const priceCondition = {};
-        if (minPrice) priceCondition[Op.gte] = parseFloat(minPrice);
-        if (maxPrice) priceCondition[Op.lte] = parseFloat(maxPrice);
-        where[Op.and].push({ price: priceCondition });
-      }
+      if (minPrice) queryBuilder = queryBuilder.gte('price', parseFloat(minPrice));
+      if (maxPrice) queryBuilder = queryBuilder.lte('price', parseFloat(maxPrice));
 
       // Add bedrooms filter
       if (bedrooms) {
-        where[Op.and].push({ bedrooms: { [Op.gte]: parseInt(bedrooms) } });
+        queryBuilder = queryBuilder.gte('bedrooms', parseInt(bedrooms));
       }
 
       // Add property type filter
       if (propertyType) {
-        where[Op.and].push({ property_type: propertyType });
+        queryBuilder = queryBuilder.eq('property_type', propertyType);
       }
 
       // Add area filter
-      if (minArea || maxArea) {
-        const areaCondition = {};
-        if (minArea) areaCondition[Op.gte] = parseInt(minArea);
-        if (maxArea) areaCondition[Op.lte] = parseInt(maxArea);
-        where[Op.and].push({ area_sqft: areaCondition });
-      }
+      if (minArea) queryBuilder = queryBuilder.gte('area_sqft', parseInt(minArea));
+      if (maxArea) queryBuilder = queryBuilder.lte('area_sqft', parseInt(maxArea));
 
       // Add status filter
       if (status) {
-        where[Op.and].push({ status });
+        queryBuilder = queryBuilder.eq('status', status);
       }
 
-      // Include property images
-      const include = [
-        {
-          model: models.PropertyImage,
-          as: 'images',
-          attributes: ['id', 'image_url', 'is_primary']
-        }
-      ];
-
       // Execute query
-      const properties = await models.Property.findAll({
-        where,
-        include,
-        order: [['created_at', 'DESC']]
-      });
+      const { data: properties, error, count } = await queryBuilder
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
 
       res.json({
         success: true,
-        count: properties.length,
-        data: properties
+        count: properties?.length || 0,
+        total: count || 0,
+        data: properties || []
       });
     } catch (error) {
       console.error('Search error:', error);
@@ -104,26 +82,28 @@ const searchController = {
     try {
       const { q } = req.query;
       
-      // Get suggestions from the database
-      const suggestions = await models.Property.findAll({
-        attributes: [
-          [models.sequelize.fn('DISTINCT', models.sequelize.col('city')), 'city'],
-          'state',
-          'postal_code'
-        ],
-        where: q ? {
-          [Op.or]: [
-            { city: { [Op.iLike]: `%${q}%` } },
-            { state: { [Op.iLike]: `%${q}%` } },
-            { postal_code: { [Op.iLike]: `%${q}%` } }
-          ]
-        } : {},
-        limit: 8,
-        raw: true
-      });
+      // Start building the Supabase query
+      let queryBuilder = supabase
+        .from('properties')
+        .select('city, state, postal_code', { count: 'exact' });
+
+      // Add search condition if query is provided
+      if (q) {
+        queryBuilder = queryBuilder.or(
+          `city.ilike.%${q}%,` +
+          `state.ilike.%${q}%,` +
+          `postal_code.ilike.%${q}%`
+        );
+      }
+
+      // Execute query
+      const { data: suggestions, error } = await queryBuilder
+        .limit(8);
+
+      if (error) throw error;
 
       // Format suggestions
-      const formatted = suggestions.map(item => {
+      const formatted = (suggestions || []).map(item => {
         const parts = [];
         if (item.city) parts.push(item.city);
         if (item.state) parts.push(item.state);
