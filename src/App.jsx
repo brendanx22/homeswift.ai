@@ -77,7 +77,7 @@ const variants = {
   enter: { 
     opacity: 1, 
     y: 0,
-    transition: { 
+    transition: {
       duration: 0.5,
       ease: [0.16, 1, 0.3, 1]
     }
@@ -85,7 +85,7 @@ const variants = {
   exit: { 
     opacity: 0, 
     y: -20,
-    transition: { 
+    transition: {
       duration: 0.2,
       ease: [0.16, 1, 0.3, 1]
     }
@@ -113,9 +113,9 @@ const AnimatedRoutes = () => {
       <Routes location={location} key={location.pathname}>
         {/* Public routes */}
         <Route path="/" element={
-          <AnimatedPage>
+            <AnimatedPage>
             <Index />
-          </AnimatedPage>
+            </AnimatedPage>
         } />
         <Route path="/login" element={
           <AnimatedPage>
@@ -142,7 +142,7 @@ const AnimatedRoutes = () => {
             <TestConnection />
           </AnimatedPage>
         } />
-
+        
         {/* Protected routes */}
         <Route path="/dashboard" element={
           <ProtectedRoute>
@@ -153,30 +153,30 @@ const AnimatedRoutes = () => {
         } />
         <Route path="/properties" element={
           <ProtectedRoute>
-            <AnimatedPage>
-              <HouseListings />
-            </AnimatedPage>
+          <AnimatedPage>
+            <HouseListings />
+          </AnimatedPage>
           </ProtectedRoute>
         } />
         <Route path="/properties/:id" element={
           <ProtectedRoute>
-            <AnimatedPage>
-              <PropertyDetails />
-            </AnimatedPage>
+          <AnimatedPage>
+            <PropertyDetails />
+          </AnimatedPage>
           </ProtectedRoute>
         } />
         <Route path="/gallery" element={
           <ProtectedRoute>
-            <AnimatedPage>
-              <Gallery />
-            </AnimatedPage>
+          <AnimatedPage>
+            <Gallery />
+          </AnimatedPage>
           </ProtectedRoute>
         } />
         <Route path="/inquiry" element={
           <ProtectedRoute>
-            <AnimatedPage>
-              <InquiryForm />
-            </AnimatedPage>
+          <AnimatedPage>
+            <InquiryForm />
+          </AnimatedPage>
           </ProtectedRoute>
         } />
         <Route path="/messages" element={
