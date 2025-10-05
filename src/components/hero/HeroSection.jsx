@@ -33,12 +33,16 @@ export default function HeroSection() {
 
 
 
-  const handleGetStartedClick = () => {
-    navigate('/user-type');
+  const handleGetStartedClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    window.location.href = '/user-type';
   };
 
-  const handleLoginClick = () => {
-    navigate('/user-type');
+  const handleLoginClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    window.location.href = '/user-type';
   };
 
   return (
