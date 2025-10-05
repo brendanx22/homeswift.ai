@@ -19,12 +19,9 @@
     {
       "source": "/(.*)",
       "has": [
-        {
-          "type": "host",
-          "value": "chat.homeswift.co"
-        }
+        { "type": "host", "value": "chat.homeswift.co" }
       ],
-      "destination": "/index.html"
+      "destination": "/"
     },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
