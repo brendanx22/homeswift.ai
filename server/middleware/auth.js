@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import models from '../models/index.js';
+import { supabase } from '../lib/supabase.js';
 
 // Session-based authentication middleware
 export const requireAuth = async (req, res, next) => {
@@ -9,11 +9,14 @@ export const requireAuth = async (req, res, next) => {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    // Get user from database
-    const user = await models.User.findByPk(req.session.userId, {
-      attributes: { exclude: ['password'] }
-    });
+    // Get user from Supabase
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', req.session.userId)
+      .single();
     
+    if (error) throw error;
     if (!user) {
       req.session.destroy();
       return res.status(401).json({ error: 'User not found' });
@@ -31,11 +34,13 @@ export const requireAuth = async (req, res, next) => {
 export const optionalAuth = async (req, res, next) => {
   try {
     if (req.session.userId) {
-      const user = await models.User.findByPk(req.session.userId, {
-        attributes: { exclude: ['password'] }
-      });
+      const { data: user, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', req.session.userId)
+        .single();
       
-      if (user) {
+      if (user && !error) {
         req.user = user;
       }
     }
@@ -65,22 +70,27 @@ export const checkRememberToken = async (req, res, next) => {
   
   if (rememberToken && rememberUser) {
     try {
-      const user = await models.User.findOne({
-        where: {
-          id: rememberUser,
-          rememberToken: rememberToken
-        }
-      });
+      const { data: user, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', rememberUser)
+        .eq('remember_token', rememberToken)
+        .single();
 
-      if (user) {
+      if (user && !error) {
         // Set session
         req.session.userId = user.id;
         req.session.role = user.role;
         req.user = user;
         
-        // Refresh the remember token
-        const newToken = user.generateRememberToken();
-        await user.save();
+        // Generate new remember token
+        const newToken = crypto.randomBytes(32).toString('hex');
+        
+        // Update user with new token in Supabase
+        await supabase
+          .from('users')
+          .update({ remember_token: newToken })
+          .eq('id', user.id);
         
         // Update the cookie
         const thirtyDays = 30 * 24 * 60 * 60 * 1000;
@@ -113,12 +123,10 @@ export const loadUser = async (req, res, next) => {
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.split(' ')[1];
       try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-        const user = await models.User.findByPk(decoded.id, {
-          attributes: { exclude: ['password_hash'] }
-        });
+        // Verify JWT using Supabase
+        const { data: { user }, error } = await supabase.auth.getUser(token);
         
-        if (user) {
+        if (user && !error) {
           req.user = user;
           // Update session for backward compatibility
           req.session.userId = user.id;
@@ -133,11 +141,13 @@ export const loadUser = async (req, res, next) => {
     
     // Try to load from session if no valid JWT
     if (req.session.userId) {
-      const user = await models.User.findByPk(req.session.userId, {
-        attributes: { exclude: ['password_hash'] }
-      });
+      const { data: user, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', req.session.userId)
+        .single();
       
-      if (user) {
+      if (user && !error) {
         req.user = user;
       } else {
         // Clear invalid session
@@ -154,7 +164,7 @@ export const loadUser = async (req, res, next) => {
 
 // Middleware to check user roles
 export const authorizeRoles = (...roles) => {
-  return (req, res, next) => {
+  return async (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
@@ -162,13 +172,29 @@ export const authorizeRoles = (...roles) => {
       });
     }
 
-    if (!roles.includes(req.user.role)) {
+    // Get fresh user data to ensure roles are up to date
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', req.user.id)
+      .single();
+
+    if (error || !user) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    if (!roles.includes(user.role)) {
       return res.status(403).json({
         success: false,
         error: 'Insufficient permissions'
       });
     }
 
+    // Update the user role in the request
+    req.user.role = user.role;
     next();
   };
 };
