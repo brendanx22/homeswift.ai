@@ -93,6 +93,13 @@ const allowedOrigins = [
   /^https?:\/\/homeswift-ai-[a-z0-9]+\-brendanx22s-projects\.vercel\.app$/,
 ];
 
+// Function to normalize origin for comparison
+const normalizeOrigin = (origin) => {
+  if (!origin) return null;
+  // Remove trailing slash and convert to lowercase for consistent comparison
+  return origin.replace(/\/$/, '').toLowerCase();
+};
+
 const corsOptions = {
   origin: function (origin, callback) {
     // Allow all origins in development
@@ -100,12 +107,17 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    if (!origin || allowedOrigins.some(o => 
-      o instanceof RegExp ? o.test(origin) : o === origin
+    const normalizedOrigin = normalizeOrigin(origin);
+    const normalizedAllowedOrigins = allowedOrigins.map(o => 
+      typeof o === 'string' ? normalizeOrigin(o) : o
+    );
+
+    if (!normalizedOrigin || normalizedAllowedOrigins.some(o => 
+      o instanceof RegExp ? o.test(normalizedOrigin) : o === normalizedOrigin
     )) {
       callback(null, true);
     } else {
-      console.warn(`Blocked request from origin: ${origin}`);
+      console.warn(`Blocked request from origin: ${normalizedOrigin}`);
       callback(new Error(`Not allowed by CORS. Allowed origins: ${allowedOrigins.join(', ')}`));
     }
   },
