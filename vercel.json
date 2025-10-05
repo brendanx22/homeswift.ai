@@ -1,29 +1,55 @@
 {
   "version": 2,
   "builds": [
-    { 
-      "src": "package.json", 
+    {
+      "src": "package.json",
       "use": "@vercel/static-build",
-      "config": { 
-        "distDir": "dist",
-        "buildCommand": "npm run build"
+      "config": {
+        "distDir": "dist"
       }
     },
-    { 
-      "src": "server/server.js", 
+    {
+      "src": "server/server.js",
       "use": "@vercel/node"
     }
   ],
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/server/server.js" },
+    {
+      "source": "/api/(.*)",
+      "has": [
+        { "type": "host", "value": "api.homeswift.co" }
+      ],
+      "destination": "/server/server.js"
+    },
     {
       "source": "/(.*)",
       "has": [
         { "type": "host", "value": "chat.homeswift.co" }
       ],
-      "destination": "/"
+      "destination": "/index.html"
     },
-    { "source": "/(.*)", "destination": "/index.html" }
+    {
+      "source": "/(.*)",
+      "has": [
+        { "type": "host", "value": "homeswift.co" },
+        { "type": "host", "value": "www.homeswift.co" }
+      ],
+      "destination": "/index.html"
+    },
+    { 
+      "source": "/(.*)",
+      "destination": "/index.html" 
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/",
+      "has": [
+        { "type": "host", "value": "www.homeswift.co" }
+      ],
+      "destination": "https://homeswift.co",
+      "permanent": true
+    }
   ],
   "cleanUrls": true,
   "headers": [
