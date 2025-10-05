@@ -13,11 +13,12 @@ const require = createRequire(import.meta.url);
 
 // Import routes
 import authRoutes from './routes/auth.js';
-// import propertiesRoutes from './routes/properties.js';
-// import propertyRoutes from './routes/propertyRoutes.js';
-// import searchRoutes from './routes/search.js';
-// import usersRoutes from './routes/users.js';
-// import testRoutes from './routes/test.js';
+import propertiesRoutes from './routes/properties.js';
+import { router as propertyRoutes } from './routes/propertyRoutes.js';
+import searchRoutes from './routes/search.js';
+import usersRoutes from './routes/users.js';
+import testRoutes from './routes/test.js';
+import userRoutes from './routes/userRoutes.js';
 
 // Initialize environment variables
 dotenv.config();
@@ -161,31 +162,76 @@ app.set("trust proxy", 1);
 app.use(cookieParser(process.env.SESSION_SECRET));
 
 // Rate limiting
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100,
-  message: { error: "Too many requests, try again later." },
+// Health check endpoint
+/**
+ * @api {get} /health Health Check
+ * @apiName HealthCheck
+ * @apiGroup System
+ * @apiDescription Check if the server is running
+ * @apiSuccess {String} status Server status
+ * @apiSuccess {String} message Status message
+ * @apiSuccess {String} timestamp Current timestamp
+ * @apiSuccess {String} environment Current environment
+ * @apiSuccess {String} version API version
+ */
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    message: 'Server is running',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    version: process.env.npm_package_version || '1.0.0'
+  });
 });
-app.use(limiter);
 
-// Logging
-if (!isProduction) {
-  app.use(morgan("dev"));
+// ======================
+// API Routes Registration
+// ======================
+
+// Authentication routes
+app.use('/api/auth', authRoutes);
+
+// Property routes (v1)
+app.use('/api/properties', propertiesRoutes);
+
+// Property routes (v2 - with Swagger docs)
+app.use('/api/properties', propertyRoutes);
+
+// Search functionality
+app.use('/api/search', searchRoutes);
+
+// User profile and preferences
+app.use('/api/users', usersRoutes);
+
+// User management (admin)
+app.use('/api/users', userRoutes);
+
+// Test endpoints (development only)
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/api/test', testRoutes);
 }
 
-// Register API routes
-app.use("/api/auth", authRoutes);
-// app.use('/api', propertiesRoutes);
-// app.use('/api', propertyRoutes);
-// app.use('/api', searchRoutes);
-// app.use('/api', usersRoutes);
-// app.use('/api', testRoutes);
+// ======================
+// API Documentation
+// ======================
+app.get('/api-docs', (req, res) => {
+  res.send(`
+    <html>
+      <head>
+        <title>HomeSwift API Documentation</title>
+        <meta http-equiv="refresh" content="0; url='https://documenter.getpostman.com/view/your-postman-docs'" />
+      </head>
+      <body>
+        <p>Redirecting to API documentation... <a href="https://documenter.getpostman.com/view/your-postman-docs">Click here if not redirected</a></p>
+      </body>
+    </html>
+  `);
+});
 
 // Resend verification email endpoint
 app.post("/api/auth/resend-verification", async (req, res) => {
   try {
     const { email } = req.body;
-
     if (!email) {
       return res.status(400).json({
         success: false,
