@@ -4,22 +4,16 @@ services:
     env: node
     region: oregon  # Choose the region closest to your users
     buildCommand: |
-      # Install root dependencies
-      npm install
-      
       # Install server dependencies
       cd server
-      npm install
+      npm install --production
       
-      # Build the application
-      npm run build
-      
-      # Return to root directory
-      cd ..
+      # Run database migrations
+      npm run migrate
       
     startCommand: |
       cd server
-      node --experimental-specifier-resolution=node server.js
+      NODE_ENV=production node --experimental-specifier-resolution=node server.js
     envVars:
       - key: NODE_ENV
         value: production
@@ -31,6 +25,22 @@ services:
         value: 18.x
       - key: CORS_ORIGIN
         value: https://homeswift.co,https://www.homeswift.co,https://api.homeswift.co,https://chat.homeswift.co
+      - key: SUPABASE_URL
+        value: ${SUPABASE_URL}
+      - key: SUPABASE_ANON_KEY
+        value: ${SUPABASE_ANON_KEY}
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        value: ${SUPABASE_SERVICE_ROLE_KEY}
+      - key: SMTP_HOST
+        value: ${SMTP_HOST}
+      - key: SMTP_PORT
+        value: ${SMTP_PORT}
+      - key: SMTP_USER
+        value: ${SMTP_USER}
+      - key: SMTP_PASS
+        value: ${SMTP_PASS}
+      - key: EMAIL_FROM
+        value: ${EMAIL_FROM}
       - key: BASE_URL
         value: https://api.homeswift.co
 
