@@ -375,4 +375,4 @@ router.put('/:id', requireAuth, authorizeRoles('admin'), propertyController.upda
  */
 router.delete('/:id', requireAuth, authorizeRoles('admin'), propertyController.deleteProperty);
 
-export { router as propertyRouter };
+export default router;
