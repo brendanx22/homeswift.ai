@@ -1,5 +1,8 @@
 import jwt from 'jsonwebtoken';
 import { supabase } from '../lib/supabase.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 // Session-based authentication middleware
 export const requireAuth = async (req, res, next) => {
@@ -197,4 +200,41 @@ export const authorizeRoles = (...roles) => {
     req.user.role = user.role;
     next();
   };
+};
+
+// JWT Authentication Middleware
+export const authenticateJWT = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+
+  if (authHeader) {
+    const token = authHeader.split(' ')[1];
+
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+
+    jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', (err, user) => {
+      if (err) {
+        return res.status(403).json({ message: 'Invalid or expired token' });
+      }
+
+      req.user = user;
+      next();
+    });
+  } else {
+    res.status(401).json({ message: 'Authorization header is required' });
+  }
+};
+
+// Admin role check middleware
+export const isAdmin = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Authentication required' });
+  }
+
+  if (req.user.role === 'admin') {
+    next();
+  } else {
+    res.status(403).json({ message: 'Access denied: Admin privileges required' });
+  }
 };
