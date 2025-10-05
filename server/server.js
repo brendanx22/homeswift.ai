@@ -81,6 +81,18 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // CORS Configuration
+const allowedOrigins = [
+  "https://homeswift.co",
+  "https://www.homeswift.co",
+  "https://api.homeswift.co",
+  // Development and testing
+  "https://homeswift-ai.vercel.app",
+  "https://homeswift-ai-backend.vercel.app",
+  "http://localhost:3000",
+  /^https?:\/\/homeswift-.*\.vercel\.app$/,
+  /^https?:\/\/homeswift-ai-[a-z0-9]+\-brendanx22s-projects\.vercel\.app$/,
+];
+
 const corsOptions = {
   origin: function (origin, callback) {
     // Allow all origins in development
@@ -88,57 +100,38 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    // Production whitelist - only allow the canonical domain
-    const allowedOrigins = [
-      "https://homeswift.co",
-      "https://api.homeswift.co",
-      // Development and testing
-      "https://homeswift-ai.vercel.app",
-      "https://homeswift-ai-backend.vercel.app",
-      "http://localhost:3000", // For local development
-      /^https?:\/\/homeswift-.*\.vercel\.app$/,
-      /^https?:\/\/homeswift-ai-[a-z0-9]+\-brendanx22s-projects\.vercel\.app$/,
-    ];
-
-    // Block requests from www subdomain
-    if (origin && origin.includes('www.homeswift.co')) {
-      return callback(new Error("Please use the canonical domain: https://homeswift.co"));
-    }
-
-    if (
-      !origin ||
-      allowedOrigins.includes(origin) ||
-      allowedOrigins.some((o) => o instanceof RegExp && o.test(origin))
-    ) {
+    if (!origin || allowedOrigins.some(o => 
+      o instanceof RegExp ? o.test(origin) : o === origin
+    )) {
       callback(null, true);
     } else {
       console.warn(`Blocked request from origin: ${origin}`);
-      callback(new Error("Not allowed by CORS"));
+      callback(new Error(`Not allowed by CORS. Allowed origins: ${allowedOrigins.join(', ')}`));
     }
   },
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH', 'HEAD'],
   allowedHeaders: [
-    "Content-Type",
-    "Authorization",
-    "X-Requested-With",
-    "Accept",
-    "Origin",
-    "X-CSRF-Token",
-    "X-Session-Id",
-    "Cookie",
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'X-CSRF-Token',
+    'X-Session-Id',
+    'Cookie'
   ],
   exposedHeaders: [
-    "Content-Range",
-    "X-Total-Count",
-    "X-Access-Token",
-    "X-Refresh-Token",
-    "Set-Cookie",
-    "X-CSRF-Token",
+    'Content-Range',
+    'X-Total-Count',
+    'X-Access-Token',
+    'X-Refresh-Token',
+    'Set-Cookie',
+    'X-CSRF-Token'
   ],
   maxAge: 86400,
   preflightContinue: false,
-  optionsSuccessStatus: 204,
+  optionsSuccessStatus: 204
 };
 
 // Apply CORS with preflight options
