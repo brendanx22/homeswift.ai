@@ -15,7 +15,7 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 // Regular client for normal operations
 const supabase = createClient(
   SUPABASE_URL,
-  process.env.VITE_SUPABASE_ANON_KEY // Using anon key for regular operations
+  process.env.SUPABASE_ANON_KEY // Using anon key for regular operations
 );
 
 // Admin client for user management
