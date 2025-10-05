@@ -191,10 +191,7 @@ app.get('/health', (req, res) => {
 // Authentication routes
 app.use('/api/auth', authRoutes);
 
-// Property routes (v1)
-app.use('/api/properties', propertiesRoutes);
-
-// Property routes (v2 - with Swagger docs)
+// Property routes (using the Supabase implementation with Swagger docs)
 app.use('/api/properties', propertyRoutes);
 
 // Search functionality
