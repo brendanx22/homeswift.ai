@@ -66,14 +66,7 @@ export default function LoginPage() {
           window.location.href = 'https://chat.homeswift.co/';
         } else if (isChatDomain) {
           navigate('/', { replace: true });
-        }
-        }
-        // If we're on the chat domain, go to the root
-        else if (isChatDomain) {
-          navigate('/', { replace: true });
-        }
-        // Default to home
-        else {
+        } else {
           navigate('/', { replace: true });
         }
       }, 100);
