@@ -54,6 +54,8 @@ export default ({ mode }) => {
       strictPort: false, // Allow port to be changed if in use
       open: true,
       cors: true,
+      // Handle SPA fallback for client-side routing
+      historyApiFallback: true,
       headers: {
         'Content-Security-Policy': isProduction 
           ? "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://vercel.live; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.homeswift.co https://*.vercel.app https://tproaiqvkohrlxjmkgxt.supabase.co https://*.supabase.co wss://*.supabase.co https://vercel.live; frame-src 'self' https://*.supabase.co https://vercel.live; worker-src 'self' blob:;"
