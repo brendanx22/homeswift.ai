@@ -28,57 +28,81 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  // Fetch user profile without blocking auth gating
+  // Enhanced user profile management with better error handling
   const fetchAndMergeUserProfile = useCallback(async (supabaseUser) => {
     if (!supabaseUser?.id) return;
+    
     try {
-      // Try to fetch existing profile (timeout guarded)
-      let { data: userData } = await withTimeout(
-        supabase.from('user_profiles').select('*').eq('id', supabaseUser.id).single(),
-        6000,
-      ).catch(() => ({ data: null }));
+      // 1. First try to get the existing profile
+      const { data: userData, error: fetchError } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', supabaseUser.id)
+        .single();
 
-      if (!userData) {
-        // Attempt RPC creation first (timeout guarded)
-        const { data: newProfile } = await withTimeout(
-          supabase.rpc('create_user_profile', {
+      if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = no rows returned
+        console.error('Error fetching user profile:', fetchError);
+        throw fetchError;
+      }
+
+      if (userData) {
+        // Update the user with the profile data
+        setUser(prev => ({ ...prev, ...userData, ...supabaseUser }));
+        return;
+      }
+
+      // 2. If no profile exists, try to create one using RPC
+      const { data: newProfile, error: createError } = await withTimeout(
+        supabase
+          .rpc('create_user_profile', {
             user_id: supabaseUser.id,
             user_email: supabaseUser.email,
             first_name: supabaseUser.user_metadata?.first_name || '',
+            last_name: supabaseUser.user_metadata?.last_name || ''
+          })
+          .single(),
+        10000 // 10 second timeout
+      ).catch(error => {
+        console.warn('RPC create_user_profile failed, falling back to direct insert:', error);
+        return { data: null, error };
+      });
+
+      if (newProfile && !createError) {
+        setUser(prev => ({ ...prev, ...newProfile, ...supabaseUser }));
+        return;
+      }
+
+      // 3. Fallback to direct insert if RPC fails
+      const { data: directProfile, error: insertError } = await withTimeout(
+        supabase
+          .from('user_profiles')
+          .upsert({
+            id: supabaseUser.id,
+            email: supabaseUser.email,
+            first_name: supabaseUser.user_metadata?.first_name || '',
             last_name: supabaseUser.user_metadata?.last_name || '',
-          }),
-          6000,
-        ).catch(() => ({ data: null }));
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'id',
+            ignoreDuplicates: false
+          })
+          .select()
+          .single(),
+        10000 // 10 second timeout
+      );
 
-        if (newProfile) {
-          userData = newProfile;
-        } else {
-          // Fallback to direct insert (timeout guarded)
-          const { data: directProfile } = await withTimeout(
-            supabase
-              .from('user_profiles')
-              .insert({
-                id: supabaseUser.id,
-                email: supabaseUser.email,
-                first_name: supabaseUser.user_metadata?.first_name || '',
-                last_name: supabaseUser.user_metadata?.last_name || '',
-              })
-              .select()
-              .single(),
-            6000,
-          ).catch(() => ({ data: null }));
-
-          if (directProfile) userData = directProfile;
-        }
+      if (directProfile && !insertError) {
+        setUser(prev => ({ ...prev, ...directProfile, ...supabaseUser }));
+      } else if (insertError) {
+        console.error('Error creating user profile (direct insert):', insertError);
+        // Even if profile creation fails, we can continue with auth
+        setUser(prev => ({ ...prev, ...supabaseUser }));
       }
-
-      // Merge into user state if we have any profile data
-      if (userData) {
-        setUser((prev) => ({ ...prev, ...userData }));
-      }
-    } catch (e) {
-      // Non-fatal: log but don't break auth
-      console.warn('[AuthProvider] fetchAndMergeUserProfile warning:', e?.message || e);
+    } catch (error) {
+      console.error('Error in fetchAndMergeUserProfile:', error);
+      // Don't throw - we can continue with auth even if profile fetch fails
+      setUser(prev => ({ ...prev, ...supabaseUser }));
     }
   }, []);
 
@@ -89,6 +113,7 @@ export const AuthProvider = ({ children }) => {
 
     try {
       setLoading(true);
+      setError(null);
 
       // First check if there's a session in localStorage
       const storedSession = localStorage.getItem('homeswift-auth-token');
@@ -100,11 +125,11 @@ export const AuthProvider = ({ children }) => {
             debug('Valid session found in localStorage');
             currentSession = parsedSession.currentSession;
             setSession(currentSession);
-            setUser(currentSession?.user ?? null);
+            setUser(prev => ({ ...prev, ...(currentSession?.user ?? {}) }));
             // Don't return here; we'll still verify with Supabase
           }
         } catch (e) {
-          debug('Error parsing stored session:', e);
+          console.error('Error parsing stored session:', e);
           localStorage.removeItem('homeswift-auth-token');
         }
       }
@@ -112,24 +137,30 @@ export const AuthProvider = ({ children }) => {
       // Always verify with Supabase, but don't block on it
       try {
         debug('Checking session with Supabase...');
-        const { data: { session: supabaseSession }, error: sessionError } = await supabase.auth.getSession();
+        const { data: { session: supabaseSession }, error: sessionError } = await withTimeout(
+          supabase.auth.getSession(),
+          5000 // 5 second timeout
+        ).catch(error => {
+          console.error('Timeout or error getting Supabase session:', error);
+          return { data: { session: null }, error };
+        });
 
         if (sessionError) {
-          debug('Error getting session from Supabase:', sessionError);
-          throw sessionError;
+          console.error('Error getting session from Supabase:', sessionError);
+          // Don't throw - we can continue with the session we have
         }
 
         if (supabaseSession) {
           debug('Valid session from Supabase');
           currentSession = supabaseSession;
           setSession(currentSession);
-          setUser(currentSession.user ?? null);
+          setUser(prev => ({ ...prev, ...(currentSession.user ?? {}) }));
 
           // Update localStorage with fresh session
           try {
             localStorage.setItem('homeswift-auth-token', JSON.stringify({ currentSession: supabaseSession }));
           } catch (e) {
-            debug('Failed to write session to localStorage', e);
+            console.error('Failed to write session to localStorage', e);
           }
         } else if (currentSession) {
           // We had a session in localStorage but not in Supabase - clear it

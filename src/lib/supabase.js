@@ -71,6 +71,13 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       log: customLogger,
       debug: customLogger
     },
+    global: {
+      headers: {
+        'Accept': 'application/json',
+        'apikey': supabaseAnonKey,
+        'Content-Type': 'application/json'
+      }
+    },
     storageKey: "homeswift-auth-token",
     cookieOptions: {
       name: 'sb-homeswift',

@@ -47,31 +47,36 @@ export default function HeroSection() {
 
   return (
     <div 
-      className="min-h-screen relative overflow-hidden bg-center bg-no-repeat bg-contain md:bg-bottom hero-container"
+      className="relative overflow-hidden bg-center bg-no-repeat bg-contain md:bg-bottom hero-container"
       style={{
         backgroundImage: 'url("/Illustration.png")',
-        backgroundPosition: 'center 100%',
-        backgroundColor: '#ffffff'
-      }}
-      onMouseMove={(e) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        mouseX.set(e.clientX - rect.left - rect.width / 2);
-        mouseY.set(e.clientY - rect.top - rect.height / 2);
+        backgroundPosition: 'center 60%',
+        backgroundSize: 'contain',
+        backgroundColor: '#ffffff',
+        backgroundRepeat: 'no-repeat',
+        backgroundAttachment: 'local',
+        minHeight: '100vh',
+        paddingBottom: '40%'
       }}
     >
-      <style>{`
+      <style>{
+        `
         @media (max-width: 768px) {
           .hero-container {
-            background-position: center 60% !important;
+            background-position: center 70% !important;
+            background-size: 120% auto !important;
+            padding-bottom: 60% !important;
+            min-height: 100vh !important;
           }
         }
-      `}</style>
+        `
+      }</style>
       {/* Header */}
       <motion.header
         className="relative z-10 flex items-center justify-between px-6 py-6 lg:px-12"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: 'easeOut' }}
+        transition={{ duration: 0.5 }}
       >
         {/* Logo */}
         <div className="flex items-center space-x-3">
