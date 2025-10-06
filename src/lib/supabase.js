@@ -82,19 +82,24 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     detectSessionInUrl: true,
     storage: crossDomainStorage,
-    storageKey: 'sb-auth-token',
+    storageKey: 'sb-homeswift-auth',
     flowType: 'pkce',
     debug: !isProduction,
-    logger: {
+    logger: !isProduction ? {
       error: (message, ...args) => console.error(`[Supabase Error]`, message, ...args),
       warn: (message, ...args) => console.warn(`[Supabase Warn]`, message, ...args),
       log: customLogger,
       debug: customLogger
+    } : undefined,
+    cookieOptions: {
+      ...cookieOptions,
+      sameSite: isProduction ? 'lax' : 'lax',
+      secure: isProduction,
+      maxAge: 60 * 60 * 24 * 7 // 7 days
     },
-    cookieOptions,
     redirectTo: isChatSubdomain 
-      ? 'https://chat.homeswift.co/auth/callback' 
-      : 'https://homeswift.co/auth/callback'
+      ? `${window.location.protocol}//chat.homeswift.co/auth/callback`
+      : `${window.location.protocol}//homeswift.co/auth/callback`
   },
   global: {
     headers: { 

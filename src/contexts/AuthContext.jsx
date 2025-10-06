@@ -116,29 +116,43 @@ export const AuthProvider = ({ children }) => {
       setError(null);
       
       // First check if there's a session in localStorage
-      const storedSession = localStorage.getItem('homeswift-auth-token');
-      if (storedSession) {
+      const storedSession = localStorage.getItem('sb-homeswift-auth-token');
+      const storedUser = localStorage.getItem('sb-homeswift-user');
+      
+      if (storedSession && storedUser) {
         try {
-          debug('Found stored session in localStorage');
+          debug('Found stored session and user in localStorage');
           const parsedSession = JSON.parse(storedSession);
-          if (parsedSession.currentSession) {
+          const parsedUser = JSON.parse(storedUser);
+          
+          if (parsedSession && parsedUser) {
             debug('Valid session found in localStorage');
-            currentSession = parsedSession.currentSession;
+            currentSession = {
+              ...parsedSession,
+              user: parsedUser
+            };
             setSession(currentSession);
             setUser(prev => ({ ...prev, ...(currentSession?.user ?? {}) }));
-            // Don't return here; we'll still verify with Supabase
+            
+            // Set auth cookies for server-side access
+            const domain = window.location.hostname.includes('.homeswift.co') ? '.homeswift.co' : 'localhost';
+            const secureFlag = process.env.NODE_ENV === 'production' ? 'Secure;' : '';
+            
+            document.cookie = `sb-access-token=${currentSession.access_token}; path=/; domain=${domain}; SameSite=Lax; ${secureFlag} max-age=604800`;
+            document.cookie = `sb-refresh-token=${currentSession.refresh_token}; path=/; domain=${domain}; SameSite=Lax; ${secureFlag} max-age=604800`;
           }
         } catch (e) {
           console.error('Error parsing stored session:', e);
-          localStorage.removeItem('homeswift-auth-token');
+          localStorage.removeItem('sb-homeswift-auth-token');
+          localStorage.removeItem('sb-homeswift-user');
         }
       }
 
-      // Always verify with Supabase, but don't block on it
+      // Always verify with Supabase
       try {
         debug('Checking session with Supabase...');
         const { data: { session: supabaseSession }, error: sessionError } = await withTimeout(
-        supabase.auth.getSession(),
+          supabase.auth.getSession(),
           5000 // 5 second timeout
         ).catch(error => {
           console.error('Timeout or error getting Supabase session:', error);
@@ -147,18 +161,35 @@ export const AuthProvider = ({ children }) => {
 
         if (sessionError) {
           console.error('Error getting session from Supabase:', sessionError);
-          // Don't throw - we can continue with the session we have
+          // If we have a stored session but Supabase is down, continue with it
+          if (currentSession) return currentSession;
+          throw sessionError;
         }
 
         if (supabaseSession) {
           debug('Valid session from Supabase');
           currentSession = supabaseSession;
-      setSession(currentSession);
+          setSession(currentSession);
           setUser(prev => ({ ...prev, ...(currentSession.user ?? {}) }));
 
           // Update localStorage with fresh session
           try {
-            localStorage.setItem('homeswift-auth-token', JSON.stringify({ currentSession: supabaseSession }));
+            localStorage.setItem('sb-homeswift-auth-token', JSON.stringify({
+              access_token: currentSession.access_token,
+              refresh_token: currentSession.refresh_token,
+              expires_at: currentSession.expires_at,
+              expires_in: currentSession.expires_in,
+              token_type: currentSession.token_type
+            }));
+            localStorage.setItem('sb-homeswift-user', JSON.stringify(currentSession.user));
+            
+            // Set auth cookies for server-side access
+            const domain = window.location.hostname.includes('.homeswift.co') ? '.homeswift.co' : 'localhost';
+            const secureFlag = process.env.NODE_ENV === 'production' ? 'Secure;' : '';
+            
+            document.cookie = `sb-access-token=${currentSession.access_token}; path=/; domain=${domain}; SameSite=Lax; ${secureFlag} max-age=604800`;
+            document.cookie = `sb-refresh-token=${currentSession.refresh_token}; path=/; domain=${domain}; SameSite=Lax; ${secureFlag} max-age=604800`;
+            
           } catch (e) {
             console.error('Failed to write session to localStorage', e);
           }
@@ -167,12 +198,23 @@ export const AuthProvider = ({ children }) => {
           debug('Session in localStorage but not in Supabase, clearing');
           setSession(null);
           setUser(null);
-          localStorage.removeItem('homeswift-auth-token');
+          localStorage.removeItem('sb-homeswift-auth-token');
+          localStorage.removeItem('sb-homeswift-user');
+          
+          // Clear auth cookies
+          const domain = window.location.hostname.includes('.homeswift.co') ? '.homeswift.co' : 'localhost';
+          document.cookie = `sb-access-token=; path=/; domain=${domain}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+          document.cookie = `sb-refresh-token=; path=/; domain=${domain}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+          
           currentSession = null;
         }
       } catch (err) {
         console.error('Error verifying session with Supabase:', err);
-        // Don't throw — continue with the session we have (if any)
+        // If we have a stored session but Supabase is down, continue with it
+        if (!currentSession) {
+          setError('Unable to verify session. Please try again later.');
+          throw err;
+        }
       }
 
       // Fetch user profile in background if we have a session
@@ -518,54 +560,36 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [navigate]);
 
-  // Resend email verification
-  const resendVerification = useCallback(async (email) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const { error } = await supabase.auth.resend({
-        type: 'signup',
-        email,
-        options: {
-          emailRedirectTo: (typeof window !== 'undefined' && window.location.hostname.endsWith('homeswift.co'))
-            ? 'https://chat.homeswift.co/verify-email'
-            : `${window.location.origin}/verify-email`,
-        },
-      });
-      if (error) throw error;
-      return true;
-    } catch (err) {
-      console.error('Resend verification error:', err);
-      setError(err.message);
-      throw err;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-  
   // Update user profile
   const updateProfile = useCallback(async (updates) => {
-    if (!user?.id) throw new Error('No active user to update');
+    if (!user?.id) throw new Error('User not authenticated');
+    
     try {
       setLoading(true);
       setError(null);
       
       // Update auth user data
-      const { data: authData, error: authError } = await supabase.auth.updateUser({ data: { ...updates } });
+      const { data: authData, error: authError } = await supabase.auth.updateUser({ 
+        data: { ...updates } 
+      });
+      
       if (authError) throw authError;
       
       // Update user profile in database
       const { error: profileError } = await supabase
         .from('user_profiles')
-        .update({ ...updates, updated_at: new Date().toISOString() })
+        .update({ 
+          ...updates, 
+          updated_at: new Date().toISOString() 
+        })
         .eq('id', user.id);
+        
       if (profileError) throw profileError;
       
       // Update local user state
       setUser((prev) => ({ ...prev, ...updates }));
-
       return authData?.user ?? null;
     } catch (err) {
       console.error('Update profile error:', err);
