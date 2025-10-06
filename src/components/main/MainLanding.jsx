@@ -43,7 +43,24 @@ export default function MainLanding() {
   const isChat = typeof window !== 'undefined' && window.location.hostname.startsWith('chat.');
   const isMainLandingPage = isChat ? (location.pathname === '/') : (location.pathname === '/app');
   
-  // ProtectedRoute handles auth gating; avoid duplicate redirects here
+  // Handle authentication state
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated && isChat) {
+      // Only redirect to login if we're on the chat domain and not already on the login page
+      if (!['/login', '/signup', '/auth/callback'].includes(location.pathname)) {
+        navigate('/login', { replace: true });
+      }
+    }
+  }, [authLoading, isAuthenticated, isChat, location.pathname, navigate]);
+  
+  // If still loading auth state, show loading indicator
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#FF6B35]"></div>
+      </div>
+    );
+  }
 
   // Prefill search fields from URL params (supports HeroSection redirect to chat)
   useEffect(() => {

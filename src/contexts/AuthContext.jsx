@@ -170,21 +170,38 @@ export const AuthProvider = ({ children }) => {
       const urlParams = new URLSearchParams(window.location.search);
       const redirectTo = urlParams.get('redirect');
       const userType = sess?.user?.user_metadata?.user_type || sess?.user?.app_metadata?.user_type || 'renter';
-      const defaultAfterLogin = userType === 'landlord' ? 'https://list.homeswift.co/dashboard' : 'https://chat.homeswift.co/';
+      
+      // For chat.homeswift.co, always go to the root after login
+      const isChatDomain = window.location.hostname === 'chat.homeswift.co';
+      const defaultAfterLogin = isChatDomain ? '/' : 
+        (userType === 'landlord' ? 'https://list.homeswift.co/dashboard' : 'https://chat.homeswift.co/');
+      
       let target = redirectTo || defaultAfterLogin;
 
+      // Don't redirect to auth pages after login
       const authPages = ['/login', '/signup', '/verify-email', '/reset-password', '/list-login', '/list-signup'];
-      const isAbsolute = /^https?:\/\//i.test(target);
+      const isAuthPage = authPages.some(page => target.includes(page));
+      
+      if (isAuthPage) {
+        target = defaultAfterLogin;
+      }
 
-      if (isAbsolute) {
-        window.location.assign(target);
-      } else if (!authPages.some((page) => target.includes(page))) {
-        navigate(target);
+      // Handle navigation
+      if (target.startsWith('http')) {
+        // For absolute URLs, use window.location
+        if (window.location.href !== target) {
+          window.location.href = target;
+        }
       } else {
-        window.location.assign(defaultAfterLogin);
+        // For relative URLs, use navigate
+        if (window.location.pathname !== target) {
+          navigate(target, { replace: true });
+        }
       }
     } catch (e) {
       console.warn('redirectAfterLogin failed:', e);
+      // Fallback to home if something goes wrong
+      window.location.href = '/';
     }
   }, [navigate]);
 
