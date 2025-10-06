@@ -47,36 +47,37 @@ export default function HeroSection() {
 
   return (
     <div 
-      className="relative overflow-hidden bg-center bg-no-repeat bg-contain md:bg-bottom hero-container"
+      className="min-h-screen relative overflow-hidden bg-center bg-no-repeat bg-contain md:bg-bottom hero-container"
       style={{
         backgroundImage: 'url("/Illustration.png")',
-        backgroundPosition: 'center 60%',
+        backgroundPosition: 'center 55%',
         backgroundSize: 'contain',
         backgroundColor: '#ffffff',
         backgroundRepeat: 'no-repeat',
         backgroundAttachment: 'local',
-        minHeight: '100vh',
-        paddingBottom: '40%'
+        paddingBottom: '20%' // Add some padding at the bottom to prevent image cutoff
+      }}
+      onMouseMove={(e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        mouseX.set(e.clientX - rect.left - rect.width / 2);
+        mouseY.set(e.clientY - rect.top - rect.height / 2);
       }}
     >
-      <style>{
-        `
+      <style>{`
         @media (max-width: 768px) {
           .hero-container {
-            background-position: center 70% !important;
+            background-position: center 80% !important;
             background-size: 120% auto !important;
             padding-bottom: 60% !important;
-            min-height: 100vh !important;
           }
         }
-        `
-      }</style>
+      `}</style>
       {/* Header */}
       <motion.header
         className="relative z-10 flex items-center justify-between px-6 py-6 lg:px-12"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        transition={{ duration: 0.6, ease: 'easeOut' }}
       >
         {/* Logo */}
         <div className="flex items-center space-x-3">
@@ -117,6 +118,16 @@ export default function HeroSection() {
           >
             Login
           </motion.button>
+          <motion.a
+            href="/waitlist"
+            className="bg-[#2C3E50] text-white px-6 py-2 rounded-full font-medium hover:bg-[#1E2B38] transition-colors flex items-center space-x-2"
+            whileHover={{ scale: 1.05, y: -2 }}
+            whileTap={{ scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 400, damping: 17 }}
+          >
+            <span>Join Waitlist</span>
+            <Sparkles size={16} className="text-[#FF6B35]" />
+          </motion.a>
         </div>
       
         {/* Mobile Menu Button */}

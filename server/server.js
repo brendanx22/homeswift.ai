@@ -20,6 +20,8 @@ import propertyRoutes from "./routes/propertyRoutes.js";
 import searchRoutes from "./routes/search.js";
 import usersRoutes from "./routes/users.js";
 import userRoutes from "./routes/userRoutes.js";
+import waitlistRoutes from "./routes/waitlist.js";
+import testRoutes from "./routes/test.js";
 
 // Initialize environment variables
 dotenv.config();
@@ -75,7 +77,66 @@ if (process.env.NODE_ENV === "production") {
 const isProduction = process.env.NODE_ENV === "production";
 
 // ------------------ Middleware ------------------
-app.use(helmet({ crossOriginEmbedderPolicy: false }));
+const cspDirectives = {
+  defaultSrc: ["'self'"],
+  connectSrc: [
+    "'self'",
+    'https://*.supabase.co',
+    'https://*.googleapis.com',
+    'wss://*.supabase.co',
+    'ws://localhost:*',
+    'http://localhost:*',
+    'https://homeswift-ai.vercel.app',
+    'https://homeswift-ai-backend.vercel.app'
+  ],
+  fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
+  imgSrc: ["'self'", 'data:', 'https:', 'blob:', 'https://*.supabase.co', 'https://*.supabase.in'],
+  scriptSrc: [
+    "'self'",
+    "'unsafe-inline'",
+    "'unsafe-eval'",
+    'https://*.supabase.co',
+    'https://*.supabase.in',
+    'https://unpkg.com',
+    'https://cdn.jsdelivr.net'
+  ],
+  styleSrc: [
+    "'self'",
+    "'unsafe-inline'",
+    'https://fonts.googleapis.com',
+    'https://*.supabase.co',
+    'https://*.supabase.in'
+  ],
+  connectSrc: [
+    "'self'",
+    'https://*.supabase.co',
+    'https://*.supabase.in',
+    'wss://*.supabase.co',
+    'wss://*.supabase.in',
+    'https://homeswift-ai.vercel.app',
+    'https://homeswift-ai-backend.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:3001'
+  ],
+  frameSrc: [
+    "'self'",
+    'https://*.supabase.co',
+    'https://*.supabase.in',
+    'https://*.stripe.com',
+    'https://js.stripe.com'
+  ],
+  objectSrc: ["'none'"],
+  upgradeInsecureRequests: []
+};
+
+app.use(
+  helmet({
+    crossOriginEmbedderPolicy: false,
+    contentSecurityPolicy: {
+      directives: cspDirectives,
+    },
+  })
+);
 app.use(cookieParser());
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
@@ -242,18 +303,11 @@ app.get("/health", (req, res) => {
 
 // Authentication routes
 app.use("/api/auth", authRoutes);
-
-// Property routes (using the Supabase implementation with Swagger docs)
 app.use("/api/properties", propertyRoutes);
-
-// Search functionality
 app.use("/api/search", searchRoutes);
-
-// User profile and preferences
 app.use("/api/users", usersRoutes);
-
-// User management (admin)
-app.use("/api/users", userRoutes);
+app.use("/api/user", userRoutes);
+app.use("/api/waitlist", waitlistRoutes);
 
 // Test endpoints (development only)
 if (process.env.NODE_ENV !== "production") {

@@ -4,7 +4,6 @@ import path from 'path';
 
 // https://vite.dev/config/
 export default ({ mode }) => {
-  // Load app-level env vars to node's process.env
   const env = loadEnv(mode, process.cwd(), '');
   process.env = { ...process.env, ...env };
 

@@ -15,7 +15,7 @@ const TestConnection = () => {
         setError(null);
       } catch (err) {
         setError({
-          message: err.message,
+          message: err.message, 
           response: err.response?.data,
           status: err.response?.status,
         });

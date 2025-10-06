@@ -27,6 +27,7 @@ import UserTypeSelection from './components/UserTypeSelection';
 import LandlordLoginPage from './components/LandlordLoginPage';
 import LandlordSignupPage from './components/LandlordSignupPage';
 import TestConnection from './pages/TestConnection';
+import WaitlistPage from './pages/WaitlistPage';
 
 // Styles
 import './index.css';
@@ -145,6 +146,11 @@ const AnimatedRoutes = () => {
         <Route path="/user-type" element={
           <AnimatedPage>
             <UserTypeSelection />
+          </AnimatedPage>
+        } />
+        <Route path="/waitlist" element={
+          <AnimatedPage>
+            <WaitlistPage />
           </AnimatedPage>
         } />
         
