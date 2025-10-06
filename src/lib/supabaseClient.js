@@ -13,13 +13,23 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
+// Get the current hostname for dynamic redirects
+const getHostname = () => {
+  if (typeof window === 'undefined') return 'homeswift.co';
+  return window.location.hostname;
+};
+
+// Determine if we're on the chat subdomain
+const isChatSubdomain = getHostname().startsWith('chat.');
+
 // Cookie options for cross-subdomain support
 const cookieOptions = {
   name: 'sb-access-token',
   lifetime: 60 * 60 * 24 * 7, // 7 days
   domain: isProduction ? '.homeswift.co' : 'localhost',
   path: '/',
-  sameSite: 'lax'
+  sameSite: 'lax',
+  secure: isProduction
 };
 
 // Custom storage that works across subdomains
@@ -41,31 +51,6 @@ const crossDomainStorage = {
     document.cookie = `${key}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${isProduction ? '.homeswift.co' : 'localhost'}`;
   }
 };
-
-// Create and export the Supabase client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: false,
-    storage: crossDomainStorage,
-    storageKey: 'sb-auth-token',
-    cookieOptions
-  },
-  global: {
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'X-Client-Info': 'home-swift/1.0'
-    }
-  },
-  db: {
-    schema: 'public'
-  },
-  realtime: {
-    eventsPerSecond: 10
-  }
-});
 
 // Custom logger that filters out verbose logs in production
 const customLogger = (message, ...args) => {
@@ -91,43 +76,41 @@ const customLogger = (message, ...args) => {
   }
 };
 
+// Create and export the Supabase client
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
-    storage: storage,
+    storage: crossDomainStorage,
+    storageKey: 'sb-homeswift-auth',
     flowType: 'pkce',
-    debug: false, // Disable default debug logging
+    debug: !isProduction,
     logger: {
       error: (message, ...args) => console.error(`[Supabase Error]`, message, ...args),
       warn: (message, ...args) => console.warn(`[Supabase Warn]`, message, ...args),
       log: customLogger,
       debug: customLogger
     },
-    global: {
-      headers: {
-        'Accept': 'application/json',
-        'apikey': supabaseAnonKey,
-        'Content-Type': 'application/json'
-      }
-    },
-    storageKey: "homeswift-auth-token",
-    cookieOptions: {
-      name: 'sb-homeswift',
-      lifetime: 60 * 60 * 24 * 7, // 7 days
-      domain: isProduction ? '.homeswift.co' : 'localhost',
-      path: '/',
-      sameSite: 'lax'
-    },
-    redirectTo: window?.location?.hostname?.startsWith("chat.")
-      ? "https://chat.homeswift.co/auth/callback"
-      : "https://homeswift.co/auth/callback"
+    cookieOptions,
+    redirectTo: isChatSubdomain 
+      ? 'https://chat.homeswift.co/auth/callback' 
+      : 'https://homeswift.co/auth/callback'
   },
-  // remove the custom fetch override – let Supabase call its own auth endpoints
   global: {
-    headers: { "x-application-name": "HomeSwift" },
+    headers: { 
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'X-Application-Name': 'HomeSwift',
+      'X-Client-Info': 'home-swift/1.0'
+    }
   },
+  db: {
+    schema: 'public'
+  },
+  realtime: {
+    eventsPerSecond: 10
+  }
 });
 
 export default supabase;

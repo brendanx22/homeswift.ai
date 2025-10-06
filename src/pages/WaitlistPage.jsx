@@ -59,7 +59,7 @@ export default function WaitlistPage() {
     <div className="min-h-screen bg-white">
       <div className="relative flex min-h-screen">
         {/* Form Section - Full width on mobile, half on larger screens */}
-        <div className="w-full lg:w-1/2 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-12 xl:px-24 mx-auto">
+        <div className="w-full lg:w-1/2 flex flex-col justify-start pt-8 sm:pt-12 px-4 sm:px-6 lg:px-12 xl:px-24 mx-auto">
           <div className="w-full max-w-md mx-auto">
             {/* Logo and Header */}
             <motion.div
@@ -68,7 +68,7 @@ export default function WaitlistPage() {
               transition={{ duration: 0.5 }}
               className="text-center mb-10"
             >
-              <div className="mb-8 text-center">
+              <div className="mb-4 sm:mb-6 text-center">
                 <Link to="/" className="inline-block">
                   <img
                     className="h-40 w-auto mx-auto mb-2"
@@ -209,6 +209,17 @@ export default function WaitlistPage() {
                       </Link>
                     </p>
                   </div>
+                  
+                  {/* Back to Home Button */}
+                  <div className="mt-8 text-center">
+                    <Link
+                      to="/"
+                      className="inline-flex items-center text-[#2C3E50] hover:text-[#1A2C38] transition-colors duration-200"
+                    >
+                      <Home className="h-4 w-4 mr-2" />
+                      Back to Home
+                    </Link>
+                  </div>
                 </form>
               </motion.div>
             )}
@@ -217,7 +228,6 @@ export default function WaitlistPage() {
 
         {/* Decorative elements */}
         <div className="hidden lg:block absolute inset-0 -z-10 overflow-hidden">
-          <div className="absolute -right-48 -top-48 w-96 h-96 bg-[#FF6B35]/5 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
           <div className="absolute -left-20 -bottom-20 w-96 h-96 bg-[#2C3E50]/5 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
         </div>
       </div>

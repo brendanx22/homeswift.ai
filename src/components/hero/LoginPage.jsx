@@ -26,7 +26,7 @@ export default function LoginPage() {
     const redirectPath = searchParams.get('redirect');
     const verified = searchParams.get('verified') === 'true';
     const host = window.location.hostname;
-    const isChatDomain = host === 'chat.homeswift.co';
+    const isChatDomain = host === 'chat.homeswift.co' || host === 'localhost';
     const isMainDomain = host === 'homeswift.co' || host === 'www.homeswift.co';
     
     // Handle email verification success
@@ -42,12 +42,31 @@ export default function LoginPage() {
       // Small delay to ensure state is consistent
       const timer = setTimeout(() => {
         // If we have a valid redirect path that's not an auth page, use it
-        if (redirectPath && !['/login', '/signup', '/verify-email'].some(p => redirectPath.includes(p))) {
-          navigate(redirectPath, { replace: true });
-        } 
-        // If we're on the main domain, redirect to chat
-        else if (isMainDomain) {
+        if (redirectPath) {
+          try {
+            // If redirect is to chat domain but we're on main domain, update the URL
+            const redirectUrl = new URL(redirectPath, window.location.origin);
+            if (redirectUrl.hostname === 'chat.homeswift.co' && isMainDomain) {
+              window.location.href = redirectPath;
+              return;
+            }
+            
+            // If redirect is within the same domain, use navigate
+            if (!['/login', '/signup', '/verify-email'].some(p => redirectPath.includes(p))) {
+              navigate(redirectPath, { replace: true });
+              return;
+            }
+          } catch (e) {
+            console.error('Invalid redirect URL:', redirectPath);
+          }
+        }
+        
+        // Default redirect based on domain
+        if (isMainDomain) {
           window.location.href = 'https://chat.homeswift.co/';
+        } else if (isChatDomain) {
+          navigate('/', { replace: true });
+        }
         }
         // If we're on the chat domain, go to the root
         else if (isChatDomain) {

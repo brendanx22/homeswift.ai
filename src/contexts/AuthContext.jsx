@@ -35,9 +35,9 @@ export const AuthProvider = ({ children }) => {
     try {
       // 1. First try to get the existing profile
       const { data: userData, error: fetchError } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', supabaseUser.id)
+          .from('user_profiles')
+          .select('*')
+          .eq('id', supabaseUser.id)
         .single();
 
       if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 = no rows returned
@@ -74,21 +74,21 @@ export const AuthProvider = ({ children }) => {
 
       // 3. Fallback to direct insert if RPC fails
       const { data: directProfile, error: insertError } = await withTimeout(
-        supabase
-          .from('user_profiles')
+            supabase
+              .from('user_profiles')
           .upsert({
-            id: supabaseUser.id,
-            email: supabaseUser.email,
-            first_name: supabaseUser.user_metadata?.first_name || '',
+                id: supabaseUser.id,
+                email: supabaseUser.email,
+                first_name: supabaseUser.user_metadata?.first_name || '',
             last_name: supabaseUser.user_metadata?.last_name || '',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           }, {
             onConflict: 'id',
             ignoreDuplicates: false
-          })
-          .select()
-          .single(),
+              })
+              .select()
+              .single(),
         10000 // 10 second timeout
       );
 
@@ -114,7 +114,7 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
-
+      
       // First check if there's a session in localStorage
       const storedSession = localStorage.getItem('homeswift-auth-token');
       if (storedSession) {
@@ -138,7 +138,7 @@ export const AuthProvider = ({ children }) => {
       try {
         debug('Checking session with Supabase...');
         const { data: { session: supabaseSession }, error: sessionError } = await withTimeout(
-          supabase.auth.getSession(),
+        supabase.auth.getSession(),
           5000 // 5 second timeout
         ).catch(error => {
           console.error('Timeout or error getting Supabase session:', error);
@@ -153,7 +153,7 @@ export const AuthProvider = ({ children }) => {
         if (supabaseSession) {
           debug('Valid session from Supabase');
           currentSession = supabaseSession;
-          setSession(currentSession);
+      setSession(currentSession);
           setUser(prev => ({ ...prev, ...(currentSession.user ?? {}) }));
 
           // Update localStorage with fresh session
@@ -182,7 +182,7 @@ export const AuthProvider = ({ children }) => {
           console.error('Error fetching user profile:', e);
         });
       }
-
+      
       debug('Session check complete', { hasSession: !!currentSession });
       return currentSession;
     } catch (error) {
@@ -258,7 +258,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     let mounted = true;
     let subscription = null;
-
+    
     const handleStorageChange = (e) => {
       if (!mounted) return;
       if (e.key === 'homeswift-auth-token') {
@@ -279,7 +279,7 @@ export const AuthProvider = ({ children }) => {
         }
       }
     };
-
+    
     const initialize = async () => {
       debug('Initializing auth...');
       try {
@@ -333,7 +333,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     initialize();
-
+    
     return () => {
       mounted = false;
       try { subscription?.unsubscribe(); } catch (e) { debug('Subscription cleanup error', e); }
@@ -344,7 +344,7 @@ export const AuthProvider = ({ children }) => {
   // Check if email already exists
   const checkEmailExists = useCallback(async (email, options = {}) => {
     const sanitizedEmail = (email || '').trim().toLowerCase();
-
+    
     if (!sanitizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sanitizedEmail)) {
       return { exists: false, message: 'Invalid email format', error: true };
     }
@@ -352,7 +352,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 6000);
-
+      
       const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/auth/check-email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -367,7 +367,7 @@ export const AuthProvider = ({ children }) => {
       }
 
       const data = await response.json();
-
+      
       return {
         exists: !!data.exists,
         message: data.message || (data.exists ? 'Email is already registered' : 'Email is available'),
@@ -388,7 +388,7 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
-
+      
       const email = (userData.email || '').trim().toLowerCase();
       const password = (userData.password || '').trim();
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -410,14 +410,14 @@ export const AuthProvider = ({ children }) => {
           emailRedirectTo: verifyRedirect,
         },
       });
-
+      
       if (signUpError) {
         if (String(signUpError.message).includes('already registered')) {
           throw new Error('An account with this email already exists. Please try logging in instead.');
         }
         throw signUpError;
       }
-
+      
       return data?.user ?? null;
     } catch (err) {
       console.error('Sign up error:', err);
@@ -427,13 +427,13 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     }
   }, []);
-
+  
   // Sign in with email and password
   const signIn = useCallback(async (email, password) => {
     try {
       setLoading(true);
       setError(null);
-
+      
       const attemptSignIn = async (timeoutMs) => {
         const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Network timeout while contacting Auth service')), timeoutMs));
         return Promise.race([
@@ -463,13 +463,13 @@ export const AuthProvider = ({ children }) => {
           throw err;
         }
       }
-
+      
       if (signInError) {
         if (String(signInError.message).includes('Invalid login credentials')) throw new Error('Invalid email or password');
         if (String(signInError.message).includes('Email not confirmed')) throw new Error('Please verify your email before logging in');
         throw signInError;
       }
-
+      
       // Force a session refresh to ensure we have the latest data
       const { data: { session: freshSession } = {} } = await supabase.auth.getSession();
       setSession(freshSession ?? data?.session ?? null);
@@ -487,7 +487,7 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     }
   }, [redirectAfterLogin]);
-
+  
   // Sign out
   const signOut = useCallback(async () => {
     setLoading(true);
@@ -501,7 +501,7 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     }
   }, [navigate]);
-
+  
   // Reset password
   const resetPassword = useCallback(async (email) => {
     try {
@@ -544,25 +544,25 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     }
   }, []);
-
+  
   // Update user profile
   const updateProfile = useCallback(async (updates) => {
     if (!user?.id) throw new Error('No active user to update');
     try {
       setLoading(true);
       setError(null);
-
+      
       // Update auth user data
       const { data: authData, error: authError } = await supabase.auth.updateUser({ data: { ...updates } });
       if (authError) throw authError;
-
+      
       // Update user profile in database
       const { error: profileError } = await supabase
         .from('user_profiles')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', user.id);
       if (profileError) throw profileError;
-
+      
       // Update local user state
       setUser((prev) => ({ ...prev, ...updates }));
 
@@ -584,7 +584,7 @@ export const AuthProvider = ({ children }) => {
   const isRenter = useCallback(() => !isLandlord(), [isLandlord]);
 
   const getUserType = useCallback(() => user?.user_metadata?.user_type || user?.app_metadata?.user_type || 'renter', [user]);
-
+  
   // Memoize context value to avoid unnecessary re-renders
   const value = useMemo(() => ({
     user,
