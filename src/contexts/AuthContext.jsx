@@ -167,37 +167,55 @@ export const AuthProvider = ({ children }) => {
   // Redirect helper used on sign-in / auth change
   const redirectAfterLogin = useCallback((sess) => {
     try {
+      if (!sess?.user) return; // No session, nothing to do
+      
       const urlParams = new URLSearchParams(window.location.search);
-      const redirectTo = urlParams.get('redirect');
+      let redirectTo = urlParams.get('redirect');
       const userType = sess?.user?.user_metadata?.user_type || sess?.user?.app_metadata?.user_type || 'renter';
       
-      // For chat.homeswift.co, always go to the root after login
-      const isChatDomain = window.location.hostname === 'chat.homeswift.co';
-      const defaultAfterLogin = isChatDomain ? '/' : 
-        (userType === 'landlord' ? 'https://list.homeswift.co/dashboard' : 'https://chat.homeswift.co/');
+      // Determine the current domain and appropriate target
+      const currentHost = window.location.hostname;
+      const isChatDomain = currentHost === 'chat.homeswift.co';
+      const isMainDomain = currentHost === 'homeswift.co' || currentHost === 'www.homeswift.co';
       
-      let target = redirectTo || defaultAfterLogin;
-
-      // Don't redirect to auth pages after login
-      const authPages = ['/login', '/signup', '/verify-email', '/reset-password', '/list-login', '/list-signup'];
-      const isAuthPage = authPages.some(page => target.includes(page));
-      
-      if (isAuthPage) {
-        target = defaultAfterLogin;
+      // Default redirects based on user type and current domain
+      let defaultTarget = '/';
+      if (isMainDomain) {
+        defaultTarget = userType === 'landlord' 
+          ? 'https://list.homeswift.co/dashboard' 
+          : 'https://chat.homeswift.co/';
+      } else if (isChatDomain) {
+        defaultTarget = '/';
+      } else if (currentHost === 'list.homeswift.co') {
+        defaultTarget = '/dashboard';
       }
-
-      // Handle navigation
-      if (target.startsWith('http')) {
-        // For absolute URLs, use window.location
-        if (window.location.href !== target) {
+      
+      // If we have a redirect param and it's not an auth page, use it
+      const authPages = ['/login', '/signup', '/verify-email', '/reset-password', '/list-login', '/list-signup'];
+      const isAuthRedirect = redirectTo && authPages.some(page => redirectTo.includes(page));
+      
+      const target = !redirectTo || isAuthRedirect ? defaultTarget : redirectTo;
+      
+      // Prevent redirect loops
+      const currentUrl = new URL(window.location.href);
+      const targetUrl = new URL(target, window.location.origin);
+      
+      if (currentUrl.pathname === targetUrl.pathname && currentUrl.hostname === targetUrl.hostname) {
+        console.log('Preventing redirect loop to same page');
+        return;
+      }
+      
+      // Add a small delay to ensure state is updated
+      setTimeout(() => {
+        if (target.startsWith('http') && !target.includes(window.location.host)) {
+          // For cross-domain redirects
           window.location.href = target;
-        }
-      } else {
-        // For relative URLs, use navigate
-        if (window.location.pathname !== target) {
+        } else {
+          // For same-domain navigation
           navigate(target, { replace: true });
         }
-      }
+      }, 100);
+      
     } catch (e) {
       console.warn('redirectAfterLogin failed:', e);
       // Fallback to home if something goes wrong

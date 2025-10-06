@@ -18,7 +18,7 @@ export default function LoginPage() {
   const googleAuth = useGoogleAuth();
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  // Check for verification status and redirect if authenticated
+  // Handle authentication state and redirects
   useEffect(() => {
     // Only proceed if we're done loading
     if (authLoading) return;
@@ -26,27 +26,35 @@ export default function LoginPage() {
     const redirectPath = searchParams.get('redirect');
     const verified = searchParams.get('verified') === 'true';
     const host = window.location.hostname;
+    const isChatDomain = host === 'chat.homeswift.co';
+    const isMainDomain = host === 'homeswift.co' || host === 'www.homeswift.co';
     
     // Handle email verification success
     if (verified) {
       setIsVerified(true);
       // Clear the URL params
-      const cleanUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, cleanUrl);
-      return; // Don't proceed with further redirects
+      window.history.replaceState({}, document.title, window.location.pathname);
+      return;
     }
     
-    // Only handle redirect if we're authenticated
+    // Handle authenticated state
     if (isAuthenticated) {
-      // Small delay to prevent rapid navigation
+      // Small delay to ensure state is consistent
       const timer = setTimeout(() => {
-        if (redirectPath && !redirectPath.startsWith('/login') && !redirectPath.startsWith('/signup')) {
-          // Ensure we're not redirecting to an auth page
+        // If we have a valid redirect path that's not an auth page, use it
+        if (redirectPath && !['/login', '/signup', '/verify-email'].some(p => redirectPath.includes(p))) {
           navigate(redirectPath, { replace: true });
-        } else if (host.endsWith('homeswift.co') && !host.startsWith('chat.')) {
-          window.location.assign('https://chat.homeswift.co/');
-        } else {
-          // Default redirect
+        } 
+        // If we're on the main domain, redirect to chat
+        else if (isMainDomain) {
+          window.location.href = 'https://chat.homeswift.co/';
+        }
+        // If we're on the chat domain, go to the root
+        else if (isChatDomain) {
+          navigate('/', { replace: true });
+        }
+        // Default to home
+        else {
           navigate('/', { replace: true });
         }
       }, 100);
