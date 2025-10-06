@@ -562,6 +562,34 @@ export const AuthProvider = ({ children }) => {
     }
   }, [navigate]);
 
+  // Resend verification email
+  const resendVerification = useCallback(async (email) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const isProd = typeof window !== 'undefined' && window.location.hostname.endsWith('homeswift.co');
+      const verificationRedirect = isProd ? 'https://chat.homeswift.co/verify-email' : `${window.location.origin}/verify-email`;
+      
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: {
+          emailRedirectTo: verificationRedirect
+        }
+      });
+      
+      if (error) throw error;
+      return true;
+    } catch (err) {
+      console.error('Resend verification error:', err);
+      setError(err.message || 'Failed to resend verification email');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   // Update user profile
   const updateProfile = useCallback(async (updates) => {
     if (!user?.id) throw new Error('User not authenticated');
