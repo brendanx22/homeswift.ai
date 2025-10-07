@@ -9,11 +9,14 @@ export default ({ mode }) => {
 
   const isProduction = mode === 'production';
   const isChat = mode === 'chat';
+  const isDevelopment = !isProduction;
 
   // Log environment variables for debugging
-  console.log('Vite Config - Mode:', mode);
-  console.log('API Base URL:', env.VITE_API_BASE_URL);
-  console.log('Supabase URL:', env.VITE_SUPABASE_URL);
+  if (isDevelopment) {
+    console.log('Vite Config - Mode:', mode);
+    console.log('API Base URL:', env.VITE_API_BASE_URL);
+    console.log('Supabase URL:', env.VITE_SUPABASE_URL);
+  }
 
   return defineConfig({
     resolve: {
@@ -52,15 +55,16 @@ export default ({ mode }) => {
       port: 3000,
       strictPort: true,
       cors: true,
+      open: true,
       proxy: {
-        // Proxy API requests to your backend
+        // API proxy
         '/api': {
-          target: env.VITE_API_BASE_URL || 'http://localhost:5001',
+          target: env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:5001',
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path.replace(/^\/api/, '')
         },
-        // Proxy auth callbacks
+        // Auth proxy
         '/auth': {
           target: env.VITE_SUPABASE_URL,
           changeOrigin: true,
@@ -68,28 +72,19 @@ export default ({ mode }) => {
           rewrite: (path) => path.replace(/^\/auth/, '')
         }
       },
-      // Handle SPA fallback for client-side routing
-      historyApiFallback: true,
-      host: true,
-      port: 3000, // Will be overridden by portfinder if in use
-      strictPort: false, // Allow port to be changed if in use
-      open: true,
-      cors: true,
-      // Handle SPA fallback for client-side routing
-      historyApiFallback: true,
+      // Security headers
       headers: {
         'Content-Security-Policy': isProduction 
-          ? "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://vercel.live; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://*.homeswift.co https://*.vercel.app https://tproaiqvkohrlxjmkgxt.supabase.co https://*.supabase.co wss://*.supabase.co https://vercel.live; frame-src 'self' https://*.supabase.co https://vercel.live; worker-src 'self' blob:;"
+          ? "default-src 'self'; " +
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com; " +
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+            "font-src 'self' data: https://fonts.gstatic.com; " +
+            "img-src 'self' data: https:; " +
+            "connect-src 'self' https://*.homeswift.co https://*.vercel.app https://*.supabase.co wss://*.supabase.co; " +
+            "frame-src 'self' https://*.supabase.co; " +
+            "worker-src 'self' blob:;"
           : "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:;"
-      },
-      proxy: {
-        "/api": {
-          target: process.env.VITE_API_BASE_URL?.replace("/api", "") || "http://localhost:5002",
-          changeOrigin: true,
-          secure: false,
-          rewrite: (path) => path.replace(/^\/api/, ""),
-        },
-      },
+      }
     },
 
     build: {

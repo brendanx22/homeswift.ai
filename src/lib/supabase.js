@@ -102,24 +102,32 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storage: crossDomainStorage,
     storageKey: 'sb-homeswift-auth',
     flowType: 'pkce',
-    debug: !isProduction,
+    debug: false, // Disable debug logs in all environments
     // Set the redirect URL for authentication
     redirectTo: getRedirectUrl(),
-    logger: !isProduction ? {
+    logger: isProduction ? undefined : {
       error: (message, ...args) => console.error(`[Supabase Error]`, message, ...args),
       warn: (message, ...args) => console.warn(`[Supabase Warn]`, message, ...args),
-      log: customLogger,
-      debug: customLogger
-    } : undefined,
+      log: (message, ...args) => {
+        // Filter out verbose logs
+        const skipLogs = ['#_acquireLock', '#_useSession', '#__loadSession', 'INITIAL_SESSION'];
+        if (!skipLogs.some(term => String(message).includes(term))) {
+          console.log(`[Supabase]`, message, ...args);
+        }
+      },
+      debug: (message, ...args) => {
+        // Only show debug logs in development
+        if (import.meta.env.DEV) {
+          console.debug(`[Supabase Debug]`, message, ...args);
+        }
+      }
+    },
     cookieOptions: {
       ...cookieOptions,
       sameSite: isProduction ? 'lax' : 'lax',
       secure: isProduction,
       maxAge: 60 * 60 * 24 * 7 // 7 days
-    },
-    redirectTo: isChatSubdomain 
-      ? `${window.location.protocol}//chat.homeswift.co/auth/callback`
-      : `${window.location.protocol}//homeswift.co/auth/callback`
+    }
   },
   global: {
     headers: { 

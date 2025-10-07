@@ -5,14 +5,26 @@ import morgan from "morgan";
 import dotenv from "dotenv";
 import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
-import session from "express-session";
 import path from "path";
 import { fileURLToPath } from "url";
 import winston from "winston";
 import { createClient } from "@supabase/supabase-js";
 import { createRequire } from "module";
-import { rememberMe, loadUser } from "./middleware/authMiddleware.js";
+import { loadUser } from "./middleware/authMiddleware.js";
 const require = createRequire(import.meta.url);
+
+// Initialize Supabase client
+export const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY,
+  {
+    auth: {
+      persistSession: false, // We'll handle sessions manually
+      autoRefreshToken: true,
+      detectSessionInUrl: false
+    }
+  }
+);
 
 // Import routes
 import authRoutes from "./routes/auth.js";
@@ -226,26 +238,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// Trust first proxy (important for secure cookies in production)
+// Trust first proxy (important for production)
 app.set("trust proxy", 1);
-// Cookie parser middleware
-app.use(cookieParser(process.env.SESSION_SECRET));
 
-// Session configuration
-const sessionConfig = {
-  secret: process.env.SESSION_SECRET || 'your-secret-key',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    sameSite: 'none', // Required for cross-domain cookies with HTTPS
-    domain: process.env.NODE_ENV === 'production' ? 'homeswift.co' : undefined // No leading dot
-  },
-  name: 'homeswift.sid',
-  proxy: process.env.NODE_ENV === 'production' // Trust the reverse proxy in production
-};
+// Cookie parser middleware (no longer needs SESSION_SECRET)
+app.use(cookieParser());
 
 // Enforce canonical domain (redirect www to non-www)
 app.use((req, res, next) => {
@@ -255,14 +252,42 @@ app.use((req, res, next) => {
   next();
 });
 
-// Use session middleware
-app.use(session(sessionConfig));
+/**
+ * Supabase Auth Middleware
+ * Verifies the JWT token from Authorization header
+ */
+const requireAuth = async (req, res, next) => {
+  try {
+    // Get the token from Authorization header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Missing or invalid authorization header' });
+    }
 
-// Initialize Supabase client
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
-);
+    const token = authHeader.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ error: 'No token provided' });
+    }
+
+    // Verify the token with Supabase
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      console.error('Auth error:', error?.message || 'No user found');
+      return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+
+    // Attach user to request object
+    req.user = user;
+    next();
+  } catch (error) {
+    console.error('Auth middleware error:', error);
+    return res.status(500).json({ error: 'Authentication failed' });
+  }
+};
+
+// Export the middleware for use in routes
+export { requireAuth };
 
 // Attach Supabase client to requests
 app.use((req, res, next) => {
