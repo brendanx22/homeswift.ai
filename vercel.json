@@ -14,9 +14,11 @@
       "NODE_VERSION": "22.x"
     }
   },
-  "installCommand": "npm ci",
+  "installCommand": "npm install",
+  "buildCommand": "npm run vercel-build",
   "framework": "vite",
   "outputDirectory": "dist",
+  "nodeVersion": "22.x",
   "rewrites": [
     { "source": "/assets/(.*)", "destination": "/assets/$1" },
     { "source": "/api/(.*)", "destination": "/api/$1" },
