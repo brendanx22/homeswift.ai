@@ -2,80 +2,46 @@
   "version": 2,
   "builds": [
     {
-      "src": "vercel-build.sh",
+      "src": "package.json",
       "use": "@vercel/static-build",
       "config": {
         "distDir": "dist",
-        "buildCommand": "npm run build"
+        "zeroConfig": false
       }
     },
     {
-      "src": "vercel-build-chat.sh",
+      "src": "vite.chat.config.js",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "dist/chat",
-        "buildCommand": "npm run build:chat"
+        "distDir": "dist/chat"
+      }
+    }
+  ],
+  "build": {
+    "env": {
+      "NODE_VERSION": "18.x"
+    }
+  },
+  "routes": [
+    {
+      "src": "/assets/(.*)",
+      "headers": {
+        "cache-control": "public, max-age=31536000, immutable"
       }
     },
     {
-      "src": "server/server.js",
-      "use": "@vercel/node"
+      "src": "^/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "^/chat/(.*)",
+      "dest": "/chat/index.html"
+    },
+    {
+      "src": "^/(.*)",
+      "dest": "/index.html"
     }
   ],
-  "rewrites": [
-    {
-      "source": "/_next/static/(.*)",
-      "destination": "/_next/static/$1"
-    },
-    {
-      "source": "/static/(.*)",
-      "destination": "/static/$1"
-    },
-    {
-      "source": "/(.*)",
-      "has": [
-        { "type": "host", "value": "chat.homeswift.co" }
-      ],
-      "destination": "/chat/index.html"
-    },
-    {
-      "source": "/api/(.*)",
-      "has": [
-        { "type": "host", "value": "api.homeswift.co" }
-      ],
-      "destination": "/server/server.js"
-    },
-    {
-      "source": "/(.*)",
-      "has": [
-        { "type": "host", "value": "chat.homeswift.co" }
-      ],
-      "destination": "/index.html"
-    },
-    {
-      "source": "/(.*)",
-      "has": [
-        { "type": "host", "value": "homeswift.co" },
-        { "type": "host", "value": "www.homeswift.co" }
-      ],
-      "destination": "/index.html"
-    },
-    { 
-      "source": "/(.*)",
-      "destination": "/index.html" 
-    }
-  ],
-  "redirects": [
-    {
-      "source": "/:path*",
-      "has": [
-        { "type": "host", "value": "www.homeswift.co" }
-      ],
-      "destination": "https://homeswift.co/:path*",
-      "permanent": true
-    }
-  ],
-  "cleanUrls": true,
   "headers": [
     {
       "source": "/(.*)",
@@ -98,11 +64,11 @@
         },
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://vercel.live https://homeswift.co; script-src-elem 'self' 'unsafe-inline' https://homeswift.co https://www.googletagmanager.com https://vercel.live; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://homeswift.co https://vercel.live; style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com https://homeswift.co; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://homeswift.co https://homeswift-ai.vercel.app https://vercel.live; frame-src 'self' https://vercel.live;"
+          "value": "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://vercel.live; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co; frame-src 'self'"
         },
         {
           "key": "Access-Control-Allow-Origin",
-          "value": "https://homeswift.co, https://chat.homeswift.co"
+          "value": "*"
         },
         {
           "key": "Access-Control-Allow-Methods",

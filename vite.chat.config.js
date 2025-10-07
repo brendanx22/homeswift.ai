@@ -2,44 +2,37 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
 
-// https://vite.dev/config/
-export default ({ mode }) => {
-  // Load app-level env vars to node's process.env
-  process.env = { ...process.env, ...loadEnv(mode, process.cwd(), '') };
-  
-  // For chat mode, ensure we're using the right environment
-  if (mode === 'chat') {
-    process.env.VITE_APP_MODE = 'chat';
-  }
+// Check if we're in production
+const isProduction = process.env.NODE_ENV === 'production';
 
-  const isProduction = mode === 'production';
-  
-  return defineConfig({
-    plugins: [
-      react({
-        jsxImportSource: '@emotion/react',
-        babel: {
-          plugins: [
-            ['@emotion/babel-plugin', {
-              autoLabel: 'dev-only',
-              labelFormat: '[local]',
-              cssPropOptimization: true,
-            }],
-          ],
-        },
-      })
-    ],
-    esbuild: {
-      logOverride: { 'this-is-undefined-in-esm': 'silent' }
-    },
-    base: isProduction ? '/chat/' : '/',
-    define: {
-      'process.env': {}
-    },
-    resolve: {
-      alias: [
-        {
-          find: /^hoist-non-react-statics(\/.*)?$/,
+// Ensure environment variables are loaded in Vite
+const env = {};
+Object.keys(process.env).forEach((key) => {
+  if (key.startsWith('VITE_')) {
+    env[`import.meta.env.${key}`] = JSON.stringify(process.env[key]);
+  }
+});
+
+export default defineConfig({
+  plugins: [react()],
+  define: {
+    'process.env': process.env,
+    ...env,
+    // Ensure Vite can access environment variables
+    'import.meta.env.VITE_APP_MODE': JSON.stringify('chat'),
+    'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(process.env.VITE_SUPABASE_URL || ''),
+    'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(process.env.VITE_SUPABASE_ANON_KEY || '')
+  },
+  build: {
+    outDir: 'dist/chat',
+    emptyOutDir: true,
+    sourcemap: !isProduction,
+    minify: isProduction ? 'terser' : false,
+    rollupOptions: {
+      output: {
+        entryFileNames: `assets/[name].[hash].js`,
+        chunkFileNames: `assets/[name].[hash].js`,
+        assetFileNames: `assets/[name].[hash].[ext]`
           replacement: 'hoist-non-react-statics/dist/hoist-non-react-statics.cjs.js'
         },
         {

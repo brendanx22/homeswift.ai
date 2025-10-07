@@ -1,18 +1,19 @@
 #!/bin/bash
-
-# Exit on error
 set -e
 
-echo "--- Building HomeSwift Application ---"
+# Set Node.js options
+export NODE_OPTIONS=--openssl-legacy-provider
 
-# Install dependencies if needed
-if [ ! -d "node_modules" ]; then
-  echo "Installing dependencies..."
-  npm install
-fi
+# Install dependencies
+echo "--- Installing dependencies ---"
+npm ci --prefer-offline --no-audit --progress=false
 
 # Build the application
-echo "Building application..."
+echo "--- Building application ---"
 npm run build
 
-echo "--- Build Complete ---"
+# Build the chat application if not in production or if explicitly set
+if [ "$VERCEL_ENV" != "production" ] || [ "$BUILD_CHAT" = "true" ]; then
+  echo "--- Building chat application ---"
+  npm run build:chat
+fi
