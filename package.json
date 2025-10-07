@@ -14,7 +14,7 @@
     "test:coverage": "vitest run --coverage",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "format": "prettier --write \"**/*.{js,jsx,json,md}\"",
-    "vercel-build": "npm install && npm run build && npm run build:chat",
+    "vercel-build": "bash vercel-build.sh",
     "server:migrate": "cd server && npm run migrate",
     "server:seed": "cd server && npm run seed",
     "server:setup-db": "cd server && npm run setup-db",

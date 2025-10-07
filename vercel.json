@@ -5,14 +5,18 @@
       "src": "package.json",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "dist",
-        "nodeVersion": "22.x"
+        "distDir": "dist"
       }
     }
   ],
-  "buildCommand": "npm run vercel-build",
-  "installCommand": "npm install",
+  "build": {
+    "env": {
+      "NODE_VERSION": "22.x"
+    }
+  },
+  "installCommand": "npm ci",
   "framework": "vite",
+  "outputDirectory": "dist",
   "rewrites": [
     { "source": "/assets/(.*)", "destination": "/assets/$1" },
     { "source": "/api/(.*)", "destination": "/api/$1" },
