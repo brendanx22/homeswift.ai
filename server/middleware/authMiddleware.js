@@ -226,14 +226,4 @@ export const isAdmin = (req, res, next) => {
   next();
 };
 
-// Export all middleware functions
-export {
-  requireAuth,
-  optionalAuth,
-  requireGuest,
-  rememberMe,
-  loadUser,
-  authorizeRoles,
-  authenticateJWT,
-  isAdmin,
-};
+// All middleware functions are exported inline above
