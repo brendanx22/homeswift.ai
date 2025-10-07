@@ -6,22 +6,13 @@
       "use": "@vercel/static-build",
       "config": {
         "distDir": "dist",
-        "zeroConfig": false
-      }
-    },
-    {
-      "src": "vite.chat.config.js",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist/chat"
+        "nodeVersion": "18.x"
       }
     }
   ],
-  "build": {
-    "env": {
-      "NODE_VERSION": "18.x"
-    }
-  },
+  "buildCommand": "npm run vercel-build",
+  "installCommand": "npm install",
+  "framework": "vite",
   "rewrites": [
     { "source": "/assets/(.*)", "destination": "/assets/$1" },
     { "source": "/api/(.*)", "destination": "/api/$1" },
