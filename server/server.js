@@ -11,15 +11,6 @@ import { createRequire } from "module";
 import dotenv from 'dotenv';
 import { loadUser } from "./middleware/authMiddleware.js";
 
-// Import routes
-import authRoutes from "./routes/auth.js";
-import propertyRoutes from "./routes/propertyRoutes.js";
-import searchRoutes from "./routes/search.js";
-import usersRoutes from "./routes/users.js";
-import userRoutes from "./routes/userRoutes.js";
-import waitlistRoutes from "./routes/waitlist.js";
-import testRoutes from "./routes/test.js";
-
 // Load environment variables from .env file
 try {
   const envPath = path.resolve(process.cwd(), '.env');
@@ -31,6 +22,15 @@ try {
 } catch (error) {
   console.warn('Warning: Failed to load .env file. Using environment variables from the system.');
 }
+
+// Import routes
+import authRoutes from "./routes/auth.js";
+import propertyRoutes from "./routes/propertyRoutes.js";
+import searchRoutes from "./routes/search.js";
+import usersRoutes from "./routes/users.js";
+import userRoutes from "./routes/userRoutes.js";
+import waitlistRoutes from "./routes/waitlist.js";
+import testRoutes from "./routes/test.js";
 
 // Verify required environment variables
 const requiredEnvVars = ['SUPABASE_URL', 'SUPABASE_ANON_KEY'];
@@ -52,23 +52,10 @@ export const supabase = createClient(
   {
     auth: {
       persistSession: false, // We'll handle sessions manually
-      autoRefreshToken: true,
       detectSessionInUrl: false
     }
   }
 );
-
-// Import routes
-import authRoutes from "./routes/auth.js";
-import propertyRoutes from "./routes/propertyRoutes.js";
-import searchRoutes from "./routes/search.js";
-import usersRoutes from "./routes/users.js";
-import userRoutes from "./routes/userRoutes.js";
-import waitlistRoutes from "./routes/waitlist.js";
-import testRoutes from "./routes/test.js";
-
-// Initialize environment variables
-dotenv.config();
 
 // Configure logger
 const logger = winston.createLogger({
