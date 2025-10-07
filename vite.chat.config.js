@@ -32,7 +32,7 @@ export default ({ mode }) => {
     esbuild: {
       logOverride: { 'this-is-undefined-in-esm': 'silent' }
     },
-    base: isProduction ? './' : '/',
+    base: isProduction ? '/chat/' : '/',
     define: {
       'process.env': {}
     },
