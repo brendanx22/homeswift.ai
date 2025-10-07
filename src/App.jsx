@@ -228,6 +228,8 @@ const isChatSubdomain = window.location.hostname.startsWith('chat.') ||
 import ChatRoutes from './routes/ChatRoutes';
 
 function App() {
+  const queryClient = new QueryClient();
+  
   useEffect(() => {
     console.log('[App] Mounted. isChatSubdomain=', isChatSubdomain, 'VITE_APP_MODE=', import.meta.env.VITE_APP_MODE);
   }, []);
@@ -243,166 +245,16 @@ function App() {
     );
   }
 
-      <AuthProvider>
-        <Toaster position="top-right" richColors />
-        <Routes>
-            {/* Public auth routes on chat subdomain */}
-            <Route path="/login" element={
-              <AnimatedPage>
-                <LoginPage />
-              </AnimatedPage>
-            } />
-            <Route path="/signup" element={
-              <AnimatedPage>
-                <SignupPage />
-              </AnimatedPage>
-            } />
-            <Route path="/user-type" element={
-              <AnimatedPage>
-                <UserTypeSelection />
-              </AnimatedPage>
-            } />
-            
-            <Route path="/list-login" element={
-              <AnimatedPage>
-                <LandlordLoginPage />
-              </AnimatedPage>
-            } />
-            
-            <Route path="/list-signup" element={
-              <AnimatedPage>
-                <LandlordSignupPage />
-              </AnimatedPage>
-            } />
-            <Route path="/auth/callback" element={
-              <AnimatedPage>
-                <AuthCallback />
-              </AnimatedPage>
-            } />
-            
-            {/* Root path - redirect to dashboard if authenticated, otherwise to login */}
-            <Route path="/" element={
-              <ProtectedRoute>
-                <AnimatedPage>
-                  <MainLanding />
-                </AnimatedPage>
-              </ProtectedRoute>
-            } />
-            
-            {/* Protected routes */}
-            <Route path="/dashboard" element={
-              <ProtectedRoute>
-                <AnimatedPage>
-                  <MainLanding />
-                </AnimatedPage>
-              </ProtectedRoute>
-            } />
-
-            {/* Protected chat sub-pages */}
-            <Route path="/properties" element={
-              <ProtectedRoute>
-                <AnimatedPage>
-                  <HouseListings />
-                </AnimatedPage>
-              </ProtectedRoute>
-            } />
-            <Route path="/list-property" element={
-              <ProtectedRoute>
-                <AnimatedPage>
-                  <ListPropertyPage />
-                </AnimatedPage>
-              </ProtectedRoute>
-            } />
-            <Route path="/properties/:id" element={
-              <ProtectedRoute>
-                <AnimatedPage>
-                  <PropertyDetails />
-                </AnimatedPage>
-              </ProtectedRoute>
-            } />
-            <Route path="/saved" element={
-              <ProtectedRoute>
-                <AnimatedPage>
-                  <HouseListings showSaved={true} />
-                </AnimatedPage>
-              </ProtectedRoute>
-            } />
-            <Route path="/neighborhoods" element={
-              <ProtectedRoute>
-                <AnimatedPage>
-                  <HouseListings showNeighborhoods={true} />
-                </AnimatedPage>
-              </ProtectedRoute>
-            } />
-            <Route path="/gallery" element={
-              <ProtectedRoute>
-                <AnimatedPage>
-                  <Gallery />
-                </AnimatedPage>
-              </ProtectedRoute>
-            } />
-            <Route path="/messages" element={
-              <ProtectedRoute>
-                <AnimatedPage>
-                  <Messages />
-                </AnimatedPage>
-              </ProtectedRoute>
-            } />
-            <Route path="/calculator" element={
-              <ProtectedRoute>
-                <AnimatedPage>
-                  <InquiryForm type="calculator" />
-                </AnimatedPage>
-              </ProtectedRoute>
-            } />
-            <Route path="/tours" element={
-              <ProtectedRoute>
-                <AnimatedPage>
-                  <Gallery showTours={true} />
-                </AnimatedPage>
-              </ProtectedRoute>
-            } />
-            <Route path="/filters" element={
-              <ProtectedRoute>
-                <AnimatedPage>
-                  <HouseListings showFilters={true} />
-                </AnimatedPage>
-              </ProtectedRoute>
-            } />
-            <Route path="/recent" element={
-              <ProtectedRoute>
-                <AnimatedPage>
-                  <HouseListings showRecent={true} />
-                </AnimatedPage>
-              </ProtectedRoute>
-            } />
-            <Route path="/inquiry" element={
-              <ProtectedRoute>
-                <AnimatedPage>
-                  <InquiryForm />
-                </AnimatedPage>
-              </ProtectedRoute>
-            } />
-            <Route path="/profile" element={
-              <ProtectedRoute>
-                <AnimatedPage>
-                  <div>Profile Page - Coming Soon</div>
-                </AnimatedPage>
-              </ProtectedRoute>
-            } />
-            {/* Catch-all on chat to avoid blank pages */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-      </AuthProvider>
-  }
-
   // For main domain, show regular routes
   return (
-    <>
-      <Toaster position="top-right" richColors />
-      <AppRoutes />
-    </>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <Toaster position="top-right" richColors />
+        <AppRoutes />
+      </AuthProvider>
+    </QueryClientProvider>
   );
+}
 
 
 
