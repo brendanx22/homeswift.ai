@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "sonner";
+import ChatRoutes from './routes/ChatRoutes';
 
 // Pages
 import Index from './pages/Index';
@@ -223,9 +224,6 @@ const AppRoutes = () => {
 // Check if we're on the chat subdomain
 const isChatSubdomain = window.location.hostname.startsWith('chat.') || 
                        (window.location.hostname === 'localhost' && import.meta.env.VITE_APP_MODE === 'chat');
-
-// Import the ChatRoutes component
-import ChatRoutes from './routes/ChatRoutes';
 
 function App() {
   const queryClient = new QueryClient();
