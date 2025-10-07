@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 import crypto from "crypto";
-import { supabase } from "../lib/supabaseClient.js"; // Ensure this file exports a configured Supabase client
+import supabase from "../lib/supabase.js"; // Consolidated Supabase client
 
 dotenv.config();
 

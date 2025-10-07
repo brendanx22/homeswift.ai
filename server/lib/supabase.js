@@ -9,18 +9,24 @@ const __dirname = path.dirname(__filename);
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 
-// Initialize Supabase client
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// Get Supabase configuration from environment variables
+const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
+// Validate configuration
 if (!supabaseUrl || !supabaseKey) {
-  throw new Error('Missing Supabase URL or service role key in environment variables');
+  console.error('Supabase Configuration Error:', {
+    VITE_SUPABASE_URL: supabaseUrl ? '***' : 'MISSING',
+    SUPABASE_SERVICE_ROLE_KEY: supabaseKey ? '***' : 'MISSING'
+  });
+  throw new Error('Missing Supabase configuration. Please check your .env file.');
 }
 
+// Initialize Supabase client with enhanced configuration
 const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     autoRefreshToken: true,
-    persistSession: false,
+    persistSession: false, // We'll handle sessions with JWT
     detectSessionInUrl: false
   },
   global: {
@@ -28,15 +34,15 @@ const supabase = createClient(supabaseUrl, supabaseKey, {
   }
 });
 
-// Test the connection
+// Test connection function
 async function testConnection() {
   try {
-    const { data, error } = await supabase.from('users').select('*').limit(1);
+    const { data, error } = await supabase.from('profiles').select('*').limit(1);
     if (error) throw error;
-    console.log('✅ Successfully connected to Supabase');
-    return true;
+    return { success: true, data };
   } catch (error) {
-    console.error('❌ Error connecting to Supabase:', error.message);
+    console.error('Supabase connection test failed:', error);
+    return { success: false, error };
     throw error;
   }
 }

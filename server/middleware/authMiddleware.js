@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
-import { supabase } from '../lib/supabaseClient.js';
+import supabase from '../lib/supabase.js';
 
 dotenv.config();
 
