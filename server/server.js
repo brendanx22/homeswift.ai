@@ -8,6 +8,31 @@ import { fileURLToPath } from "url";
 import winston from "winston";
 import { createClient } from "@supabase/supabase-js";
 import { createRequire } from "module";
+import dotenv from 'dotenv';
+
+// Load environment variables from .env file
+try {
+  const envPath = path.resolve(process.cwd(), '.env');
+  const result = dotenv.config({ path: envPath });
+  
+  if (result.error) {
+    console.warn('Warning: .env file not found or could not be loaded. Using environment variables from the system.');
+  }
+} catch (error) {
+  console.warn('Warning: Failed to load .env file. Using environment variables from the system.');
+}
+
+// Verify required environment variables
+const requiredEnvVars = ['SUPABASE_URL', 'SUPABASE_ANON_KEY'];
+const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+if (missingEnvVars.length > 0) {
+  console.error(`Error: Missing required environment variables: ${missingEnvVars.join(', ')}`);
+  process.exit(1);
+}
+
+console.log('Initializing Supabase client with URL:', process.env.SUPABASE_URL);
+
 const require = createRequire(import.meta.url);
 
 // Initialize Supabase client
