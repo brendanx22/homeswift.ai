@@ -19,10 +19,19 @@ export class GoogleAuth {
    */
   async signInWithGoogle({ redirectTo, userType = 'renter' } = {}) {
     try {
+      // Determine the correct redirect URL based on the current domain
+      const host = typeof window !== 'undefined' ? window.location.hostname : '';
+      const isChatDomain = host === 'chat.homeswift.co' || host === 'localhost';
+      const callbackUrl = isChatDomain 
+        ? `${window.location.origin}/auth/callback`
+        : 'https://chat.homeswift.co/auth/callback';
+
+      console.log('Google OAuth - Using callback URL:', callbackUrl);
+      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${this.baseUrl}/auth/callback`,
+          redirectTo: callbackUrl,
           queryParams: {
             user_type: userType,
             ...(redirectTo && { redirect: redirectTo })

@@ -48,6 +48,28 @@ export default ({ mode }) => {
     // Ensure Vite handles environment variables correctly
     envPrefix: 'VITE_',
     server: {
+      host: '0.0.0.0',
+      port: 3000,
+      strictPort: true,
+      cors: true,
+      proxy: {
+        // Proxy API requests to your backend
+        '/api': {
+          target: env.VITE_API_BASE_URL || 'http://localhost:5001',
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/api/, '')
+        },
+        // Proxy auth callbacks
+        '/auth': {
+          target: env.VITE_SUPABASE_URL,
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/auth/, '')
+        }
+      },
+      // Handle SPA fallback for client-side routing
+      historyApiFallback: true,
       host: true,
       port: 3000, // Will be overridden by portfinder if in use
       strictPort: false, // Allow port to be changed if in use

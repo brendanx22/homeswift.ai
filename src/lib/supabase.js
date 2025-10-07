@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 // Environment variables
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const isProduction = import.meta.env.PROD;
+const isProduction = import.meta.env.MODE === 'production';
 
 if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error(
@@ -75,6 +75,24 @@ const customLogger = (message, ...args) => {
   }
 };
 
+// Get the correct redirect URL based on environment
+const getRedirectUrl = () => {
+  if (typeof window === 'undefined') return 'http://localhost:3000/auth/callback';
+  
+  const hostname = window.location.hostname;
+  const protocol = window.location.protocol;
+  const isLocalhost = hostname === 'localhost';
+  const isChat = hostname.startsWith('chat.');
+  
+  if (isLocalhost) {
+    return `${protocol}//${hostname}:3000/auth/callback`;
+  }
+  
+  return isChat 
+    ? `${protocol}//${hostname}/auth/callback`
+    : 'https://chat.homeswift.co/auth/callback';
+};
+
 // Single Supabase client instance with all configurations
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
@@ -85,6 +103,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storageKey: 'sb-homeswift-auth',
     flowType: 'pkce',
     debug: !isProduction,
+    // Set the redirect URL for authentication
+    redirectTo: getRedirectUrl(),
     logger: !isProduction ? {
       error: (message, ...args) => console.error(`[Supabase Error]`, message, ...args),
       warn: (message, ...args) => console.warn(`[Supabase Warn]`, message, ...args),

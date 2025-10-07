@@ -155,10 +155,20 @@ export default function LoginPage() {
     setError({ message: '', needsVerification: false });
 
     try {
+      // Determine the correct redirect URL based on the current domain
+      const host = window.location.hostname;
+      const isChatDomain = host === 'chat.homeswift.co' || host === 'localhost';
+      const redirectTo = isChatDomain 
+        ? `${window.location.origin}/auth/callback`
+        : 'https://chat.homeswift.co/auth/callback';
+
+      console.log('Initiating Google OAuth with redirectTo:', redirectTo);
+      
       await googleAuth.signInWithGoogle({
-        redirectTo: window.location.origin,
+        redirectTo,
         userType: 'renter'
       });
+      
       // The redirect will happen automatically via Supabase OAuth
     } catch (error) {
       console.error('Google login error:', error);
