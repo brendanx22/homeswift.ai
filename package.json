@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host --port 0",
     "build": "vite build",
-    "build:chat": "cross-env-shell VITE_APP_MODE=chat vite build --config vite.chat.config.js",
+    "build:chat": "cross-env VITE_APP_MODE=chat vite build --config vite.chat.config.js",
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
@@ -14,7 +14,6 @@
     "test:coverage": "vitest run --coverage",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "format": "prettier --write \"**/*.{js,jsx,json,md}\"",
-    "vercel-build": "node vercel-build.js",
     "server:migrate": "cd server && npm run migrate",
     "server:seed": "cd server && npm run seed",
     "server:setup-db": "cd server && npm run setup-db",
