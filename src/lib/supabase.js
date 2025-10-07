@@ -186,12 +186,69 @@ const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 // Initialize Supabase client with error handling
+let supabaseClientInstance;
+
 try {
-  supabaseClient;
+  supabaseClientInstance = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
+      storage: {
+        getItem: (key) => {
+          try {
+            return JSON.parse(localStorage.getItem(key));
+          } catch (error) {
+            console.error('Error getting item from storage:', error);
+            return null;
+          }
+        },
+        setItem: (key, value) => {
+          try {
+            localStorage.setItem(key, JSON.stringify(value));
+          } catch (error) {
+            console.error('Error setting item in storage:', error);
+          }
+        },
+        removeItem: (key) => {
+          try {
+            localStorage.removeItem(key);
+          } catch (error) {
+            console.error('Error removing item from storage:', error);
+          }
+        },
+      },
+      debug: !isProduction,
+      logger: {
+        error: (message, ...args) => {
+          if (isProduction) return;
+          console.error(`[Supabase Auth]`, message, ...args);
+        },
+        warn: (message, ...args) => {
+          if (isProduction) return;
+          console.warn(`[Supabase Auth]`, message, ...args);
+        },
+        log: (message, ...args) => {
+          if (isProduction) return;
+          console.log(`[Supabase Auth]`, message, ...args);
+        },
+        debug: (message, ...args) => {
+          if (isProduction) return;
+          console.debug(`[Supabase Auth]`, message, ...args);
+        },
+      },
+    },
+    db: {
+      schema: "public",
+    },
+    realtime: {
+      eventsPerSecond: 10,
+    },
+  });
 } catch (error) {
   console.error("Failed to initialize Supabase client:", error);
   // Create a mock client in case of initialization error
-  supabase = {
+  supabaseClientInstance = {
     auth: {
       onAuthStateChange: () => ({
         data: { subscription: { unsubscribe: () => {} } },
@@ -222,14 +279,21 @@ const withSupabaseErrorHandling = (fn) => {
 
 // Wrap Supabase methods with error handling
 const wrappedSupabase = {
-  ...supabaseClient,
+  ...supabaseClientInstance,
   auth: {
-    ...supabaseClient.auth,
+    ...supabaseClientInstance.auth,
     signInWithOAuth: withSupabaseErrorHandling(
-      supabaseClient.auth.signInWithOAuth
+      supabaseClientInstance.auth.signInWithOAuth?.bind(supabaseClientInstance.auth) || 
+      (() => Promise.reject(new Error('signInWithOAuth not available')))
     ),
-    getSession: withSupabaseErrorHandling(supabaseClient.auth.getSession),
-    signOut: withSupabaseErrorHandling(supabaseClient.auth.signOut),
+    getSession: withSupabaseErrorHandling(
+      supabaseClientInstance.auth.getSession?.bind(supabaseClientInstance.auth) || 
+      (() => Promise.resolve({ data: { session: null }, error: 'Auth not initialized' }))
+    ),
+    signOut: withSupabaseErrorHandling(
+      supabaseClientInstance.auth.signOut?.bind(supabaseClientInstance.auth) || 
+      (() => Promise.reject(new Error('signOut not available')))
+    ),
   },
 };
 
