@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import supabase from '../lib/supabase';
 
 /**
  * Fetches all properties from the database

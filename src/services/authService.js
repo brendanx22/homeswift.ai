@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import supabase from '../lib/supabase';
 
 // Login with email and password
 export const login = async (credentials) => {

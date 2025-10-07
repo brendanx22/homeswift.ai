@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { CheckCircle, XCircle, Mail, Loader2, ArrowRight } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import supabase from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 
 const EmailVerification = () => {

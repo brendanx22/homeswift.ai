@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import supabase from './supabase';
 
 /**
  * Google OAuth configuration and utilities
