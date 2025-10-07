@@ -24,6 +24,21 @@
   ],
   "rewrites": [
     {
+      "source": "/_next/static/(.*)",
+      "destination": "/_next/static/$1"
+    },
+    {
+      "source": "/static/(.*)",
+      "destination": "/static/$1"
+    },
+    {
+      "source": "/(.*)",
+      "has": [
+        { "type": "host", "value": "chat.homeswift.co" }
+      ],
+      "destination": "/chat/index.html"
+    },
+    {
       "source": "/api/(.*)",
       "has": [
         { "type": "host", "value": "api.homeswift.co" }

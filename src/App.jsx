@@ -221,15 +221,28 @@ const AppRoutes = () => {
 };
 
 // Check if we're on the chat subdomain
-const isChatSubdomain = window.location.hostname.startsWith('chat.');
+const isChatSubdomain = window.location.hostname.startsWith('chat.') || 
+                       (window.location.hostname === 'localhost' && import.meta.env.VITE_APP_MODE === 'chat');
 
-const App = () => {
+// Import the ChatRoutes component
+import ChatRoutes from './routes/ChatRoutes';
+
+function App() {
   useEffect(() => {
-    console.log('[App] Mounted. isChatSubdomain=', isChatSubdomain);
+    console.log('[App] Mounted. isChatSubdomain=', isChatSubdomain, 'VITE_APP_MODE=', import.meta.env.VITE_APP_MODE);
   }, []);
-  // If on chat subdomain, only show MainLanding with its routes
+
+  // If on chat subdomain, use the ChatRoutes component
   if (isChatSubdomain) {
     return (
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <ChatRoutes />
+        </AuthProvider>
+      </QueryClientProvider>
+    );
+  }
+
       <AuthProvider>
         <Toaster position="top-right" richColors />
         <Routes>
@@ -381,7 +394,6 @@ const App = () => {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
       </AuthProvider>
-    );
   }
 
   // For main domain, show regular routes
@@ -391,7 +403,6 @@ const App = () => {
       <AppRoutes />
     </>
   );
-}
 
 
 
