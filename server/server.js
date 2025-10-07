@@ -9,6 +9,16 @@ import winston from "winston";
 import { createClient } from "@supabase/supabase-js";
 import { createRequire } from "module";
 import dotenv from 'dotenv';
+import { loadUser } from "./middleware/authMiddleware.js";
+
+// Import routes
+import authRoutes from "./routes/auth.js";
+import propertyRoutes from "./routes/propertyRoutes.js";
+import searchRoutes from "./routes/search.js";
+import usersRoutes from "./routes/users.js";
+import userRoutes from "./routes/userRoutes.js";
+import waitlistRoutes from "./routes/waitlist.js";
+import testRoutes from "./routes/test.js";
 
 // Load environment variables from .env file
 try {
