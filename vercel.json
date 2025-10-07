@@ -22,26 +22,13 @@
       "NODE_VERSION": "18.x"
     }
   },
-  "routes": [
-    {
-      "src": "/assets/(.*)",
-      "headers": {
-        "cache-control": "public, max-age=31536000, immutable"
-      }
-    },
-    {
-      "src": "^/api/(.*)",
-      "dest": "/api/$1"
-    },
-    {
-      "src": "^/chat/(.*)",
-      "dest": "/chat/index.html"
-    },
-    {
-      "src": "^/(.*)",
-      "dest": "/index.html"
-    }
+  "rewrites": [
+    { "source": "/assets/(.*)", "destination": "/assets/$1" },
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/chat/(.*)", "destination": "/chat/index.html" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ],
+  "cleanUrls": true,
   "headers": [
     {
       "source": "/(.*)",
