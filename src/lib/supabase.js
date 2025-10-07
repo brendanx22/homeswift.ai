@@ -12,42 +12,69 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-// Get the current hostname for dynamic redirects
-const getHostname = () => {
-  if (typeof window === 'undefined') return 'homeswift.co';
-  return window.location.hostname;
+// Get the current hostname and protocol for dynamic redirects
+const getHostInfo = () => {
+  if (typeof window === 'undefined') return { hostname: 'homeswift.co', protocol: 'https:' };
+  return {
+    hostname: window.location.hostname,
+    protocol: window.location.protocol,
+    port: window.location.port ? `:${window.location.port}` : ''
+  };
 };
 
-// Determine if we're on the chat subdomain
-const isChatSubdomain = getHostname().startsWith('chat.');
+// Get host info
+const { hostname, protocol, port } = getHostInfo();
+
+// Determine environment
+const isLocalhost = hostname === 'localhost' || hostname.startsWith('192.168') || hostname.startsWith('10.0');
+const isChatSubdomain = hostname.startsWith('chat.') || isLocalhost;
 
 // Cookie options for cross-subdomain support
 const cookieOptions = {
   name: 'sb-access-token',
   lifetime: 60 * 60 * 24 * 7, // 7 days
-  domain: isProduction ? '.homeswift.co' : 'localhost',
+  domain: isLocalhost ? 'localhost' : '.homeswift.co',
   path: '/',
   sameSite: 'lax',
-  secure: isProduction
+  secure: isProduction,
+  httpOnly: false // Required for client-side access
 };
 
 // Custom storage that works across subdomains
 const crossDomainStorage = {
   getItem: (key) => {
     if (typeof document === 'undefined') return null;
-    const value = `; ${document.cookie}`;
-    const parts = value.split(`; ${key}=`);
-    if (parts.length === 2) return parts.pop().split(';').shift();
-    return null;
+    try {
+      const value = `; ${document.cookie}`;
+      const parts = value.split(`; ${key}=`);
+      if (parts.length === 2) return parts.pop().split(';').shift();
+      return localStorage.getItem(key); // Fallback to localStorage
+    } catch (error) {
+      console.error('Error reading from storage:', error);
+      return null;
+    }
   },
   setItem: (key, value) => {
     if (typeof document === 'undefined') return;
-    const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
-    document.cookie = `${key}=${value}; expires=${expires}; path=/; domain=${isProduction ? '.homeswift.co' : 'localhost'}; SameSite=Lax${isProduction ? '; Secure' : ''}`;
+    try {
+      const expires = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toUTCString();
+      const domain = isLocalhost ? 'localhost' : '.homeswift.co';
+      document.cookie = `${key}=${value}; expires=${expires}; path=/; domain=${domain}; SameSite=Lax${isProduction ? '; Secure' : ''}`;
+      // Also set in localStorage as fallback
+      localStorage.setItem(key, value);
+    } catch (error) {
+      console.error('Error writing to storage:', error);
+    }
   },
   removeItem: (key) => {
     if (typeof document === 'undefined') return;
-    document.cookie = `${key}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${isProduction ? '.homeswift.co' : 'localhost'}`;
+    try {
+      const domain = isLocalhost ? 'localhost' : '.homeswift.co';
+      document.cookie = `${key}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${domain}`;
+      localStorage.removeItem(key);
+    } catch (error) {
+      console.error('Error removing from storage:', error);
+    }
   }
 };
 
@@ -77,24 +104,23 @@ const customLogger = (message, ...args) => {
 
 // Get the correct redirect URL based on environment
 const getRedirectUrl = () => {
-  if (typeof window === 'undefined') return 'http://localhost:3000/auth/callback';
-  
-  const hostname = window.location.hostname;
-  const protocol = window.location.protocol;
-  const isLocalhost = hostname === 'localhost';
-  const isChat = hostname.startsWith('chat.');
-  
   if (isLocalhost) {
-    return `${protocol}//${hostname}:3000/auth/callback`;
+    return `http://${hostname}${port ? `:${port}` : ':3000'}/auth/callback`;
   }
   
-  return isChat 
-    ? `${protocol}//${hostname}/auth/callback`
-    : 'https://chat.homeswift.co/auth/callback';
+  if (isChatSubdomain) {
+    return `${protocol}//${hostname}/auth/callback`;
+  }
+  
+  // For main domain, redirect to chat subdomain
+  return 'https://chat.homeswift.co/auth/callback';
 };
 
-// Single Supabase client instance with all configurations
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+// Initialize Supabase client with error handling
+let supabase;
+
+try {
+  supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,
@@ -141,6 +167,43 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   realtime: {
     eventsPerSecond: 10
   }
-});
+  });
+} catch (error) {
+  console.error('Failed to initialize Supabase client:', error);
+  // Create a mock client in case of initialization error
+  supabase = {
+    auth: {
+      onAuthStateChange: () => ({
+        data: { subscription: { unsubscribe: () => {} } }
+      }),
+      getSession: async () => ({ data: { session: null }, error: 'Supabase client failed to initialize' }),
+      signInWithOAuth: async () => ({ error: 'Supabase client not initialized' }),
+      signOut: async () => ({ error: 'Supabase client not initialized' })
+    }
+  };
+}
 
-export default supabase;
+// Add error boundary for Supabase operations
+const withSupabaseErrorHandling = (fn) => {
+  return async (...args) => {
+    try {
+      return await fn(...args);
+    } catch (error) {
+      console.error('Supabase operation failed:', error);
+      throw error;
+    }
+  };
+};
+
+// Wrap Supabase methods with error handling
+const wrappedSupabase = {
+  ...supabase,
+  auth: {
+    ...supabase.auth,
+    signInWithOAuth: withSupabaseErrorHandling(supabase.auth.signInWithOAuth),
+    getSession: withSupabaseErrorHandling(supabase.auth.getSession),
+    signOut: withSupabaseErrorHandling(supabase.auth.signOut)
+  }
+};
+
+export default wrappedSupabase;
