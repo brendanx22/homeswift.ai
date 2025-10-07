@@ -2,15 +2,12 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-import dotenv from "dotenv";
-import rateLimit from "express-rate-limit";
 import cookieParser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
 import winston from "winston";
 import { createClient } from "@supabase/supabase-js";
 import { createRequire } from "module";
-import { loadUser } from "./middleware/authMiddleware.js";
 const require = createRequire(import.meta.url);
 
 // Initialize Supabase client
@@ -296,7 +293,6 @@ app.use((req, res, next) => {
 });
 
 // Auth middleware
-app.use(rememberMe);
 app.use(loadUser);
 
 // Rate limiting
